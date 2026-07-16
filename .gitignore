@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Logs & runtime
+logs/*.log
+*.log
+
+# Build
+build/
+dist/
+*.spec
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Local config overrides
+backend/config/local.yaml
+
+# Frontend — Node (chrome-extension build/deps)
+node_modules/
+frontend/**/node_modules/
+frontend/**/dist/
+
+# Frontend — Flutter (mobile)
+frontend/mobile/.dart_tool/
+frontend/mobile/build/
+frontend/mobile/.flutter-plugins*
+*.iml
+
+# On-device model cache (whisper WASM weights, dll)
+models/
+*.bin
+*.onnx
+
+# Media & data (jangan commit audio/video/transkrip mentah user)
+data/
+recordings/
+*.wav
+*.mp3
+*.m4a
+*.mp4
+*.mkv
+*.webm
+
+# Transcript & index store
+backend/store/*.db
+backend/store/*.sqlite
+*.index
