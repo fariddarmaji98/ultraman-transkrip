@@ -1,0 +1,17 @@
+# Web
+fastapi>=0.115            # membawa starlette>=0.40 (Range di FileResponse — rider audit)
+uvicorn[standard]>=0.30
+python-multipart>=0.0.12  # parser multipart pasca-perbaikan performa (rider audit)
+aiofiles>=23.2
+
+# DB (SQLite async — scope transkrip; Postgres menyusul saat pgvector/queue dibutuhkan)
+sqlalchemy>=2.0
+aiosqlite>=0.19
+
+# Config & log
+pydantic-settings>=2.1
+loguru>=0.7
+
+# ASR
+faster-whisper>=1.0       # CTranslate2 (melepas GIL), tanpa torch
+httpx>=0.27               # provider Groq (default spec, dipakai saat GROQ_API_KEY diset)

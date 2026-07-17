@@ -69,3 +69,32 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 - UI tampilkan provider aktif (Groq = audio ke cloud; lokal = di mesin).
 - Dev di Windows: Procrastinate jalan native, tapi utamakan docker compose agar dev ≈ prod; ffmpeg wajib ada di image worker.
 - Verifikasi akhir M1: upload mp4 1 jam ber-bahasa Indonesia dari browser → transkrip akurat < 5 menit **sejak upload selesai** (Groq; durasi upload di luar kendali sistem) → export SRT kebaca player video.
+
+## Status implementasi (per 2026-07-18) — deviasi terukur
+
+Dibangun sebagai **MVP lokal transkrip-saja** atas permintaan user ("cukup transkrip", tanpa
+over-engineering). Docker tidak tersedia di mesin dev → infra berat ditunda. Deviasi dari spec
+target di atas, semua **reversibel** dan tidak mengubah kontrak API:
+
+| Spec target | Implementasi MVP | Alasan | Kapan naik ke target |
+|---|---|---|---|
+| PostgreSQL + pgvector | SQLite (`aiosqlite`) | pgvector/queue di luar scope transkrip | M3 (RAG) |
+| Procrastinate (queue Postgres) | Antrean in-process 1 konsumen (`worker/queue.py`) | tanpa Docker/Redis/Postgres | saat butuh durabilitas lintas-restart / worker terpisah |
+| Alembic | `Base.metadata.create_all` | cukup untuk SQLite MVP | saat pindah Postgres |
+| Worker proses terpisah | 1 proses dgn API (model lazy-load, ASR di thread) | dev lokal; GIL dilepas CTranslate2 → API tetap responsif | M5 (online) |
+| Auth single-user | belum ada | lokal, mempermudah tes | **wajib sebelum M5 online** |
+| docker-compose + Caddy | uvicorn + Vite proxy `/api` | dev | M5 |
+| Ekstraksi Opus (limit Groq) | WAV 16 kHz mono (`pcm_s16le`) | default lokal; browser bisa play WAV | saat Groq jadi default (file panjang perlu Opus < 100 MB) |
+| pysubs2 | render SRT/VTT sendiri (`export/render.py`, ~20 baris) | hindari dependency utk 3 format sederhana | jika butuh ASS/format lanjut |
+
+Yang **tetap dijaga** sesuai spec: interface `ASRProvider` (Groq + lokal), seam `analysis/base.py`,
+skema `segments` bersih, streaming upload + ffprobe sinkron, rider pin `python-multipart`/`starlette`,
+kualitas kode (1 fungsi ≤ 20 baris).
+
+## Menjalankan (dev)
+
+- Backend: `uv venv backend/.venv --python 3.11` → `uv pip install -r backend/requirements.txt` →
+  dari `backend/`: `.venv\Scripts\python -m uvicorn app.main:app --port 8000`
+- Frontend: dari `frontend/web/`: `npm install` → `npm run dev` (Vite di :5173, proxy `/api` → :8000)
+- Provider ASR: default lokal (`base`). Untuk Groq: set env `TRANSKRIP_ASR_PROVIDER=groq` +
+  `TRANSKRIP_GROQ_API_KEY=...`.

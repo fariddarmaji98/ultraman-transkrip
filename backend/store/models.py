@@ -1,0 +1,69 @@
+"""Skema data: recordings, jobs, segments. `speaker` nullable (diisi saat diarization M4)."""
+from datetime import datetime, timezone
+
+from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+)
+
+from constants import JOB_QUEUED
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Recording(Base):
+    __tablename__ = "recordings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(255))
+    source_filename: Mapped[str] = mapped_column(String(255))
+    upload_path: Mapped[str] = mapped_column(String(512))
+    media_path: Mapped[str | None] = mapped_column(String(512), default=None)
+    duration_ms: Mapped[int | None] = mapped_column(default=None)
+    language: Mapped[str] = mapped_column(String(16), default="auto")
+    status: Mapped[str] = mapped_column(String(16), default=JOB_QUEUED)
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+    segments: Mapped[list["Segment"]] = relationship(
+        back_populates="recording", cascade="all, delete-orphan"
+    )
+    jobs: Mapped[list["Job"]] = relationship(
+        back_populates="recording", cascade="all, delete-orphan"
+    )
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    kind: Mapped[str] = mapped_column(String(16), default="transcribe")
+    status: Mapped[str] = mapped_column(String(16), default=JOB_QUEUED)
+    progress: Mapped[int] = mapped_column(default=0)
+    error: Mapped[str | None] = mapped_column(Text, default=None)
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+    recording: Mapped["Recording"] = relationship(back_populates="jobs")
+
+
+class Segment(Base):
+    __tablename__ = "segments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    idx: Mapped[int] = mapped_column()
+    start_ms: Mapped[int] = mapped_column()
+    end_ms: Mapped[int] = mapped_column()
+    text: Mapped[str] = mapped_column(Text)
+    speaker: Mapped[str | None] = mapped_column(String(64), default=None)
+
+    recording: Mapped["Recording"] = relationship(back_populates="segments")

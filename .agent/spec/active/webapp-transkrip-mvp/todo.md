@@ -1,25 +1,37 @@
 # Todo — Webapp Transkrip MVP (M0+M1)
 
-## M0 — fondasi
+Scope sesi ini (permintaan user): **cukup sampai transkrip**, clean code, tanpa over-engineering,
+tes di kedua sisi. Deviasi terukur dari spec dicatat di `rules.md` §"Status implementasi".
 
-- [ ] scaffold monorepo baru: `backend/`, `frontend/web/`, `deploy/` (struktur planning §3)
-- [ ] `deploy/docker-compose.yml`: caddy + api + worker + postgres (image `pgvector/pgvector:pg16`) + volume media; Caddyfile (serve dist, proxy /api, body limit > cap agar 413 datang dari app)
-- [ ] backend skeleton: FastAPI app factory, loguru, healthcheck `/api/health`; pin `python-multipart>=0.0.12` + `starlette>=0.39` di requirements
-- [ ] `store/`: model SQLAlchemy `recordings`/`jobs`/`segments` + Alembic init + migrasi pertama
-- [ ] Procrastinate wiring (app + worker entrypoint) + job dummy end-to-end lewat compose
-- [ ] `constants/` + `config/default.yaml` + pembacaan env
+## Selesai (MVP lokal, teruji end-to-end)
 
-## M1 — MVP transkrip
+- [x] scaffold monorepo: `backend/` (FastAPI) + `frontend/web/` (React+Vite)
+- [x] backend skeleton: app factory, loguru, `GET /api/health`; pin `python-multipart`/`starlette`
+- [x] `store/`: model SQLAlchemy `recordings`/`jobs`/`segments` (SQLite, `create_all`)
+- [x] `constants/` + `app/config.py` (pydantic-settings, env `TRANSKRIP_*`)
+- [x] `media/ffmpeg.py`: ffprobe durasi+validasi, ekstraksi 16 kHz mono
+- [x] `asr/base.py` protocol `ASRProvider`; stub `LLMProvider`/`EmbeddingProvider` di `analysis/base.py`
+- [x] `asr/local_whisper.py`: faster-whisper int8, model dari config, lazy-load
+- [x] `asr/groq.py`: provider Groq (verbose_json → segments) — ditulis, aktif bila `GROQ_API_KEY` diset
+- [x] worker: antrean in-process 1 konsumen + task `transcribe` (status/progress/idempoten)
+- [x] route: recordings (upload streaming + ffprobe sinkron, list, detail, delete), jobs, export (txt/srt/json), serve media (Range)
+- [x] FE: upload (XHR + progress), daftar rekaman, halaman transkrip (polling, segmen+timestamp, player sinkron timeupdate+ref, klik→seek), export, hapus
+- [x] recovery: 422 non-media, 422 suffix, 413 cap, status `failed`
+- [x] uji BE: happy path + export SRT/JSON + media Range 206 + error 422/404 (curl)
+- [x] uji FE via browser internal: load, view, seek+highlight, upload lewat UI, badge live, delete, 0 error console
 
-- [ ] `media/`: ffprobe validasi+durasi, ekstraksi ffmpeg → 16 kHz mono opus/flac
-- [ ] `asr/base.py`: protocol `ASRProvider`; stub `LLMProvider`/`EmbeddingProvider` di `analysis/base.py`
-- [ ] `asr/groq.py`: upload + parse verbose_json → segments; handle limit 100 MB (chunk silence fallback)
-- [ ] `asr/local_whisper.py`: faster-whisper int8, model dari config
-- [ ] worker task `transcribe` (status/progress/retry/idempoten) + task periodik `cleanup`
-- [ ] route: health, auth login, POST/GET/DELETE recordings (upload streaming + ffprobe sinkron), GET jobs, export (pysubs2), serve media (range; cek playback Opus di iOS Safari)
-- [ ] FE: setup Vite+React, halaman login, upload (Uppy XHR + progress), daftar rekaman
-- [ ] FE: halaman transkrip — polling job, render segmen + timestamp, player sinkron (timeupdate+refs), klik segmen → seek
-- [ ] FE: tombol export + hapus + indikator provider aktif
-- [ ] recovery: 422 non-media, 413 cap, pesan failed actionable + retry
-- [ ] uji manual: upload mp3 pendek & mp4 1 jam (id) → transkrip → export SRT valid; matikan Groq key → fallback lokal jalan
-- [ ] (M5 awal, opsional) deploy ke VPS: compose up + TLS + GitHub Action ssh-deploy
+## Deviasi terukur (disederhanakan untuk scope transkrip-saja — lihat rules.md)
+
+- [~] Postgres+pgvector → **SQLite** (Docker absen; pgvector di luar scope, pindah saat M3)
+- [~] Procrastinate → **antrean in-process** (worker satu proses dgn API; pisah proses saat online)
+- [~] Alembic → **`create_all`** (cukup untuk SQLite MVP)
+- [~] auth login → **ditunda** (lokal; wajib sebelum M5 online)
+- [~] docker-compose/Caddy → **ditunda** (dev pakai uvicorn + vite proxy)
+- [~] ekstraksi Opus utk limit Groq → saat ini **WAV 16 kHz**; encode Opus saat Groq jadi default
+
+## Belum / lanjutan (di luar sesi ini)
+
+- [ ] task periodik `cleanup` retensi media (kolom `media_expires_at` ada di rencana, belum dipakai)
+- [ ] auth + docker-compose + Caddy + deploy VPS (M5)
+- [ ] uji audio Indonesia nyata (validasi WER) + uji file panjang (1 jam)
+- [ ] indikator provider aktif di UI (Groq=cloud / lokal=mesin)
