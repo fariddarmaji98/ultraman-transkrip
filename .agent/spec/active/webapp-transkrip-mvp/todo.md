@@ -4,7 +4,7 @@
 
 - [ ] scaffold monorepo baru: `backend/`, `frontend/web/`, `deploy/` (struktur planning §3)
 - [ ] `deploy/docker-compose.yml`: caddy + api + worker + postgres (image `pgvector/pgvector:pg16`) + volume media; Caddyfile (serve dist, proxy /api, body limit > cap agar 413 datang dari app)
-- [ ] backend skeleton: FastAPI app factory, loguru, healthcheck `/api/health`
+- [ ] backend skeleton: FastAPI app factory, loguru, healthcheck `/api/health`; pin `python-multipart>=0.0.12` + `starlette>=0.39` di requirements
 - [ ] `store/`: model SQLAlchemy `recordings`/`jobs`/`segments` + Alembic init + migrasi pertama
 - [ ] Procrastinate wiring (app + worker entrypoint) + job dummy end-to-end lewat compose
 - [ ] `constants/` + `config/default.yaml` + pembacaan env

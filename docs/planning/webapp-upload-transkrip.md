@@ -20,7 +20,7 @@ Keputusan terpenting hasil riset:
 | Engine ASR | **Whisper family di balik interface `ASRProvider`** | Model baru 2025–2026 (Parakeet, Canary, Voxtral, Moonshine) **tidak support bahasa Indonesia**; Whisper large-v3 ~7,7% WER Indonesia (FLEURS) |
 | Default MVP | **Groq API `whisper-large-v3-turbo` — $0.04/jam audio** | Kualitas large-v3-turbo dalam hitungan detik; self-host CPU tidak bisa menandingi kualitas+kecepatan ini di harga berapa pun |
 | Fallback lokal | **faster-whisper (int8)** di worker yang sama | Privasi / Groq down; ganti provider = ganti config, bukan rewrite |
-| Backend | **Python + FastAPI** | Sesuai arah repo + ekosistem AI Python paling kaya untuk pengembangan lanjut |
+| Backend | **Python + FastAPI** | Diuji ulang lewat panel adversarial Go vs Node vs Python (Jul 2026): kerja berat tidak pernah jalan di Python (ffmpeg subprocess, CTranslate2 melepas GIL, Groq HTTP); Go/Node toh akan butuh Python sidecar begitu fitur ML lokal masuk (bukti: Scriberr, Whishper v4); pajak memori runtime ~3% dari VPS — yang menentukan di skala solo adalah developer efficiency + ekosistem AI. Rider teknis hasil audit ada di rules.md spec MVP (pin `python-multipart>=0.0.12` & `starlette>=0.39`, `request.stream()`, worker proses terpisah, fallback turbo-int8 lazy-load) |
 | Queue | **Procrastinate (Postgres-backed)** | Satu datastore untuk queue + metadata + pgvector nanti; tanpa Redis; jalan di Windows dev |
 | DB | **PostgreSQL dari hari pertama** | Dibutuhkan Procrastinate; pgvector untuk RAG nanti; hindari migrasi SQLite→PG |
 | FE | **React + Vite SPA** | Ekosistem terkuat untuk dua masalah UI tersulit (uploader, transcript-sync); tanpa SSR/Next karena ini app di balik tombol upload, bukan situs konten |

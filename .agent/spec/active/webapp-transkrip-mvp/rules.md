@@ -12,10 +12,11 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 ## Stack
 
 - BE: Python 3.11+ / FastAPI / SQLAlchemy 2 + Alembic / Procrastinate (queue, Postgres-backed) / loguru
+  - pin `python-multipart >= 0.0.12` (parser multipart pasca-perbaikan performa) & `starlette >= 0.39` (dukungan HTTP Range utk serve media) — hasil audit bahasa/stack
 - DB: PostgreSQL 16 — image `pgvector/pgvector:pg16` (pgvector sudah siap untuk M3, hindari ganti image nanti)
 - ASR: interface `ASRProvider` di `backend/asr/base.py`
   - `GroqProvider` (default): `whisper-large-v3-turbo`, response `verbose_json` (segment timestamps)
-  - `LocalWhisperProvider`: faster-whisper, model dari config (`large-v3-turbo` int8 default; `cahya/faster-whisper-medium-id` opsi id; `small` mesin kecil), `vad_filter=True`
+  - `LocalWhisperProvider`: faster-whisper, model dari config (`large-v3-turbo` int8 default — ~1,5 GB RAM terukur, muat di VPS 4 GB; `cahya/faster-whisper-medium-id` opsi id; `small` mesin kecil), `vad_filter=True`; **lazy-load** model saat job lokal pertama, jangan saat startup
   - provider dipilih via config; error Groq (rate limit / 5xx / network) → retry job, lalu fallback lokal jika diaktifkan
 - Media: ffmpeg via subprocess (`backend/media/`). **ffprobe jalan sinkron saat upload** (validasi → 422 bila bukan media, isi `duration_ms` di response 201); ekstraksi di worker: `-vn -ac 1 -ar 16000` → **Opus ~32 kbps** (~14 MB/jam — FLAC tidak bisa: lossless tanpa target bitrate; rekaman 3 jam ≈ 43 MB muat limit Groq 100 MB; >itu chunk di batas silence)
 - FE: React + Vite SPA di `frontend/web/`; Uppy (mode XHR) untuk upload; player `<audio>` + sinkron segmen via `timeupdate` + refs (tanpa re-render React per tick)
@@ -32,7 +33,7 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 
 - `GET /api/health` → healthcheck (tanpa auth)
 - `POST /api/auth/login` → session cookie (single user, password dari env)
-- `POST /api/recordings` (multipart, stream ke disk per ~1 MB chunk, cap 2 GB; ffprobe sinkron) → 201 `{recording, job_id}`; enqueue `transcribe`
+- `POST /api/recordings` (multipart, stream ke disk per ~1 MB chunk via `request.stream()` + async file I/O — **jangan** `await file.read()` penuh atau sync I/O di route async; cap 2 GB; ffprobe sinkron) → 201 `{recording, job_id}`; enqueue `transcribe`
 - `GET /api/recordings` / `GET /api/recordings/{id}` (+segments) / `DELETE /api/recordings/{id}`
 - `GET /api/jobs/{id}` → `{status, progress, error}` — FE poll 2 dtk
 - `GET /api/recordings/{id}/export?format=txt|srt|vtt|json` — via pysubs2
@@ -44,6 +45,7 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 - progress: rumus timestamp-segmen-terakhir ÷ durasi hanya berlaku utk provider lokal/chunked (segmen datang bertahap); Groq satu panggilan = progress kasar per fase (0 → selesai)
 - task periodik harian `cleanup`: hapus file media dgn `media_expires_at < now` (transkrip tetap), hapus upload yatim > 24 jam
 - concurrency worker = 1 (RAM VPS 4 GB)
+- worker SELALU proses/container terpisah dari api — model ASR & kerja berat tidak pernah tinggal di proses web (RSS Python tidak turun setelah spike; API tetap ringan)
 
 ## Config / Constants
 
