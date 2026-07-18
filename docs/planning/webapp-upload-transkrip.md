@@ -23,7 +23,8 @@ Keputusan terpenting hasil riset:
 | Backend | **Python + FastAPI** | Diuji ulang lewat panel adversarial Go vs Node vs Python (Jul 2026): kerja berat tidak pernah jalan di Python (ffmpeg subprocess, CTranslate2 melepas GIL, Groq HTTP); Go/Node toh akan butuh Python sidecar begitu fitur ML lokal masuk (bukti: Scriberr, Whishper v4); pajak memori runtime ~3% dari VPS — yang menentukan di skala solo adalah developer efficiency + ekosistem AI. Rider teknis hasil audit ada di rules.md spec MVP (pin `python-multipart>=0.0.12` & `starlette>=0.39`, `request.stream()`, worker proses terpisah, fallback turbo-int8 lazy-load) |
 | Queue | **Procrastinate (Postgres-backed)** | Satu datastore untuk queue + metadata + pgvector nanti; tanpa Redis; jalan di Windows dev |
 | DB | **PostgreSQL dari hari pertama** | Dibutuhkan Procrastinate; pgvector untuk RAG nanti; hindari migrasi SQLite→PG |
-| FE | **React + Vite SPA** | Ekosistem terkuat untuk dua masalah UI tersulit (uploader, transcript-sync); tanpa SSR/Next karena ini app di balik tombol upload, bukan situs konten |
+| FE | **React + Vite + Tailwind v4 SPA** | Ekosistem terkuat untuk dua masalah UI tersulit (uploader, transcript-sync); Tailwind v4 (`@tailwindcss/vite`) untuk styling utility; tanpa SSR/Next karena ini app di balik tombol upload, bukan situs konten |
+| Proteksi | **Gerbang tol (middleware ASGI berlapis)** | Anti-spam sebelum router: rate-limit global + throttle upload + queue-guard; spam ditolak (429) sebelum menyentuh disk/ffmpeg/ASR |
 | Deploy | **Docker Compose di VPS murah** (Hetzner CX23 €4.49 atau IDCloudHost/Biznet) | PaaS melawan upload 2 GB & job berjam-jam; total realistis **~$7–13/bulan** |
 | Layer AI | **OpenAI SDK + `base_url` configurable** | DeepSeek/Groq/Ollama/OpenRouter semua OpenAI-compatible; ganti provider = ganti env var |
 
@@ -65,7 +66,7 @@ Keputusan terpenting hasil riset:
 ## 3. Arsitektur
 
 ```
-Browser (React + Vite SPA, Uppy)
+Browser (React + Vite + Tailwind SPA, upload XHR)
    │ 1. upload (streaming multipart)
    ▼
 Caddy (TLS, serve SPA statis, proxy /api → FastAPI; tanpa limit body default)
@@ -115,7 +116,7 @@ backend/
   constants/      terpusat (ADR 0001) — tidak impor app/analysis
   config/         default.yaml + env
 frontend/
-  web/            React + Vite SPA (menggantikan chrome-extension sebagai langkah 1)
+  web/            React + Vite + Tailwind SPA (menggantikan chrome-extension sebagai langkah 1)
 deploy/           docker-compose.yml, Caddyfile, GitHub Action ssh-deploy
 docs/             planning, ADR, arsitektur
 .agent/           skills + spec
@@ -137,6 +138,8 @@ Angka WER Indonesia yang terdokumentasi:
 | ElevenLabs Scribe (API) | klaim 2,4% (FLEURS) | angka Indonesia terbaik yang dipublikasikan + diarization |
 
 Kualitas turun drastis di audio percakapan spontan/tumpang-tindih (~30% bahkan untuk model tuned) — set ekspektasi user untuk rekaman rapat ramai.
+
+**Validasi empiris (Juli 2026, 5 klip FLEURS-id, faster-whisper int8 CPU, WER dinormalisasi):** `large-v3-turbo` **5,4%** < `cahya/faster-whisper-medium-id` 9,5% (cocok dgn 9,74% terdokumentasi) < `base` 23%. → **default lokal dinaikkan dari `base` ke `large-v3-turbo`.** Sampel + transkrip acuan + skrip regen ada di `samples/` (audio di-gitignore; lisensi CC-BY FLEURS).
 
 **Strategi tiga provider di balik satu interface:**
 

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routes import health, jobs, recordings
+from protection import install_protection
 from store.db import init_db
 from worker.queue import worker_loop
 
@@ -22,7 +23,8 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Ultraman Transkrip", lifespan=lifespan)
-    app.add_middleware(
+    install_protection(app)  # gerbang tol (lapisan dalam, sebelum router)
+    app.add_middleware(  # CORS (lapisan luar; header tetap ada di respons 429)
         CORSMiddleware, allow_origins=["*"],
         allow_methods=["*"], allow_headers=["*"],
     )

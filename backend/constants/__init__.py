@@ -13,7 +13,8 @@ UPLOAD_CHUNK_BYTES = 1024 * 1024           # 1 MB per chunk (stream ke disk)
 
 # Default ASR
 DEFAULT_ASR_PROVIDER = "local"   # "local" (faster-whisper) | "groq"
-DEFAULT_LOCAL_MODEL = "base"     # tiny|base|small|medium|large-v3|large-v3-turbo
+DEFAULT_LOCAL_MODEL = "large-v3-turbo"  # validasi FLEURS-id (5 klip): turbo 5.4% < medium-id 9.5% < base 23% WER
+# opsi lain: "cahya/faster-whisper-medium-id" (fine-tune id), "base"/"small" (cepat, akurasi rendah)
 DEFAULT_LANGUAGE = "auto"
 
 # Target audio untuk Whisper (16 kHz mono)
@@ -28,3 +29,10 @@ ACCEPTED_SUFFIXES = {
     ".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".wma",
     ".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v",
 }
+
+# Gerbang tol proteksi anti-spam (in-memory; single-instance MVP)
+RATE_LIMIT_MAX = 60           # posA: maks permintaan per IP
+RATE_LIMIT_WINDOW_S = 60      #       dalam 60 detik
+UPLOAD_LIMIT_MAX = 12         # posB: maks unggahan per IP
+UPLOAD_LIMIT_WINDOW_S = 600   #       dalam 10 menit
+QUEUE_MAX_PENDING = 20        # posC: tolak unggah bila antrean transkrip >= ini

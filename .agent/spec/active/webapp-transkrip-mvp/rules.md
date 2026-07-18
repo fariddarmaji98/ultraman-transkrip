@@ -5,7 +5,7 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 ## Main
 
 - fitur: upload audio/video → job transkripsi async → transkrip per segmen + player sinkron + export
-- modul baru: `backend/{app,asr,analysis,media,worker,store,constants,config}`, `frontend/web/`, `deploy/`
+- modul baru: `backend/{app,asr,analysis,media,worker,store,protection,constants,config}`, `frontend/web/`, `deploy/`
 - referensi clone: tidak ada (scaffold baru); pola dari planning §3
 - opsional di ujung M1: deploy awal ke VPS (item M5 di todo) — boleh maju karena "online" bagian dari ide inti
 
@@ -19,7 +19,7 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
   - `LocalWhisperProvider`: faster-whisper, model dari config (`large-v3-turbo` int8 default — ~1,5 GB RAM terukur, muat di VPS 4 GB; `cahya/faster-whisper-medium-id` opsi id; `small` mesin kecil), `vad_filter=True`; **lazy-load** model saat job lokal pertama, jangan saat startup
   - provider dipilih via config; error Groq (rate limit / 5xx / network) → retry job, lalu fallback lokal jika diaktifkan
 - Media: ffmpeg via subprocess (`backend/media/`). **ffprobe jalan sinkron saat upload** (validasi → 422 bila bukan media, isi `duration_ms` di response 201); ekstraksi di worker: `-vn -ac 1 -ar 16000` → **Opus ~32 kbps** (~14 MB/jam — FLAC tidak bisa: lossless tanpa target bitrate; rekaman 3 jam ≈ 43 MB muat limit Groq 100 MB; >itu chunk di batas silence)
-- FE: React + Vite SPA di `frontend/web/`; Uppy (mode XHR) untuk upload; player `<audio>` + sinkron segmen via `timeupdate` + refs (tanpa re-render React per tick)
+- FE: React 19 + Vite + **Tailwind v4** (`@tailwindcss/vite`) SPA di `frontend/web/`; upload via XHR (progress bar); player `<audio>` + sinkron segmen via `timeupdate` + refs (tanpa re-render React per tick)
 - Deploy: `deploy/docker-compose.yml` — caddy (TLS+serve `frontend/web/dist`+proxy `/api`), api, worker, postgres
 
 ## Store
@@ -36,7 +36,7 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 - `POST /api/recordings` (multipart, stream ke disk per ~1 MB chunk via `request.stream()` + async file I/O — **jangan** `await file.read()` penuh atau sync I/O di route async; cap 2 GB; ffprobe sinkron) → 201 `{recording, job_id}`; enqueue `transcribe`
 - `GET /api/recordings` / `GET /api/recordings/{id}` (+segments) / `DELETE /api/recordings/{id}`
 - `GET /api/jobs/{id}` → `{status, progress, error}` — FE poll 2 dtk
-- `GET /api/recordings/{id}/export?format=txt|srt|vtt|json` — via pysubs2
+- `GET /api/recordings/{id}/export?fmt=txt|srt|json` — render sendiri (`export/render.py`)
 - `GET /api/recordings/{id}/media` — serve audio hasil ekstraksi utk player (range requests)
 
 ## Worker
@@ -46,6 +46,22 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 - task periodik harian `cleanup`: hapus file media dgn `media_expires_at < now` (transkrip tetap), hapus upload yatim > 24 jam
 - concurrency worker = 1 (RAM VPS 4 GB)
 - worker SELALU proses/container terpisah dari api — model ASR & kerja berat tidak pernah tinggal di proses web (RSS Python tidak turun setelah spike; API tetap ringan)
+
+## Proteksi (gerbang tol) — `backend/protection/`
+
+Middleware ASGI `ProtectionMiddleware` jalan **sebelum router** (di dalam CORS), menjalankan rantai
+pos berurutan. Request harus lolos semua pos baru masuk fitur; gagal salah satu → 429 langsung,
+fitur (disk/ffmpeg/ASR) tak tersentuh.
+
+    request → CORS → posA(rate global) → posB(throttle upload) → posC(antrean) → router → fitur
+
+- **posA `RateLimit`** — `RATE_LIMIT_MAX`/`RATE_LIMIT_WINDOW_S` (60/60 dtk) per IP, semua request. Sliding window in-memory (deque per IP).
+- **posB `RateLimit(match=is_upload)`** — `UPLOAD_LIMIT_MAX`/`UPLOAD_LIMIT_WINDOW_S` (12/10 mnt) khusus `POST /recordings` (jalur mahal).
+- **posC `QueueGuard`** — tolak upload bila `pending_count() ≥ QUEUE_MAX_PENDING` (20).
+- Tambah pos baru (API-key, blokir IP, dst.) = 1 entri di `build_protections()`; endpoint/fitur tak berubah.
+- Middleware hanya baca header/method/path (tak menyentuh body) → aman untuk upload streaming besar.
+- In-memory = single-instance MVP; multi-instance → pindahkan state ke Redis.
+- Teruji: posA balas 429 mulai request ke-61/menit; posB balas 429 ("terlalu banyak unggahan") setelah 12 upload.
 
 ## Config / Constants
 
@@ -91,10 +107,19 @@ Yang **tetap dijaga** sesuai spec: interface `ASRProvider` (Groq + lokal), seam 
 skema `segments` bersih, streaming upload + ffprobe sinkron, rider pin `python-multipart`/`starlette`,
 kualitas kode (1 fungsi ≤ 20 baris).
 
+### Tambahan sesi ini (di atas spec awal)
+
+- **Frontend Tailwind v4** — `index.css` = `@import "tailwindcss"`, semua styling via utility class; build produksi OK (CSS 16 KB).
+- **Gerbang tol proteksi** (`backend/protection/`, lihat §Proteksi) — anti-spam berlapis sebelum router.
+- **Default model lokal → `large-v3-turbo`** — hasil validasi FLEURS id (5 klip, WER dinormalisasi): turbo **5,4%** < `cahya-medium-id` 9,5% < `base` 23%. Sampel audio + transkrip acuan + skrip regen di `samples/` (audio di-gitignore, CC-BY FLEURS).
+
 ## Menjalankan (dev)
 
 - Backend: `uv venv backend/.venv --python 3.11` → `uv pip install -r backend/requirements.txt` →
   dari `backend/`: `.venv\Scripts\python -m uvicorn app.main:app --port 8000`
 - Frontend: dari `frontend/web/`: `npm install` → `npm run dev` (Vite di :5173, proxy `/api` → :8000)
-- Provider ASR: default lokal (`base`). Untuk Groq: set env `TRANSKRIP_ASR_PROVIDER=groq` +
+- Provider ASR: default lokal `large-v3-turbo` (unduh ~1,5 GB saat job pertama; untuk tes cepat
+  set `TRANSKRIP_LOCAL_WHISPER_MODEL=base`). Untuk Groq: set `TRANSKRIP_ASR_PROVIDER=groq` +
   `TRANSKRIP_GROQ_API_KEY=...`.
+- Validasi Indonesia (opsional): `pip install datasets soundfile jiwer` lalu jalankan
+  `samples/fetch_fleurs_id.py` untuk regen sampel.

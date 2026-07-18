@@ -16,6 +16,11 @@ async def enqueue(recording_id: int) -> None:
     await _queue.put(recording_id)
 
 
+def pending_count() -> int:
+    """Jumlah job menunggu di antrean (dipakai posC gerbang tol)."""
+    return _queue.qsize()
+
+
 async def worker_loop() -> None:
     logger.info("worker transkrip mulai")
     while True:

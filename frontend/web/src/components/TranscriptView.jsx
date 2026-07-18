@@ -26,10 +26,10 @@ export default function TranscriptView({ id, onDone }) {
     }
   }, [id])
 
-  if (!rec) return <p className="muted">Memuat…</p>
+  if (!rec) return <p className="text-slate-500">Memuat…</p>
   if (PENDING.includes(rec.status)) return <Processing status={rec.status} />
   if (rec.status === 'failed')
-    return <p className="error">Transkripsi gagal. Coba unggah ulang.</p>
+    return <p className="text-red-600">Transkripsi gagal. Coba unggah ulang.</p>
   return <Transcript rec={rec} />
 }
 
@@ -41,8 +41,8 @@ const PHASE = {
 
 function Processing({ status }) {
   return (
-    <div className="processing">
-      <div className="spinner" />
+    <div className="mt-16 flex flex-col items-center gap-3.5 text-slate-500">
+      <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-indigo-100 border-t-indigo-600" />
       <p>{PHASE[status]}</p>
     </div>
   )
@@ -60,7 +60,7 @@ function Transcript({ rec }) {
     setActiveIdx(currentSegment(rec.segments, audioRef.current.currentTime))
 
   return (
-    <div className="transcript">
+    <div>
       <TranscriptHeader rec={rec} />
       {rec.media_available && (
         <audio
@@ -68,7 +68,7 @@ function Transcript({ rec }) {
           src={mediaUrl(rec.id)}
           controls
           onTimeUpdate={onTime}
-          className="player"
+          className="mb-4 w-full"
         />
       )}
       <SegmentList segments={rec.segments} activeIdx={activeIdx} onSeek={seek} />
