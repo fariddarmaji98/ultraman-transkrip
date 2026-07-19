@@ -84,12 +84,13 @@ function MediaPlayer({ rec, mediaRef, onTime }) {
 
 function ProgressBar({ status, progress }) {
   return (
-    <div className="mb-4">
-      <div className="mb-1 flex justify-between text-sm text-slate-500">
+    <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
+      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-indigo-700">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
         <span>{PHASE[status]}</span>
-        <span>{progress}%</span>
+        <span className="ml-auto tabular-nums text-indigo-500">{progress}%</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+      <div className="h-2 overflow-hidden rounded-full bg-indigo-100">
         <div
           className="h-full rounded-full bg-indigo-500 transition-all duration-500"
           style={{ width: `${progress}%` }}
