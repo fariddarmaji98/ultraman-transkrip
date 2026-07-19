@@ -3,6 +3,7 @@ import { getRecording, sourceUrl } from '../api'
 import { currentSegment, isVideo } from '../utils'
 import TranscriptHeader from './TranscriptHeader'
 import SegmentList from './SegmentList'
+import ProgressSteps from './ProgressSteps'
 
 const PENDING = ['queued', 'extracting', 'transcribing']
 const PHASE = {
@@ -56,7 +57,10 @@ function Detail({ rec, onTitleChange }) {
       <TranscriptHeader rec={rec} onTitleChange={onTitleChange} />
       <MediaPlayer rec={rec} mediaRef={mediaRef} onTime={onTime} />
       {PENDING.includes(rec.status) && (
-        <ProgressBar status={rec.status} progress={rec.progress} />
+        <>
+          <ProgressSteps status={rec.status} />
+          <ProgressBar status={rec.status} progress={rec.progress} />
+        </>
       )}
       {rec.status === 'failed' && (
         <p className="text-red-600">Transkripsi gagal. Coba unggah ulang.</p>
