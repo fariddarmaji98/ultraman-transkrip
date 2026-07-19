@@ -75,11 +75,31 @@ function RecordingItem({ rec, selected, onSelect, onDelete }) {
       </div>
       <button
         title="Hapus"
+        aria-label="Hapus"
         onClick={onDelete}
-        className="shrink-0 rounded px-1.5 py-1 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+        className="shrink-0 rounded p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
       >
-        ✕
+        <TrashIcon />
       </button>
     </li>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6 7h12M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7m2 0-.6 11.1a2 2 0 0 1-2 1.9H9.6a2 2 0 0 1-2-1.9L7 7m3 3.5v6m4-6v6"
+      />
+    </svg>
   )
 }
