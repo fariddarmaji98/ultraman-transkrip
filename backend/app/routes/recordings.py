@@ -52,7 +52,8 @@ async def list_recordings(db: DbDep) -> list[models.Recording]:
 async def get_recording(rid: int, db: DbDep) -> RecordingDetail:
     rec = await _get_or_404(db, rid)
     segments = await _segments_of(db, rid)
-    return _to_detail(rec, segments)
+    progress = await _progress_of(db, rid)
+    return _to_detail(rec, segments, progress)
 
 
 @router.delete("/recordings/{rid}", status_code=204)
@@ -69,6 +70,14 @@ async def get_media(rid: int, db: DbDep) -> FileResponse:
     if not rec.media_path or not Path(rec.media_path).exists():
         raise HTTPException(404, "media tidak tersedia")
     return FileResponse(rec.media_path, media_type="audio/wav")
+
+
+@router.get("/recordings/{rid}/source")
+async def get_source(rid: int, db: DbDep) -> FileResponse:
+    rec = await _get_or_404(db, rid)
+    if not rec.upload_path or not Path(rec.upload_path).exists():
+        raise HTTPException(404, "sumber tidak tersedia")
+    return FileResponse(rec.upload_path, filename=rec.source_filename)
 
 
 @router.get("/recordings/{rid}/export")
@@ -154,11 +163,19 @@ async def _segments_of(db, rid: int) -> list[models.Segment]:
     return list(result.scalars().all())
 
 
-def _to_detail(rec, segments) -> RecordingDetail:
+async def _progress_of(db, rid: int) -> int:
+    result = await db.execute(
+        select(models.Job.progress).where(models.Job.recording_id == rid)
+    )
+    return result.scalars().first() or 0
+
+
+def _to_detail(rec, segments, progress: int) -> RecordingDetail:
     return RecordingDetail(
-        id=rec.id, title=rec.title, status=rec.status,
-        duration_ms=rec.duration_ms, language=rec.language,
-        created_at=rec.created_at,
+        id=rec.id, title=rec.title, source_filename=rec.source_filename,
+        status=rec.status, duration_ms=rec.duration_ms, language=rec.language,
+        created_at=rec.created_at, progress=progress,
+        source_available=bool(rec.upload_path and Path(rec.upload_path).exists()),
         media_available=bool(rec.media_path and Path(rec.media_path).exists()),
         segments=[SegmentOut.model_validate(s) for s in segments],
     )

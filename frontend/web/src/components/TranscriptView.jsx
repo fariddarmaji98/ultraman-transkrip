@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { getRecording, mediaUrl } from '../api'
-import { currentSegment } from '../utils'
+import { getRecording, sourceUrl } from '../api'
+import { currentSegment, isVideo } from '../utils'
 import TranscriptHeader from './TranscriptHeader'
 import SegmentList from './SegmentList'
 
 const PENDING = ['queued', 'extracting', 'transcribing']
+const PHASE = {
+  queued: 'Mengantre…',
+  extracting: 'Mengekstrak audio…',
+  transcribing: 'Mentranskripsi…',
+}
 
 export default function TranscriptView({ id, onDone }) {
   const [rec, setRec] = useState(null)
@@ -27,51 +32,74 @@ export default function TranscriptView({ id, onDone }) {
   }, [id])
 
   if (!rec) return <p className="text-slate-500">Memuat…</p>
-  if (PENDING.includes(rec.status)) return <Processing status={rec.status} />
-  if (rec.status === 'failed')
-    return <p className="text-red-600">Transkripsi gagal. Coba unggah ulang.</p>
-  return <Transcript rec={rec} />
+  return <Detail rec={rec} />
 }
 
-const PHASE = {
-  queued: 'Mengantre…',
-  extracting: 'Mengekstrak audio…',
-  transcribing: 'Mentranskripsi…',
-}
-
-function Processing({ status }) {
-  return (
-    <div className="mt-16 flex flex-col items-center gap-3.5 text-slate-500">
-      <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-indigo-100 border-t-indigo-600" />
-      <p>{PHASE[status]}</p>
-    </div>
-  )
-}
-
-function Transcript({ rec }) {
-  const audioRef = useRef(null)
+function Detail({ rec }) {
+  const mediaRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
 
   const seek = (ms) => {
-    audioRef.current.currentTime = ms / 1000
-    audioRef.current.play()
+    mediaRef.current.currentTime = ms / 1000
+    mediaRef.current.play()
   }
   const onTime = () =>
-    setActiveIdx(currentSegment(rec.segments, audioRef.current.currentTime))
+    setActiveIdx(currentSegment(rec.segments, mediaRef.current.currentTime))
 
   return (
     <div>
       <TranscriptHeader rec={rec} />
-      {rec.media_available && (
-        <audio
-          ref={audioRef}
-          src={mediaUrl(rec.id)}
-          controls
-          onTimeUpdate={onTime}
-          className="mb-4 w-full"
-        />
+      <MediaPlayer rec={rec} mediaRef={mediaRef} onTime={onTime} />
+      {PENDING.includes(rec.status) && (
+        <ProgressBar status={rec.status} progress={rec.progress} />
       )}
-      <SegmentList segments={rec.segments} activeIdx={activeIdx} onSeek={seek} />
+      {rec.status === 'failed' && (
+        <p className="text-red-600">Transkripsi gagal. Coba unggah ulang.</p>
+      )}
+      <Transcript rec={rec} activeIdx={activeIdx} onSeek={seek} />
     </div>
   )
+}
+
+function MediaPlayer({ rec, mediaRef, onTime }) {
+  if (!rec.source_available) return null
+  const Tag = isVideo(rec.source_filename) ? 'video' : 'audio'
+  const cls =
+    Tag === 'video' ? 'mb-4 max-h-96 w-full rounded-lg bg-black' : 'mb-4 w-full'
+  return (
+    <Tag
+      ref={mediaRef}
+      src={sourceUrl(rec.id)}
+      controls
+      onTimeUpdate={onTime}
+      className={cls}
+    />
+  )
+}
+
+function ProgressBar({ status, progress }) {
+  return (
+    <div className="mb-4">
+      <div className="mb-1 flex justify-between text-sm text-slate-500">
+        <span>{PHASE[status]}</span>
+        <span>{progress}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-indigo-500 transition-all duration-500"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function Transcript({ rec, activeIdx, onSeek }) {
+  if (rec.segments.length > 0)
+    return (
+      <SegmentList segments={rec.segments} activeIdx={activeIdx} onSeek={onSeek} />
+    )
+  if (rec.status === 'done')
+    return <p className="text-slate-500">Tidak ada ucapan terdeteksi.</p>
+  return null
 }

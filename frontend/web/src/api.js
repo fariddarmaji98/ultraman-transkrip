@@ -48,4 +48,5 @@ function parseError(text) {
 }
 
 export const mediaUrl = (id) => `/api/recordings/${id}/media`
+export const sourceUrl = (id) => `/api/recordings/${id}/source`
 export const exportUrl = (id, fmt) => `/api/recordings/${id}/export?fmt=${fmt}`

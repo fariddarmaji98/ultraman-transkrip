@@ -9,7 +9,7 @@ from app.config import settings
 from app.routes import health, jobs, recordings
 from protection import install_protection
 from store.db import init_db
-from worker.queue import worker_loop
+from worker.queue import requeue_pending, worker_loop
 
 
 @asynccontextmanager
@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     settings.ensure_dirs()
     await init_db()
     task = asyncio.create_task(worker_loop())
+    await requeue_pending()  # lanjutkan job yang belum selesai setelah restart
     yield
     task.cancel()
 

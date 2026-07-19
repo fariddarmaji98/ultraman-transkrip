@@ -19,6 +19,7 @@ class RecordingOut(BaseModel):
 
     id: int
     title: str
+    source_filename: str
     status: str
     duration_ms: int | None
     language: str
@@ -26,7 +27,9 @@ class RecordingOut(BaseModel):
 
 
 class RecordingDetail(RecordingOut):
+    source_available: bool
     media_available: bool
+    progress: int
     segments: list[SegmentOut]
 
 

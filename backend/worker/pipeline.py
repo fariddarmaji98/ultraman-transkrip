@@ -51,10 +51,31 @@ async def _extract(db, rec, job) -> None:
 async def _transcribe(db, rec, job) -> None:
     await _set(db, rec, job, JOB_TRANSCRIBING, 30)
     provider = get_provider()
-    segments = await asyncio.to_thread(
-        provider.transcribe, Path(rec.media_path), rec.language
-    )
+    holder = {"pct": 30}
+    poller = asyncio.create_task(_poll_progress(db, rec, job, holder))
+    try:
+        segments = await asyncio.to_thread(
+            provider.transcribe, Path(rec.media_path), rec.language,
+            lambda p: holder.__setitem__("pct", p),
+        )
+    finally:
+        poller.cancel()
+        await _await_cancel(poller)
     await _save_segments(db, rec.id, segments)
+
+
+async def _poll_progress(db, rec, job, holder) -> None:
+    while True:
+        await asyncio.sleep(1)
+        if holder["pct"] != job.progress:
+            await _set(db, rec, job, JOB_TRANSCRIBING, holder["pct"])
+
+
+async def _await_cancel(task) -> None:
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 async def _save_segments(db, recording_id: int, segments) -> None:

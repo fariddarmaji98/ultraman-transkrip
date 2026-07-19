@@ -11,3 +11,11 @@ export function currentSegment(segments, currentSec) {
   const t = currentSec * 1000
   return segments.findIndex((s) => t >= s.start_ms && t < s.end_ms)
 }
+
+const VIDEO_EXT = ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v']
+
+// True bila nama file berekstensi video (untuk pilih <video> vs <audio>).
+export function isVideo(filename) {
+  const ext = (filename ?? '').split('.').pop()?.toLowerCase()
+  return VIDEO_EXT.includes(ext)
+}

@@ -59,6 +59,14 @@ export default function UploadPanel({ onUploaded }) {
       >
         {progress !== null ? `Mengunggah ${progress}%` : 'Transkrip'}
       </button>
+      {progress !== null && (
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-indigo-500 transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
     </form>
   )

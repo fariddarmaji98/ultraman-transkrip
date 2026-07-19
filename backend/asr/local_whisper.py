@@ -1,11 +1,14 @@
-"""Provider lokal: faster-whisper (CTranslate2, int8, CPU). Model lazy-load & di-cache."""
+"""Provider lokal: faster-whisper (CTranslate2, int8, CPU). Model lazy-load & di-cache.
+
+Lapor progres per segmen (fase transkripsi dipetakan ke 30-90%).
+"""
 from functools import lru_cache
 from pathlib import Path
 
 from faster_whisper import WhisperModel
 
 from app.config import settings
-from asr.base import Segment
+from asr.base import ProgressCb, Segment
 
 
 @lru_cache(maxsize=1)
@@ -16,12 +19,19 @@ def _model() -> WhisperModel:
 
 
 class LocalWhisperProvider:
-    def transcribe(self, audio_path: Path, language: str) -> list[Segment]:
+    def transcribe(self, audio_path, language, on_progress: ProgressCb | None = None):
         lang = None if language == "auto" else language
-        segments, _ = _model().transcribe(
+        segments, info = _model().transcribe(
             str(audio_path), language=lang, vad_filter=True
         )
-        return [_to_segment(i, s) for i, s in enumerate(segments)]
+        return list(_iter_segments(segments, info, on_progress))
+
+
+def _iter_segments(segments, info, on_progress):
+    for i, s in enumerate(segments):
+        yield _to_segment(i, s)
+        if on_progress and info.duration:
+            on_progress(min(90, 30 + int(60 * s.end / info.duration)))
 
 
 def _to_segment(idx: int, s) -> Segment:

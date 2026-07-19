@@ -37,7 +37,9 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 - `GET /api/recordings` / `GET /api/recordings/{id}` (+segments) / `DELETE /api/recordings/{id}`
 - `GET /api/jobs/{id}` → `{status, progress, error}` — FE poll 2 dtk
 - `GET /api/recordings/{id}/export?fmt=txt|srt|json` — render sendiri (`export/render.py`)
-- `GET /api/recordings/{id}/media` — serve audio hasil ekstraksi utk player (range requests)
+- `GET /api/recordings/{id}/media` — serve audio hasil ekstraksi (range requests)
+- `GET /api/recordings/{id}/source` — serve file asli (video/audio) untuk player + tonton video (range)
+- detail recording juga mengembalikan `source_filename`, `source_available`, `progress` (dari job)
 
 ## Worker
 
@@ -112,6 +114,8 @@ kualitas kode (1 fungsi ≤ 20 baris).
 - **Frontend Tailwind v4** — `index.css` = `@import "tailwindcss"`, semua styling via utility class; build produksi OK (CSS 16 KB).
 - **Gerbang tol proteksi** (`backend/protection/`, lihat §Proteksi) — anti-spam berlapis sebelum router.
 - **Default model lokal → `large-v3-turbo`** — hasil validasi FLEURS id (5 klip, WER dinormalisasi): turbo **5,4%** < `cahya-medium-id` 9,5% < `base` 23%. Sampel audio + transkrip acuan + skrip regen di `samples/` (audio di-gitignore, CC-BY FLEURS).
+- **UI player + progress**: area konten menampilkan detail (judul/file/durasi) → **player video/audio dari `/source`** (nonton video asli, `<video>` utk .mp4/.mkv/…, `<audio>` utk audio) → progress bar saat diproses → transkrip di bawah. Progress bar upload (XHR) + progress transkripsi (lokal inkremental 30-90% per segmen; Groq kasar). Klik segmen → seek player. Teruji dgn video Indonesia 28 mnt (945 segmen).
+- **Requeue saat startup** (`requeue_pending`): recording status `queued/extracting/transcribing` di-antre ulang saat app start → tidak nyangkut setelah restart (antrean in-process). Task idempoten.
 
 ## Menjalankan (dev)
 

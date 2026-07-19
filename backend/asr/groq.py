@@ -11,8 +11,8 @@ GROQ_MODEL = "whisper-large-v3-turbo"
 
 
 class GroqProvider:
-    def transcribe(self, audio_path: Path, language: str) -> list[Segment]:
-        data = self._post(audio_path, language)
+    def transcribe(self, audio_path, language, on_progress=None):
+        data = self._post(audio_path, language)  # satu panggilan; on_progress diabaikan
         return [_to_segment(i, s) for i, s in enumerate(data["segments"])]
 
     def _post(self, audio_path: Path, language: str) -> dict:
