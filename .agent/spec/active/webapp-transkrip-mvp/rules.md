@@ -32,6 +32,7 @@ Breakdown teknis milestone M0 (fondasi) + M1 (MVP transkrip) dari [planning](../
 (detail request/response di [apicontract.md](apicontract.md))
 
 - `GET /api/health` → healthcheck (tanpa auth)
+- `GET /api/config` → info engine (provider, model, batas upload) untuk panel Engine di FE
 - `POST /api/auth/login` → session cookie (single user, password dari env)
 - `POST /api/recordings` (multipart, stream ke disk per ~1 MB chunk via `request.stream()` + async file I/O — **jangan** `await file.read()` penuh atau sync I/O di route async; cap 2 GB; ffprobe sinkron) → 201 `{recording, job_id}`; enqueue `transcribe`
 - `GET /api/recordings` / `GET /api/recordings/{id}` (+segments) / `DELETE /api/recordings/{id}`
@@ -116,6 +117,7 @@ kualitas kode (1 fungsi ≤ 20 baris).
 - **Default model lokal → `large-v3-turbo`** — hasil validasi FLEURS id (5 klip, WER dinormalisasi): turbo **5,4%** < `cahya-medium-id` 9,5% < `base` 23%. Sampel audio + transkrip acuan + skrip regen di `samples/` (audio di-gitignore, CC-BY FLEURS).
 - **UI player + progress**: area konten menampilkan detail (judul/file/durasi) → **player video/audio dari `/source`** (nonton video asli, `<video>` utk .mp4/.mkv/…, `<audio>` utk audio) → progress bar saat diproses → transkrip di bawah. Progress bar upload (XHR) + progress transkripsi (lokal inkremental 30-90% per segmen; Groq kasar). Klik segmen → seek player. Teruji dgn video Indonesia 28 mnt (945 segmen).
 - **Requeue saat startup** (`requeue_pending`): recording status `queued/extracting/transcribing` di-antre ulang saat app start → tidak nyangkut setelah restart (antrean in-process). Task idempoten.
+- **Redesign UI gelap (ala Colibri)**: tema `@theme` Tailwind (mint/near-black), layout sidebar padat (brand/upload/engine/statistik/riwayat) + area utama, ikon status & hapus, dua UI progres (stepper + bar), endpoint `/api/config`. Detail: [ADR 0004](../../../../docs/adr/0004-dark-ui-colibri.md) + [docs/architecture/ui.md](../../../../docs/architecture/ui.md).
 
 ## Menjalankan (dev)
 
