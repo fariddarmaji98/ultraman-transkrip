@@ -5,6 +5,11 @@ export async function listRecordings() {
   return res.json()
 }
 
+export async function getConfig() {
+  const res = await fetch('/api/config')
+  return res.json()
+}
+
 export async function getRecording(id) {
   const res = await fetch(`/api/recordings/${id}`)
   if (!res.ok) throw new Error('gagal memuat rekaman')

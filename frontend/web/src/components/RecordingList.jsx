@@ -22,7 +22,7 @@ export default function RecordingList({
   }
 
   if (!items.length)
-    return <p className="text-slate-500">Belum ada rekaman.</p>
+    return <p className="text-sm text-fg3">Belum ada rekaman.</p>
 
   return (
     <>
@@ -57,17 +57,17 @@ function RecordingItem({ rec, selected, onSelect, onDelete }) {
   return (
     <li
       onClick={onSelect}
-      className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2.5 transition ${
+      className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition ${
         selected
-          ? 'border-indigo-500 ring-2 ring-indigo-100'
-          : 'border-slate-200 hover:border-indigo-400'
+          ? 'border-mint/50 bg-mint/5'
+          : 'border-edge bg-panel2 hover:border-edge2'
       }`}
     >
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="truncate text-sm font-medium">{rec.title}</span>
-        <div className="flex items-center gap-2">
+        <span className="truncate text-sm font-medium text-fg">{rec.title}</span>
+        <div className="flex items-center gap-1.5">
           <StatusBadge status={rec.status} />
-          <span className="text-xs text-slate-400">
+          <span className="text-[11px] text-fg3">
             {fmtDate(rec.created_at)}
             {rec.duration_ms ? ` · ${fmtTime(rec.duration_ms)}` : ''}
           </span>
@@ -77,7 +77,7 @@ function RecordingItem({ rec, selected, onSelect, onDelete }) {
         title="Hapus"
         aria-label="Hapus"
         onClick={onDelete}
-        className="shrink-0 rounded p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+        className="shrink-0 rounded p-1.5 text-fg3 transition hover:bg-red-500/10 hover:text-red-400"
       >
         <TrashIcon />
       </button>

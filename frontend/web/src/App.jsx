@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { listRecordings } from './api'
-import UploadPanel from './components/UploadPanel'
-import RecordingList from './components/RecordingList'
+import { getConfig, listRecordings } from './api'
+import Sidebar from './components/Sidebar'
 import TranscriptView from './components/TranscriptView'
+import EmptyState from './components/EmptyState'
 
 export default function App() {
   const [recordings, setRecordings] = useState([])
+  const [config, setConfig] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
 
   const refresh = useCallback(async () => {
@@ -14,6 +15,7 @@ export default function App() {
 
   useEffect(() => {
     refresh()
+    getConfig().then(setConfig).catch(() => {})
   }, [refresh])
 
   async function handleUploaded(res) {
@@ -22,31 +24,27 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
-      <header className="flex items-baseline gap-3 border-b border-slate-200 bg-white px-7 py-4">
-        <h1 className="m-0 text-lg font-semibold text-indigo-600">Ultraman Transkrip</h1>
-        <span className="text-sm text-slate-500">unggah → transkrip</span>
-      </header>
-      <main className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-5 p-5 md:grid-cols-[320px_1fr] md:px-7">
-        <aside className="flex flex-col gap-4">
-          <UploadPanel onUploaded={handleUploaded} />
-          <RecordingList
-            items={recordings}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onChanged={refresh}
-            onDeselect={() => setSelectedId(null)}
+    <div className="flex h-screen overflow-hidden bg-canvas text-fg">
+      <Sidebar
+        recordings={recordings}
+        config={config}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        onUploaded={handleUploaded}
+        onChanged={refresh}
+        onDeselect={() => setSelectedId(null)}
+      />
+      <main className="flex-1 overflow-y-auto">
+        {selectedId ? (
+          <TranscriptView
+            key={selectedId}
+            id={selectedId}
+            onDone={refresh}
+            onClose={() => setSelectedId(null)}
           />
-        </aside>
-        <section className="min-h-[60vh] rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          {selectedId ? (
-            <TranscriptView key={selectedId} id={selectedId} onDone={refresh} />
-          ) : (
-            <p className="mt-10 text-center text-slate-500">
-              Pilih rekaman di kiri, atau unggah yang baru.
-            </p>
-          )}
-        </section>
+        ) : (
+          <EmptyState count={recordings.length} />
+        )}
       </main>
     </div>
   )

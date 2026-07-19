@@ -29,7 +29,7 @@ function Step({ label, state, first, last }) {
       </div>
       <span
         className={`mt-1.5 text-xs ${
-          state === 'upcoming' ? 'text-slate-400' : 'font-medium text-slate-700'
+          state === 'upcoming' ? 'text-fg3' : 'font-medium text-fg2'
         }`}
       >
         {label}
@@ -39,25 +39,25 @@ function Step({ label, state, first, last }) {
 }
 
 function Line({ hidden, filled }) {
-  const color = filled ? 'bg-indigo-500' : 'bg-slate-200'
+  const color = filled ? 'bg-mint' : 'bg-edge2'
   return <span className={`h-0.5 flex-1 ${hidden ? 'invisible' : color}`} />
 }
 
 function Dot({ state }) {
   if (state === 'done')
     return (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mint text-canvas">
         <CheckIcon />
       </span>
     )
   if (state === 'active')
     return (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600">
-        <span className="h-2 w-2 rounded-full bg-white" />
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mint">
+        <span className="h-2 w-2 rounded-full bg-canvas" />
       </span>
     )
   return (
-    <span className="h-6 w-6 shrink-0 rounded-full border-2 border-slate-300 bg-white" />
+    <span className="h-6 w-6 shrink-0 rounded-full border-2 border-edge2 bg-panel" />
   )
 }
 

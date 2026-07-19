@@ -12,7 +12,7 @@ const PHASE = {
   transcribing: 'Mentranskripsi…',
 }
 
-export default function TranscriptView({ id, onDone }) {
+export default function TranscriptView({ id, onDone, onClose }) {
   const [rec, setRec] = useState(null)
   const onDoneRef = useRef(onDone)
   onDoneRef.current = onDone
@@ -37,11 +37,11 @@ export default function TranscriptView({ id, onDone }) {
     onDoneRef.current?.()
   }
 
-  if (!rec) return <p className="text-slate-500">Memuat…</p>
-  return <Detail rec={rec} onTitleChange={applyTitle} />
+  if (!rec) return <p className="p-6 text-fg3">Memuat…</p>
+  return <Detail rec={rec} onTitleChange={applyTitle} onClose={onClose} />
 }
 
-function Detail({ rec, onTitleChange }) {
+function Detail({ rec, onTitleChange, onClose }) {
   const mediaRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
 
@@ -54,18 +54,20 @@ function Detail({ rec, onTitleChange }) {
 
   return (
     <div>
-      <TranscriptHeader rec={rec} onTitleChange={onTitleChange} />
-      <MediaPlayer rec={rec} mediaRef={mediaRef} onTime={onTime} />
-      {PENDING.includes(rec.status) && (
-        <>
-          <ProgressSteps status={rec.status} />
-          <ProgressBar status={rec.status} progress={rec.progress} />
-        </>
-      )}
-      {rec.status === 'failed' && (
-        <p className="text-red-600">Transkripsi gagal. Coba unggah ulang.</p>
-      )}
-      <Transcript rec={rec} activeIdx={activeIdx} onSeek={seek} />
+      <TranscriptHeader rec={rec} onTitleChange={onTitleChange} onClose={onClose} />
+      <div className="mx-auto max-w-3xl px-6 py-6">
+        <MediaPlayer rec={rec} mediaRef={mediaRef} onTime={onTime} />
+        {PENDING.includes(rec.status) && (
+          <>
+            <ProgressSteps status={rec.status} />
+            <ProgressBar status={rec.status} progress={rec.progress} />
+          </>
+        )}
+        {rec.status === 'failed' && (
+          <p className="text-red-400">Transkripsi gagal. Coba unggah ulang.</p>
+        )}
+        <Transcript rec={rec} activeIdx={activeIdx} onSeek={seek} />
+      </div>
     </div>
   )
 }
@@ -74,7 +76,9 @@ function MediaPlayer({ rec, mediaRef, onTime }) {
   if (!rec.source_available) return null
   const Tag = isVideo(rec.source_filename) ? 'video' : 'audio'
   const cls =
-    Tag === 'video' ? 'mb-4 max-h-96 w-full rounded-lg bg-black' : 'mb-4 w-full'
+    Tag === 'video'
+      ? 'mb-5 max-h-96 w-full rounded-xl border border-edge bg-black'
+      : 'mb-5 w-full'
   return (
     <Tag
       ref={mediaRef}
@@ -88,15 +92,15 @@ function MediaPlayer({ rec, mediaRef, onTime }) {
 
 function ProgressBar({ status, progress }) {
   return (
-    <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
-      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-indigo-700">
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+    <div className="mb-5 rounded-xl border border-mint/20 bg-mint/5 p-4">
+      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-mint">
+        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-mint/30 border-t-mint" />
         <span>{PHASE[status]}</span>
-        <span className="ml-auto tabular-nums text-indigo-500">{progress}%</span>
+        <span className="ml-auto tabular-nums">{progress}%</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-indigo-100">
+      <div className="h-2 overflow-hidden rounded-full bg-edge">
         <div
-          className="h-full rounded-full bg-indigo-500 transition-all duration-500"
+          className="h-full rounded-full bg-mint transition-all duration-500"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -110,6 +114,6 @@ function Transcript({ rec, activeIdx, onSeek }) {
       <SegmentList segments={rec.segments} activeIdx={activeIdx} onSeek={onSeek} />
     )
   if (rec.status === 'done')
-    return <p className="text-slate-500">Tidak ada ucapan terdeteksi.</p>
+    return <p className="text-fg3">Tidak ada ucapan terdeteksi.</p>
   return null
 }

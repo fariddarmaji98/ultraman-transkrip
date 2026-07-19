@@ -1,14 +1,14 @@
 // Status rekaman sebagai ikon (tooltip menampilkan labelnya).
 const META = {
-  queued: { label: 'Antre', color: 'text-amber-500', Icon: ClockIcon },
-  extracting: { label: 'Mengekstrak audio', color: 'text-amber-500', Icon: SpinnerIcon },
-  transcribing: { label: 'Mentranskripsi', color: 'text-indigo-600', Icon: SpinnerIcon },
-  done: { label: 'Selesai', color: 'text-emerald-600', Icon: CheckIcon },
-  failed: { label: 'Gagal', color: 'text-red-600', Icon: AlertIcon },
+  queued: { label: 'Antre', color: 'text-amber-400', Icon: ClockIcon },
+  extracting: { label: 'Mengekstrak audio', color: 'text-amber-400', Icon: SpinnerIcon },
+  transcribing: { label: 'Mentranskripsi', color: 'text-mint', Icon: SpinnerIcon },
+  done: { label: 'Selesai', color: 'text-mint', Icon: CheckIcon },
+  failed: { label: 'Gagal', color: 'text-red-400', Icon: AlertIcon },
 }
 
 export default function StatusBadge({ status }) {
-  const meta = META[status] ?? { label: status, color: 'text-slate-400', Icon: ClockIcon }
+  const meta = META[status] ?? { label: status, color: 'text-fg3', Icon: ClockIcon }
   const { Icon } = meta
   return (
     <span
