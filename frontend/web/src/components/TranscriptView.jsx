@@ -31,11 +31,16 @@ export default function TranscriptView({ id, onDone }) {
     }
   }, [id])
 
+  const applyTitle = (title) => {
+    setRec((r) => ({ ...r, title }))
+    onDoneRef.current?.()
+  }
+
   if (!rec) return <p className="text-slate-500">Memuat…</p>
-  return <Detail rec={rec} />
+  return <Detail rec={rec} onTitleChange={applyTitle} />
 }
 
-function Detail({ rec }) {
+function Detail({ rec, onTitleChange }) {
   const mediaRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
 
@@ -48,7 +53,7 @@ function Detail({ rec }) {
 
   return (
     <div>
-      <TranscriptHeader rec={rec} />
+      <TranscriptHeader rec={rec} onTitleChange={onTitleChange} />
       <MediaPlayer rec={rec} mediaRef={mediaRef} onTime={onTime} />
       {PENDING.includes(rec.status) && (
         <ProgressBar status={rec.status} progress={rec.progress} />

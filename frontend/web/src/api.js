@@ -15,6 +15,14 @@ export async function deleteRecording(id) {
   await fetch(`/api/recordings/${id}`, { method: 'DELETE' })
 }
 
+export async function renameRecording(id, title) {
+  await fetch(`/api/recordings/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+}
+
 export function uploadRecording(file, language, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()

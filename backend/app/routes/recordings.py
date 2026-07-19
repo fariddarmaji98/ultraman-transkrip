@@ -9,7 +9,14 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.deps import DbDep
-from app.schemas import RecordingDetail, RecordingOut, SegmentOut, UploadResponse
+from app.naming import clean_title
+from app.schemas import (
+    RecordingDetail,
+    RecordingOut,
+    RenameIn,
+    SegmentOut,
+    UploadResponse,
+)
 from constants import (
     ACCEPTED_SUFFIXES,
     JOB_QUEUED,
@@ -54,6 +61,17 @@ async def get_recording(rid: int, db: DbDep) -> RecordingDetail:
     segments = await _segments_of(db, rid)
     progress = await _progress_of(db, rid)
     return _to_detail(rec, segments, progress)
+
+
+@router.patch("/recordings/{rid}", response_model=RecordingOut)
+async def rename_recording(rid: int, body: RenameIn, db: DbDep) -> models.Recording:
+    rec = await _get_or_404(db, rid)
+    title = body.title.strip()
+    if title:
+        rec.title = title
+        await db.commit()
+        await db.refresh(rec)
+    return rec
 
 
 @router.delete("/recordings/{rid}", status_code=204)
@@ -129,7 +147,7 @@ async def _probe_or_reject(path: Path) -> int:
 
 async def _create_recording(db, file, title, language, path, duration_ms):
     rec = models.Recording(
-        title=title or file.filename, source_filename=file.filename,
+        title=title or clean_title(file.filename), source_filename=file.filename,
         upload_path=str(path), language=language, duration_ms=duration_ms,
         status=JOB_QUEUED,
     )

@@ -12,6 +12,17 @@ export function currentSegment(segments, currentSec) {
   return segments.findIndex((s) => t >= s.start_ms && t < s.end_ms)
 }
 
+// Tanggal singkat lokal (mis. "19 Jul 2026").
+export function fmtDate(iso) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 const VIDEO_EXT = ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v']
 
 // True bila nama file berekstensi video (untuk pilih <video> vs <audio>).

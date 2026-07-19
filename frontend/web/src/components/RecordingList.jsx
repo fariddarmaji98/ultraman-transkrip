@@ -1,4 +1,5 @@
 import { deleteRecording } from '../api'
+import { fmtDate, fmtTime } from '../utils'
 import StatusBadge from './StatusBadge'
 
 export default function RecordingList({
@@ -10,6 +11,7 @@ export default function RecordingList({
 }) {
   async function remove(e, id) {
     e.stopPropagation()
+    if (!window.confirm('Hapus transkrip ini? Tidak bisa dikembalikan.')) return
     await deleteRecording(id)
     if (id === selectedId) onDeselect()
     onChanged()
@@ -30,14 +32,20 @@ export default function RecordingList({
               : 'border-slate-200 hover:border-indigo-400'
           }`}
         >
-          <div className="flex flex-col gap-1 overflow-hidden">
+          <div className="flex min-w-0 flex-col gap-1">
             <span className="truncate text-sm font-medium">{r.title}</span>
-            <StatusBadge status={r.status} />
+            <div className="flex items-center gap-2">
+              <StatusBadge status={r.status} />
+              <span className="text-xs text-slate-400">
+                {fmtDate(r.created_at)}
+                {r.duration_ms ? ` · ${fmtTime(r.duration_ms)}` : ''}
+              </span>
+            </div>
           </div>
           <button
             title="Hapus"
             onClick={(e) => remove(e, r.id)}
-            className="rounded px-1.5 py-1 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+            className="shrink-0 rounded px-1.5 py-1 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
           >
             ✕
           </button>

@@ -46,3 +46,7 @@ class JobOut(BaseModel):
 class UploadResponse(BaseModel):
     recording: RecordingOut
     job_id: int
+
+
+class RenameIn(BaseModel):
+    title: str
