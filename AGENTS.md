@@ -2,118 +2,106 @@
 
 ## Project Structure & Module Organization
 
-**Monorepo dua sisi.** Frontend menangani **transkrip** (real-time di klien), backend menangani **summarize & penyimpanan** (LLM). Lihat arsitektur di `README.md`.
+Webapp transkrip **upload-based**: frontend web (React) mengunggah audio/video, backend (FastAPI)
+mentranskrip di server, menyimpan, dan menyiapkan seam untuk fitur AI. Lihat `README.md` +
+[docs/architecture/overview.md](docs/architecture/overview.md).
 
 ```
-backend/                    Python + FastAPI — summarize, store, Q&A
-  app/                      FastAPI: routes + schemas
-  analysis/                 integrasi LLM (DeepSeek / Ollama), provider-agnostic
-  prompts/                  template prompt LLM
-  store/                    persistensi transkrip + metadata (SQLite)
-  constants/                konstanta & default terpusat (single source of truth)
-  config/                   default.yaml
-frontend/
-  chrome-extension/         Langkah 1: MV3 — capture + transkrip + UI + client backend
-  mobile/                   Langkah 2: Flutter
-docs/                       dokumentasi + ADR
-.agent/                     konfigurasi agent (skills, spec)
+backend/            Python + FastAPI
+  app/              app factory (main.py), config.py, deps.py, schemas.py, naming.py, routes/
+  asr/              interface ASRProvider (base.py) + adapter local_whisper.py / groq.py
+  analysis/         seam AI (base.py: stub LLMProvider/EmbeddingProvider) — belum diimplementasi
+  media/            ffmpeg.py (ffprobe + ekstraksi audio 16 kHz)
+  worker/           queue.py (antrean + requeue) + pipeline.py (extract → transcribe → segments)
+  store/            models.py (recordings, jobs, segments) + db.py (engine async SQLite)
+  export/           render.py (TXT / SRT / JSON)
+  protection/       gerbang tol: middleware.py + rate_limit.py + queue_guard.py + base.py
+  constants/        konstanta & default terpusat (tidak impor app/asr/analysis)
+frontend/web/       React 19 + Vite + Tailwind v4 (SPA, tema gelap) — src/components/
+samples/            klip validasi Indonesia (FLEURS) + fetch_fleurs_id.py (audio di-gitignore)
+docs/               ADR + planning + architecture
+.agent/             konfigurasi agent (skills, spec)
 ```
-
-Urutan pengerjaan (dari user): **Chrome extension dulu**, lalu **mobile Flutter**. Backend `/summarize` menyusul/paralel karena tombol Summarize butuh itu.
 
 ## Backend (Python + FastAPI)
 
-- `app/`: FastAPI app. Route + pydantic schema. Endpoint inti: `POST /transcripts` (simpan), `POST /summarize` (ringkas), `POST /ask` (Q&A — lanjut).
-- `analysis/`: integrasi LLM provider-agnostic. DeepSeek API (OpenAI-compatible) **atau** Ollama lokal, dipilih via config. **Satu interface**, bukan if-else provider tersebar.
-- `prompts/`: template prompt LLM (ringkasan, Q&A). Jangan hardcode prompt panjang di logic.
-- `store/`: SQLite — transkrip + metadata + (index pencarian lanjut).
-- `constants/`: magic number/string (endpoint, model default, bahasa default, path) terpusat. Tidak mengimpor `app/`/`analysis/`. Lihat `docs/adr/0001-centralized-constants.md` + `docs/architecture/constants.md`.
-- `config/`: `default.yaml` override runtime; default-nya dari `constants/`.
+- `app/`: FastAPI app factory + lifespan (init DB, start worker, requeue job pending). Route +
+  pydantic schema. Endpoint: `GET /api/health`, `GET /api/config`, `POST/GET/PATCH/DELETE
+  /api/recordings` (+ `/{id}/media`, `/{id}/source`, `/{id}/export`), `GET /api/jobs/{id}`.
+- `asr/`: **satu interface `ASRProvider`** (`transcribe(path, language, on_progress) -> [Segment]`),
+  adapter `local_whisper` (faster-whisper int8, lazy-load) & `groq`. Provider dipilih via config —
+  bukan if-else provider tersebar. Provider baru → tambah adapter + entry di `get_provider()`.
+- `media/`: ffmpeg via subprocess. ffprobe validasi+durasi (sinkron saat upload), ekstraksi 16 kHz mono.
+- `worker/`: antrean asyncio 1 konsumen (concurrency=1). Pipeline idempoten (hapus segments lama
+  sebelum tulis ulang). `requeue_pending()` melanjutkan job saat restart.
+- `store/`: SQLite async (SQLAlchemy 2). `create_all` (belum Alembic). Tabel recordings/jobs/segments.
+- `protection/`: middleware ASGI berlapis SEBELUM router (rate-limit global, throttle upload,
+  queue-guard). Tambah pos = 1 entri di `build_protections()`; endpoint tak berubah.
+- `constants/`: magic number/string terpusat. **Tidak** impor `app/`/`asr/`/`analysis/`. Lihat
+  [ADR 0001](docs/adr/0001-centralized-constants.md) + [docs/architecture/constants.md](docs/architecture/constants.md).
 
 Commands:
-- `python -m venv .venv && .venv\Scripts\activate`
-- `pip install -r backend/requirements.txt`
-- `uvicorn app.main:app --reload` (dari `backend/`) — jalankan API.
-- Verifikasi: panggil `POST /summarize` dengan transkrip sampel + amati respons + log.
+- `uv venv backend/.venv --python 3.11 && uv pip install --python backend/.venv/Scripts/python.exe -r backend/requirements.txt`
+- Dari `backend/`: `.venv/Scripts/python -m uvicorn app.main:app --port 8000`
+- Verifikasi: unggah file sampel via `POST /api/recordings` → poll `GET /api/jobs/{id}` → cek segments.
 
-## Frontend — Chrome Extension (Langkah 1)
+## Frontend (React + Vite + Tailwind)
 
-- Manifest V3: `manifest.json`, service worker (`background/`), popup UI (`popup/`), options (`options/`), `content/` (inject ke halaman Meet bila perlu), `lib/` (wrapper transkrip + client backend).
-- **Transkrip di sisi klien.** `Voice` = mikrofon via Web Speech API (`SpeechRecognition`), real-time, `lang` dari setting bahasa.
-- **Batasan penting**: Web Speech API **hanya** menangkap mikrofon, bukan audio tab. `Zoom`/`Meet` (suara lawan bicara) butuh `chrome.tabCapture` + ASR on-device (whisper WASM) atau scrape live-caption Meet — itu milestone F2, jangan diklaim selesai di F1.
-- UI 2 tab: `Transkrip` (3 tombol sumber + area transkrip + tombol Summarize) dan `Config` (pemilih bahasa = prioritas, lalu provider/endpoint backend). Lihat `.agent/spec/active/chrome-extension/ui-map.md`.
-- `Summarize` → POST transkrip ke backend `/summarize` → tampilkan ringkasan.
-- Simpan setting di `chrome.storage`. Jangan hardcode endpoint backend di banyak tempat — satu modul config.
+- `frontend/web/` — SPA di `src/components/` (Sidebar, UploadPanel, RecordingList, TranscriptView,
+  ProgressSteps, StatusBadge, ConfirmModal, dst.). Tema gelap via `@theme` Tailwind v4
+  ([ADR 0004](docs/adr/0004-dark-ui-colibri.md) + [docs/architecture/ui.md](docs/architecture/ui.md)).
+- Semua request lewat `/api` (diproxy Vite ke FastAPI). Klien di `src/api.js`.
+- Upload via XHR (progress). Polling job untuk progress. Player `<video>`/`<audio>` dari `/source`;
+  sinkron segmen via `timeupdate` + ref (tanpa re-render per tick).
 
 Commands:
-- Load unpacked: `chrome://extensions` → Developer mode → Load unpacked → `frontend/chrome-extension/`.
-- Verifikasi: rekam suara pendek lewat `Voice` → transkrip muncul → Summarize → ringkasan dari backend.
-
-## Frontend — Mobile (Flutter, Langkah 2)
-
-- Aplikasi Flutter mengonsumsi backend yang sama. Transkrip via speech-to-text plugin (on-device/platform), ringkas via backend `/summarize`.
-- Mulai setelah chrome extension + backend stabil. Detail spec menyusul (`mobile-flutter`).
+- `cd frontend/web && npm install && npm run dev` (Vite :5173, proxy `/api` → :8000).
+- Verifikasi: unggah file pendek → progress → transkrip muncul → klik segmen (player seek).
 
 ## Core Workflow
 
-Default untuk fitur baru adalah **clone modul terdekat**, bukan mulai dari nol.
+Default fitur baru = **clone modul terdekat**, bukan mulai dari nol.
+- Backend: clone route/handler terdekat di `app/routes/`, rename, daftarkan ke router, tambah schema,
+  baru ubah logic. Provider ASR/LLM baru → adapter baru + entry factory, bukan if-else tersebar.
+- Frontend: clone komponen terdekat sebelum bikin pola baru.
 
-- **Backend**: clone route/handler existing terdekat di `app/`, rename konsisten, daftarkan ke router, tambah schema, baru ubah logic. Provider LLM baru → tambah adapter di `analysis/` + entry di `constants/`.
-- **Chrome extension**: clone komponen/handler terdekat (mis. tombol sumber, panel) sebelum bikin pola baru.
-
-Jangan refactor abstraksi besar (ganti engine ASR, ganti framework) tanpa ADR atau permintaan user.
+Jangan refactor abstraksi besar (ganti engine ASR, ganti framework, ubah struktur DB) tanpa ADR
+atau permintaan user.
 
 ## Coding Style & Feature Rules
 
-- Backend: type hints + `loguru`, satu interface LLM di `analysis/`, magic number → `constants/`. `constants/` tidak impor `app/`/`analysis/`.
-- Chrome extension: modul kecil, satu sumber = satu handler; config endpoint backend & bahasa terpusat (jangan tersebar).
-- Prompt LLM panjang → `prompts/`, bukan inline string.
+- Backend: type hints + `loguru`; satu interface `ASRProvider` (dan `LLMProvider` nanti); magic
+  number → `constants/`. `constants/` tidak impor modul lain.
+- **1 fungsi maksimal ~20 baris** (aturan yang dipakai konsisten di codebase ini).
+- Frontend: komponen kecil, ekstrak subkomponen agar fungsi tetap kecil; styling via utility Tailwind + token `@theme`.
 - Gunakan `rg` untuk cari pemakaian simbol/route/setting.
 
 ## Privasi & Etika
 
-- Tool untuk audio yang user **berhak** rekam. Jangan tambah fitur merekam diam-diam pihak lain.
-- Web Speech API memproses audio via server Google; Ollama lokal (backend) menjaga ringkasan di mesin; DeepSeek mengirim teks transkrip ke cloud. Dokumentasikan saat menyentuh `analysis/`.
-- Jangan log isi transkrip mentah ke level INFO default; bisa sensitif. DEBUG + opt-in.
+- Tool untuk audio yang user **berhak** transkrip.
+- Mode Groq mengirim audio ke cloud; mode lokal (faster-whisper) di mesin. UI menampilkan provider aktif.
+- Jangan log isi transkrip mentah ke level INFO (bisa sensitif). DEBUG + opt-in.
 
 ## Documentation & ADR
 
-- `docs/` untuk dokumentasi fitur, perubahan, dan ADR.
-- Buat ADR saat: pilih library/engine baru (ASR on-device, vector store), pindah framework, ubah arsitektur frontend↔backend, ubah cara abstraksi provider LLM, atau menyimpang dari clone-modul.
+- `docs/` untuk dokumentasi fitur, planning, architecture, dan ADR.
+- Buat ADR saat: pilih engine/library baru, pindah framework, ubah arsitektur FE↔BE, ubah cara
+  abstraksi provider, atau menyimpang dari clone-modul. ADR terbaru: 0001–0004.
 
-## Testing
-
-Unit test belum jadi gate wajib (banyak logic bergantung audio/LLM live). Verifikasi manual: backend lewat call endpoint sampel + log; extension lewat load unpacked + rekam pendek. Jika user minta test, batasi ke unit feasible (parsing, formatting, adapter LLM dengan mock) dan jelaskan gap.
-
-# Agent Config
-
-Semua file konfigurasi agent ada di `.agent/`:
+## Agent Config & Spec Workflow
 
 ```
 .agent/
-  skills/       ← skill files (dibaca agent sesuai konteks)
-  context/      ← referensi konteks
-  spec/
-    active/     ← spec fitur yang sedang dibangun
-    archive/    ← spec fitur yang sudah selesai (semua commit sudah di main)
+  skills/       ← skill files (spec-generator, documentation)
+  spec/active/  ← spec fitur yang sedang dibangun (rules.md + todo.md + commits.md [+ card/apicontract])
+  spec/archive/ ← spec selesai (semua commit sudah di main)
 ```
 
-## Skills
+- Fitur baru → `spec-generator` membuat `.agent/spec/active/[nama]/`. Selesai → update `todo.md`
+  (`[x]`) + `commits.md`; semua commit di `main` → pindah folder ke `archive/`.
 
-| Skill | File | Kapan Dipakai |
-|---|---|---|
-| `spec-generator` | `.agent/skills/spec-generator/SKILL.md` | Generate folder spec fitur baru secara interaktif |
-| `documentation` | `.agent/skills/documentation/SKILL.md` | Dokumentasi perubahan atau fitur baru |
+## Testing / Verifikasi
 
-## Spec Workflow
-
-- Mulai fitur baru → `spec-generator` membuat `.agent/spec/active/[nama-fitur]/`.
-- File spec: **selalu** `rules.md` + `todo.md` + `commits.md`; **opsional** `card.md` (task mentah) + `apicontract.md` (jika sentuh API — backend endpoint, DeepSeek/Ollama).
-- Task selesai → update `todo.md` (`[x]`) + tambah commit ke `commits.md`.
-- Semua commit fitur masuk `main` → pindahkan folder ke `.agent/spec/archive/`.
-
-## Catatan Verifikasi
-
-- Pahami `docs/` sebelum mengerjakan task relevan.
-- Verifikasi default = jalankan komponen nyata (call endpoint / load extension) + baca log, bukan unit test.
-- Jangan blokir task hanya karena test/linter belum sehat repo-wide.
+Unit test belum jadi gate wajib (banyak logic bergantung audio/ASR live). Verifikasi default =
+**jalankan komponen nyata** (backend: call endpoint + baca log; frontend: `npm run dev` + coba alur)
+bukan unit test. Pahami `docs/` sebelum mengerjakan task relevan.
