@@ -13,4 +13,6 @@
 - `cb95a98` Status rekaman jadi ikon
 - `a9e4227` Tombol hapus jadi ikon tempat sampah
 - `9aa30ed` Redesign UI: tema gelap ala Colibri + layout padat (ADR 0004)
-- `48ca051` Model ASR bisa dipilih dari panel ENGINE (PATCH /api/config + runtime.json)
+- `48ca051` Model ASR bisa dipilih dari panel ENGINE (PATCH /api/config + runtime.json) — ADR 0005
+- `5b7ff0d` Sidebar bisa digeser lebarnya
+- `02d3c9c` Detail rekaman jadi 3 kolom: sidebar | AI | sumber — ADR 0006

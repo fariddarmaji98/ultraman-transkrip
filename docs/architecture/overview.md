@@ -83,7 +83,8 @@ Tambah pos = 1 entri di `build_protections()`.
 | Method & path | Fungsi |
 |---|---|
 | `GET /api/health` | healthcheck |
-| `GET /api/config` | info provider/model/limit (dipakai panel FE) |
+| `GET /api/config` | info provider/model/limit + katalog model lokal (panel Engine FE) |
+| `PATCH /api/config` | ganti model lokal — 422 di luar katalog, 409 saat Groq/ada job jalan ([ADR 0005](../adr/0005-model-asr-runtime.md)) |
 | `POST /api/recordings` | upload (multipart streaming) → 201 `{recording, job_id}` |
 | `GET /api/recordings` | daftar (terbaru dulu) |
 | `GET /api/recordings/{id}` | detail + segments + `progress`, `source_available` |
@@ -97,10 +98,15 @@ Tambah pos = 1 entri di `build_protections()`.
 ## 8. Frontend
 
 React + Vite + Tailwind (tema gelap, [ui.md](ui.md)). Semua request lewat `/api` (proxy Vite).
-Komponen inti di `frontend/web/src/components/`: `Sidebar` (upload + daftar riwayat + panel config),
-`TranscriptView` (poll job → header judul-editable + `MediaPlayer` video/audio dari `/source` +
-`ProgressSteps` (stepper tahap) + `ProgressBar` (bar tugas) + `SegmentList`), `StatusBadge` (ikon
-status), `ConfirmModal` (konfirmasi hapus). Klik segmen → player seek; sinkron via `timeupdate`+ref.
+
+Halaman detail = **workspace 3 kolom** ([ADR 0006](../adr/0006-workspace-tiga-kolom.md)):
+`Sidebar` (upload + panel Engine + statistik + riwayat) │ `AiPanel` (ringkasan + chat — masih
+dikunci sampai M2/M3) │ `SourcePanel` (player + `ProgressSteps`/`ProgressBar` + `SegmentList`).
+`TranscriptHeader` membentang di atas dua kolom kanan. Lebar sidebar & kolom kanan bisa digeser
+(`hooks/usePanelWidth.js` + `ResizeHandle`, tersimpan di `localStorage`).
+
+Komponen pendukung: `ModelPicker` (ganti model), `StatusBadge` (ikon status), `ConfirmModal`
+(konfirmasi hapus). Klik segmen → player seek; sinkron via `timeupdate`+ref.
 
 ## 9. Penyederhanaan sadar (vs rencana penuh)
 
@@ -116,4 +122,4 @@ Dibangun sebagai MVP lokal; deviasi terukur & reversibel (detail di
 ## 10. Dokumen terkait
 
 Planning: [webapp transkrip](../planning/webapp-upload-transkrip.md) · [arah Colibri](../planning/colibri-direction.md) ·
-[video downloader](../planning/video-downloader.md). ADR: [0001](../adr/0001-centralized-constants.md)–[0004](../adr/0004-dark-ui-colibri.md).
+[video downloader](../planning/video-downloader.md). ADR: [0001](../adr/0001-centralized-constants.md)–[0006](../adr/0006-workspace-tiga-kolom.md).

@@ -16,6 +16,10 @@ fitur AI (ringkasan, chat, "second brain").
 - **Riwayat**: semua transkrip tersimpan (SQLite), bisa dibuka ulang, rename judul, hapus.
 - **Ekspor**: TXT / SRT / JSON.
 - **Provider ASR bisa ditukar**: faster-whisper lokal (default) atau Groq API — ganti lewat env.
+- **Model bisa dipilih dari UI**: dropdown di panel Engine (`base` … `large-v3`), tersimpan lintas
+  restart, terkunci saat ada transkrip berjalan ([ADR 0005](docs/adr/0005-model-asr-runtime.md)).
+- **Workspace 3 kolom**: riwayat │ asisten AI (menyusul M2/M3) │ player + transkrip; lebar panel
+  bisa digeser ([ADR 0006](docs/adr/0006-workspace-tiga-kolom.md)).
 - **Bahasa Indonesia divalidasi**: `large-v3-turbo` ~5,4% WER pada FLEURS-id (lihat `samples/`).
 
 ## Arsitektur (saat ini)
@@ -89,7 +93,7 @@ Buka http://localhost:5173.
 | Env | Default | Fungsi |
 |---|---|---|
 | `TRANSKRIP_ASR_PROVIDER` | `local` | `local` (faster-whisper) atau `groq` |
-| `TRANSKRIP_LOCAL_WHISPER_MODEL` | `large-v3-turbo` | model lokal; `base` utk tes cepat, `cahya/faster-whisper-medium-id` utk id |
+| `TRANSKRIP_LOCAL_WHISPER_MODEL` | `large-v3-turbo` | model lokal; `base` utk tes cepat, `cahya/faster-whisper-medium-id` utk id. **Bila diset, mengunci pilihan dropdown UI** (env > `data/runtime.json` > default) |
 | `TRANSKRIP_GROQ_API_KEY` | — | wajib bila provider `groq` |
 | `TRANSKRIP_DATA_DIR` | `data` | lokasi DB + upload + media |
 | `TRANSKRIP_MEDIA_RETENTION_DAYS` | `30` | retensi media (transkrip tetap) |
@@ -107,7 +111,7 @@ Arah berikutnya (planning tersedia): ringkasan + action item AI (M2) → chat/se
 ## Dokumentasi
 
 - Arsitektur: [architecture/overview.md](docs/architecture/overview.md) · [constants](docs/architecture/constants.md) · [ui](docs/architecture/ui.md)
-- Keputusan (ADR): [0001 constants](docs/adr/0001-centralized-constants.md) · [0002 pivot webapp](docs/adr/0002-pivot-webapp-upload-transkrip.md) · [0003 modular monolith](docs/adr/0003-modular-monolith-not-microservices.md) · [0004 UI gelap](docs/adr/0004-dark-ui-colibri.md)
+- Keputusan (ADR): [0001 constants](docs/adr/0001-centralized-constants.md) · [0002 pivot webapp](docs/adr/0002-pivot-webapp-upload-transkrip.md) · [0003 modular monolith](docs/adr/0003-modular-monolith-not-microservices.md) · [0004 UI gelap](docs/adr/0004-dark-ui-colibri.md) · [0005 model runtime](docs/adr/0005-model-asr-runtime.md) · [0006 workspace 3 kolom](docs/adr/0006-workspace-tiga-kolom.md)
 - Rencana: [webapp transkrip](docs/planning/webapp-upload-transkrip.md) · [arah Colibri](docs/planning/colibri-direction.md) · [video downloader](docs/planning/video-downloader.md)
 
 ## Privasi & etika
