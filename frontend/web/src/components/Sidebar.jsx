@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import UploadPanel from './UploadPanel'
 import RecordingList from './RecordingList'
 import ModelPicker from './ModelPicker'
 import ResizeHandle from './ResizeHandle'
+import SettingsModal from './SettingsModal'
 import usePanelWidth from '../hooks/usePanelWidth'
 
 const ACTIVE_ST = ['queued', 'extracting', 'transcribing']
@@ -19,6 +21,7 @@ export default function Sidebar({
 }) {
   const busy = recordings.some((r) => ACTIVE_ST.includes(r.status))
   const { width, dragging, handlers } = usePanelWidth(WIDTH)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   return (
     <aside
       style={{ width }}
@@ -27,7 +30,8 @@ export default function Sidebar({
       }`}
     >
       <ResizeHandle side="right" dragging={dragging} handlers={handlers} />
-      <Brand />
+      <Brand onSettings={() => setSettingsOpen(true)} />
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <UploadPanel onUploaded={onUploaded} />
         <EnginePanel config={config} busy={busy} onConfigChange={onConfigChange} />
@@ -47,19 +51,40 @@ export default function Sidebar({
   )
 }
 
-function Brand() {
+function Brand({ onSettings }) {
   return (
     <div className="flex items-center gap-3 border-b border-edge px-4 py-4">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-mint/10 text-mint">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-mint/10 text-mint">
         <MicIcon />
       </div>
-      <div>
-        <h1 className="text-sm font-semibold leading-tight text-fg">Ultraman Transkrip</h1>
+      <div className="min-w-0">
+        <h1 className="truncate text-sm font-semibold leading-tight text-fg">Ultraman Transkrip</h1>
         <p className="text-[10px] font-medium uppercase tracking-widest text-fg3">
           transkrip lokal · akurat
         </p>
       </div>
+      <button
+        onClick={onSettings}
+        title="Setelan mesin AI"
+        aria-label="Setelan"
+        className="ml-auto shrink-0 rounded-lg border border-edge p-1.5 text-fg3 transition hover:border-edge2 hover:text-fg"
+      >
+        <GearIcon />
+      </button>
     </div>
+  )
+}
+
+function GearIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.03Z"
+      />
+    </svg>
   )
 }
 

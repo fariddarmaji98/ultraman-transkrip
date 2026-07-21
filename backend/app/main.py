@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import runtime
 from app.config import settings
-from app.routes import health, jobs, recordings
+from app.routes import health, jobs, llm, recordings
 from protection import install_protection
 from store.db import init_db
 from worker.queue import requeue_pending, worker_loop
@@ -31,7 +31,7 @@ def create_app() -> FastAPI:
         CORSMiddleware, allow_origins=["*"],
         allow_methods=["*"], allow_headers=["*"],
     )
-    for module in (health, recordings, jobs):
+    for module in (health, recordings, jobs, llm):
         app.include_router(module.router, prefix="/api")
     return app
 

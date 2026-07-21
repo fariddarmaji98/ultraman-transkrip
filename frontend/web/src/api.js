@@ -21,6 +21,29 @@ export async function setModel(model) {
   return data
 }
 
+export async function getLlm() {
+  const res = await fetch('/api/llm')
+  return res.json()
+}
+
+export const setLlm = (body) => sendLlm('/api/llm', 'PATCH', body)
+export const testLlm = (body) => sendLlm('/api/llm/test', 'POST', body)
+
+export async function forgetLlmKey(provider) {
+  await fetch(`/api/llm/${provider}/key`, { method: 'DELETE' })
+}
+
+async function sendLlm(url, method, body) {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal menyimpan setelan AI')
+  return data
+}
+
 export async function getRecording(id) {
   const res = await fetch(`/api/recordings/${id}`)
   if (!res.ok) throw new Error('gagal memuat rekaman')

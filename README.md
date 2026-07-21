@@ -97,6 +97,14 @@ Buka http://localhost:5173.
 | `TRANSKRIP_GROQ_API_KEY` | — | wajib bila provider `groq` |
 | `TRANSKRIP_DATA_DIR` | `data` | lokasi DB + upload + media |
 | `TRANSKRIP_MEDIA_RETENTION_DAYS` | `30` | retensi media (transkrip tetap) |
+| `TRANSKRIP_LLM_PROVIDER` | `ollama` | mesin AI ringkasan/chat: `ollama`, `groq`, `deepseek`, `anthropic`, `openai`. **Bila diset, mengunci pilihan di popup Setelan** |
+| `TRANSKRIP_LLM_MODEL` | — | kosong = model default provider |
+| `TRANSKRIP_LLM_API_KEY` | — | kunci untuk provider aktif; menang atas kunci yang disimpan dari UI |
+| `TRANSKRIP_LLM_BASE_URL` | — | override endpoint provider aktif (mis. Ollama di host lain) |
+
+> **Kunci API dari popup Setelan disimpan plaintext di `data/runtime.json`.** `data/` sudah masuk
+> `.gitignore` dan nilainya tidak pernah dikirim balik ke browser (hanya flag `key_set`), tapi untuk
+> deployment sungguhan pakai `TRANSKRIP_LLM_API_KEY` lewat env, bukan disimpan lewat UI.
 
 ## Status & roadmap
 

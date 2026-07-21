@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from constants import (
     DEFAULT_ASR_PROVIDER,
     DEFAULT_LANGUAGE,
+    DEFAULT_LLM_PROVIDER,
     DEFAULT_LOCAL_MODEL,
     MEDIA_RETENTION_DAYS,
 )
@@ -22,6 +23,12 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     default_language: str = DEFAULT_LANGUAGE
     media_retention_days: int = MEDIA_RETENTION_DAYS
+
+    # LLM (ringkasan/chat). Kosong = ikut katalog constants / pilihan dari UI.
+    llm_provider: str = DEFAULT_LLM_PROVIDER
+    llm_model: str = ""
+    llm_base_url: str = ""   # override, mis. Ollama di host lain
+    llm_api_key: str = ""    # bila diset, mengunci kunci provider aktif
 
     @property
     def database_url(self) -> str:

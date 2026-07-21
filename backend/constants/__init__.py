@@ -29,6 +29,41 @@ LOCAL_MODEL_CHOICES = (
 )
 LOCAL_MODEL_IDS = tuple(m["id"] for m in LOCAL_MODEL_CHOICES)
 
+# --- LLM (ringkasan & chat, M2/M3) -----------------------------------------
+# Semua provider dipanggil lewat satu jalur OpenAI-compatible (`/chat/completions`),
+# jadi menambah provider = satu entri di sini, bukan adapter baru.
+DEFAULT_LLM_PROVIDER = "ollama"  # default lokal: privat, tanpa kunci, sejalan ASR lokal
+LLM_PROVIDERS = (
+    {
+        "id": "ollama", "label": "Ollama (lokal)", "base_url": "http://localhost:11434/v1",
+        "default_model": "llama3.1", "needs_key": False,
+        "note": "Jalan di mesin sendiri — teks tidak keluar. Perlu Ollama terpasang.",
+    },
+    {
+        "id": "groq", "label": "Groq", "base_url": "https://api.groq.com/openai/v1",
+        "default_model": "llama-3.3-70b-versatile", "needs_key": True,
+        "note": "Paling cepat, ada tier gratis. Teks dikirim ke cloud Groq.",
+    },
+    {
+        "id": "deepseek", "label": "DeepSeek", "base_url": "https://api.deepseek.com/v1",
+        "default_model": "deepseek-chat", "needs_key": True,
+        "note": "Murah dengan context panjang — cocok transkrip 30+ menit.",
+    },
+    {
+        "id": "anthropic", "label": "Claude (Anthropic)", "base_url": "https://api.anthropic.com/v1",
+        "default_model": "claude-sonnet-5", "needs_key": True,
+        "note": "Kualitas ringkasan paling rapi. Lewat endpoint OpenAI-compatible.",
+    },
+    {
+        "id": "openai", "label": "OpenAI", "base_url": "https://api.openai.com/v1",
+        "default_model": "gpt-4o-mini", "needs_key": True,
+        "note": "Umum dan stabil.",
+    },
+)
+LLM_PROVIDER_IDS = tuple(p["id"] for p in LLM_PROVIDERS)
+LLM_TIMEOUT_S = 120  # transkrip panjang butuh waktu; jangan putus di tengah
+LLM_TEST_TIMEOUT_S = 20  # tombol "tes koneksi" harus cepat gagal
+
 # Target audio untuk Whisper (16 kHz mono)
 ASR_SAMPLE_RATE = 16000
 ASR_CHANNELS = 1

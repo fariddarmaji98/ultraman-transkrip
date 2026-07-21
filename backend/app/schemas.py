@@ -54,3 +54,9 @@ class RenameIn(BaseModel):
 
 class ConfigIn(BaseModel):
     model: str
+
+
+class LlmIn(BaseModel):
+    provider: str
+    model: str = ""
+    api_key: str | None = None  # kosong = pakai yang sudah tersimpan
