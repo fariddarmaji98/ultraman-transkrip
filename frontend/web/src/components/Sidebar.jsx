@@ -1,5 +1,6 @@
 import UploadPanel from './UploadPanel'
 import RecordingList from './RecordingList'
+import ModelPicker from './ModelPicker'
 
 const ACTIVE_ST = ['queued', 'extracting', 'transcribing']
 
@@ -11,13 +12,15 @@ export default function Sidebar({
   onUploaded,
   onChanged,
   onDeselect,
+  onConfigChange,
 }) {
+  const busy = recordings.some((r) => ACTIVE_ST.includes(r.status))
   return (
     <aside className="flex h-screen w-[340px] shrink-0 flex-col border-r border-edge bg-panel">
       <Brand />
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <UploadPanel onUploaded={onUploaded} />
-        <EnginePanel config={config} />
+        <EnginePanel config={config} busy={busy} onConfigChange={onConfigChange} />
         <StatsGrid recordings={recordings} />
         <div>
           <SectionLabel>Riwayat</SectionLabel>
@@ -58,17 +61,24 @@ function SectionLabel({ children }) {
   )
 }
 
-function EnginePanel({ config }) {
+function EnginePanel({ config, busy, onConfigChange }) {
   const provider = config?.asr_provider === 'groq' ? 'Groq · cloud' : 'Lokal · mesin'
   return (
     <div className="rounded-xl border border-edge bg-panel2 p-3">
       <SectionLabel>Engine</SectionLabel>
       <Row label="Provider" value={provider} />
-      <Row label="Model" value={config?.model ?? '…'} mono />
-      <div className="mt-2.5 flex items-center gap-2 text-xs text-mint">
-        <span className="h-1.5 w-1.5 rounded-full bg-mint" />
-        <span>Engine siap</span>
-      </div>
+      <ModelPicker config={config} busy={busy} onConfigChange={onConfigChange} />
+      <EngineStatus busy={busy} />
+    </div>
+  )
+}
+
+function EngineStatus({ busy }) {
+  const tone = busy ? 'text-amber-400' : 'text-mint'
+  return (
+    <div className={`mt-2.5 flex items-center gap-2 text-xs ${tone}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${busy ? 'bg-amber-400' : 'bg-mint'}`} />
+      <span>{busy ? 'Engine sibuk' : 'Engine siap'}</span>
     </div>
   )
 }

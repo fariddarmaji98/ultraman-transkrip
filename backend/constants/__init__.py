@@ -6,6 +6,7 @@ JOB_EXTRACTING = "extracting"
 JOB_TRANSCRIBING = "transcribing"
 JOB_DONE = "done"
 JOB_FAILED = "failed"
+ACTIVE_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING)  # belum selesai
 
 # Batas upload & streaming
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
@@ -14,8 +15,19 @@ UPLOAD_CHUNK_BYTES = 1024 * 1024           # 1 MB per chunk (stream ke disk)
 # Default ASR
 DEFAULT_ASR_PROVIDER = "local"   # "local" (faster-whisper) | "groq"
 DEFAULT_LOCAL_MODEL = "large-v3-turbo"  # validasi FLEURS-id (5 klip): turbo 5.4% < medium-id 9.5% < base 23% WER
-# opsi lain: "cahya/faster-whisper-medium-id" (fine-tune id), "base"/"small" (cepat, akurasi rendah)
 DEFAULT_LANGUAGE = "auto"
+GROQ_MODEL = "whisper-large-v3-turbo"  # model tetap di sisi Groq (tidak bisa dipilih)
+
+# Model lokal yang boleh dipilih dari UI. Ukuran = perkiraan unduhan int8 (sekali saja).
+LOCAL_MODEL_CHOICES = (
+    {"id": "base", "label": "Base", "size": "~145 MB", "note": "tercepat, akurasi rendah"},
+    {"id": "small", "label": "Small", "size": "~480 MB", "note": "cepat, akurasi sedang"},
+    {"id": "medium", "label": "Medium", "size": "~1,5 GB", "note": "seimbang"},
+    {"id": "large-v3-turbo", "label": "Large v3 Turbo", "size": "~1,6 GB", "note": "terbaik untuk Indonesia"},
+    {"id": "large-v3", "label": "Large v3", "size": "~3,1 GB", "note": "paling akurat, paling lambat"},
+    {"id": "cahya/faster-whisper-medium-id", "label": "Medium-ID", "size": "~1,5 GB", "note": "fine-tune Indonesia"},
+)
+LOCAL_MODEL_IDS = tuple(m["id"] for m in LOCAL_MODEL_CHOICES)
 
 # Target audio untuk Whisper (16 kHz mono)
 ASR_SAMPLE_RATE = 16000

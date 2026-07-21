@@ -8,7 +8,7 @@ import asyncio
 from loguru import logger
 from sqlalchemy import select
 
-from constants import JOB_EXTRACTING, JOB_QUEUED, JOB_TRANSCRIBING
+from constants import ACTIVE_STATUSES
 from store import models
 from store.db import SessionLocal
 from worker.pipeline import run_transcribe
@@ -27,10 +27,11 @@ def pending_count() -> int:
 
 async def requeue_pending() -> None:
     """Startup: antre ulang recording yang belum selesai (antrean in-process hilang saat restart)."""
-    unfinished = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING)
     async with SessionLocal() as db:
         result = await db.execute(
-            select(models.Recording.id).where(models.Recording.status.in_(unfinished))
+            select(models.Recording.id).where(
+                models.Recording.status.in_(ACTIVE_STATUSES)
+            )
         )
         for rid in result.scalars().all():
             await _queue.put(rid)

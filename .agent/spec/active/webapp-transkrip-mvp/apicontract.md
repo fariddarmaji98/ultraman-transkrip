@@ -81,6 +81,37 @@
 - auth: session cookie
 - response: audio hasil ekstraksi (Opus; verifikasi playback iOS Safari — fallback copy m4a/AAC bila perlu); 404 jika sudah kena retensi
 
+# info engine (panel ENGINE di FE)
+
+- api: `/api/config`
+- method: GET
+- auth: session cookie
+- response 200:
+
+```json
+{
+  "asr_provider": "local",
+  "model": "large-v3-turbo",
+  "max_upload_mb": 2048,
+  "models": [
+    { "id": "large-v3-turbo", "label": "Large v3 Turbo", "size": "~1,6 GB", "note": "terbaik untuk Indonesia" }
+  ]
+}
+```
+
+- `models`: daftar model lokal yang boleh dipilih (`constants.LOCAL_MODEL_CHOICES`); **kosong** saat provider `groq` (model dikunci di sisi Groq)
+
+# ganti model lokal
+
+- api: `/api/config`
+- method: PATCH
+- auth: session cookie
+- body: `{ "model": "small" }` — harus salah satu `id` dari `models`
+- efek: set model aktif, kosongkan cache model faster-whisper, simpan ke `data/runtime.json` (bertahan lintas-restart)
+- response 200: payload sama seperti GET
+- error: 422 model tidak dikenal · 409 provider Groq / ada transkrip berjalan
+- catatan: env `TRANSKRIP_LOCAL_WHISPER_MODEL` menang saat startup — bila diset, `runtime.json` diabaikan
+
 # login
 
 - api: `/api/auth/login`

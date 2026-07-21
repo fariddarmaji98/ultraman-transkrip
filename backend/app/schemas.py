@@ -50,3 +50,7 @@ class UploadResponse(BaseModel):
 
 class RenameIn(BaseModel):
     title: str
+
+
+class ConfigIn(BaseModel):
+    model: str

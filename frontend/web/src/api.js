@@ -10,6 +10,17 @@ export async function getConfig() {
   return res.json()
 }
 
+export async function setModel(model) {
+  const res = await fetch('/api/config', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal mengganti model')
+  return data
+}
+
 export async function getRecording(id) {
   const res = await fetch(`/api/recordings/${id}`)
   if (!res.ok) throw new Error('gagal memuat rekaman')

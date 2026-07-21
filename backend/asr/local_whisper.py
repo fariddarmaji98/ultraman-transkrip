@@ -18,6 +18,11 @@ def _model() -> WhisperModel:
     )
 
 
+def reset_model_cache() -> None:
+    """Dipanggil saat model diganti dari UI; model baru dimuat di transkrip berikutnya."""
+    _model.cache_clear()
+
+
 class LocalWhisperProvider:
     def transcribe(self, audio_path, language, on_progress: ProgressCb | None = None):
         lang = None if language == "auto" else language

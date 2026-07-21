@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import runtime
 from app.config import settings
 from app.routes import health, jobs, recordings
 from protection import install_protection
@@ -15,6 +16,7 @@ from worker.queue import requeue_pending, worker_loop
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings.ensure_dirs()
+    runtime.load()  # pilihan model dari UI (kalau ada) menimpa default
     await init_db()
     task = asyncio.create_task(worker_loop())
     await requeue_pending()  # lanjutkan job yang belum selesai setelah restart

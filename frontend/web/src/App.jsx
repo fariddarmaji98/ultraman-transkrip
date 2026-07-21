@@ -33,6 +33,7 @@ export default function App() {
         onUploaded={handleUploaded}
         onChanged={refresh}
         onDeselect={() => setSelectedId(null)}
+        onConfigChange={setConfig}
       />
       <main className="flex-1 overflow-y-auto">
         {selectedId ? (
