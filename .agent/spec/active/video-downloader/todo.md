@@ -3,37 +3,37 @@
 Scope: **unduh berdiri sendiri**. Selesai = tempel URL → video masuk tab Unduh → bisa ditonton.
 Transkrip bukan scope (Fase B). Aturan mengikat di [rules.md](rules.md).
 
-## 1. Fondasi data
+## 1. Fondasi data ✅
 
-- [ ] `constants`: `DOWNLOAD_MAX_HEIGHT=720`, `DOWNLOAD_MAX_DURATION_S`, `JOB_DOWNLOADING`,
+- [x] `constants`: `DOWNLOAD_MAX_HEIGHT=720`, `DOWNLOAD_MAX_DURATION_S`, `JOB_DOWNLOADING`,
       `JOB_DOWNLOADED`, `SOURCE_UPLOAD`/`SOURCE_URL`, `JOB_KIND_FETCH`
-- [ ] **pecah `ACTIVE_STATUSES`** → `ACTIVE_STATUSES` (+`downloading`, untuk requeue) dan
+- [x] **pecah `ACTIVE_STATUSES`** → `ACTIVE_STATUSES` (+`downloading`, untuk requeue) dan
       `TRANSCRIBE_BUSY_STATUSES` (tanpa `downloading`, untuk guard 409 ganti model ASR)
-- [ ] update pemakai keduanya: `worker/queue.requeue_pending`, `app/routes/health._active_count`
-- [ ] `store/models.Recording`: `source_url`, `source_kind`
-- [ ] skrip migrasi sekali-jalan di `backend/scripts/` (ALTER TABLE) — `create_all` tidak mengubah
-      tabel lama; jalankan di DB yang sudah ada
-- [ ] `schemas`: `RecordingOut`/`RecordingDetail` tambah `source_kind`+`source_url`; `FromUrlIn`
+- [x] update pemakai keduanya: `worker/queue.requeue_pending`, `app/routes/health._active_count`
+- [x] `store/models.Recording`: `source_url`, `source_kind`
+- [x] skrip migrasi sekali-jalan `scripts/migrate_add_source_columns.py` — idempoten, sudah
+      dijalankan di DB dev
+- [x] `schemas`: `RecordingOut`/`RecordingDetail` tambah `source_kind`+`source_url`; `FromUrlIn`
 
-## 2. Modul capture
+## 2. Modul capture ✅
 
-- [ ] `yt-dlp` (channel nightly) ke `requirements.txt` + install ke venv
-- [ ] `capture/base.py`: Protocol `MediaSource` + dataclass `MediaInfo`
-- [ ] `capture/ytdlp.py`:
-  - [ ] `probe(url)` → judul, durasi, perkiraan ukuran, platform (tanpa mengunduh)
-  - [ ] `fetch_video(url, dst, on_progress)` → cap 720p, merge ffmpeg, **unduh ke temp lalu pindah**
-  - [ ] petakan exception yt-dlp → pesan Indonesia per-platform (rules §Aturan wajib no.4)
-- [ ] `capture/__init__.get_source()`
+- [x] `yt-dlp` (channel nightly `2026.7.20`) ke `requirements.txt` + terpasang di venv
+- [x] `capture/base.py`: Protocol `MediaSource` + `MediaInfo` + `CaptureError`/`UnsupportedUrl`/`NeedsAuth`
+- [x] `capture/ytdlp.py`:
+  - [x] `probe(url)` → judul, durasi, perkiraan ukuran, platform (tanpa mengunduh)
+  - [x] `fetch_video(url, dst_dir, stem, on_progress)` → cap 720p, merge ffmpeg, **unduh ke temp lalu pindah**
+  - [x] petakan exception yt-dlp → pesan Indonesia per-platform + logger senyap
+  - [x] progress dijaga monoton (video & audio = dua stream, persennya reset di stream kedua)
+- [x] `capture/__init__.get_source()`
 
-## 3. Endpoint + worker
+## 3. Endpoint + worker ✅
 
-- [ ] `POST /api/recordings/from-url`: validasi URL → **probe sinkron** → tolak 422 bila kepanjangan/
-      kebesaran/tak didukung → buat Recording(`downloading`)+Job(`fetch`) → enqueue
-- [ ] `worker/pipeline.run_fetch(recording_id)`: unduh → `upload_path` → status `downloaded`;
-      gagal → `failed` + pesan
-- [ ] progress: `progress_hooks` (thread) → holder dict + poller async (pola `_transcribe`)
-- [ ] `worker_loop` memilih `run_fetch` vs `run_transcribe` berdasarkan `Job.kind`
-- [ ] idempoten: job diulang setelah restart tidak menggandakan file
+- [x] `POST /api/recordings/from-url`: **probe sinkron** → tolak 422 bila kepanjangan/kebesaran/
+      tak didukung → buat Recording(`downloading`)+Job(`fetch`) → enqueue
+- [x] `worker/pipeline.run_fetch(recording_id)`: unduh → `upload_path` → status `downloaded`
+- [x] progress: `progress_hooks` (thread) → holder dict + poller async (`_poll` dipakai bersama)
+- [x] `worker_loop` memilih `run_fetch` vs `run_transcribe` berdasarkan `Job.kind`
+- [x] idempoten: `_fetch` melewati unduhan bila file sudah ada; `_load` memilih job per-kind
 
 ## 4. Retensi & disk (rules §Aturan wajib no.6 — jangan ditunda)
 
@@ -60,13 +60,15 @@ Transkrip bukan scope (Fase B). Aturan mengikat di [rules.md](rules.md).
 
 ## 7. Uji
 
-- [ ] BE: probe menolak video >4 jam & >2 GB **sebelum** mengunduh (curl)
-- [ ] BE: URL ngawur → 422; platform tak didukung → 422 dengan pesan jelas
-- [ ] BE: unduh TikTok pendek end-to-end → file ada di `upload_path`, status `downloaded`,
-      `duration_ms` terisi
-- [ ] BE: unduhan gagal di tengah **tidak** meninggalkan file di `upload_path`
-- [ ] BE: guard 409 ganti model ASR **tidak** ikut aktif saat status `downloading`
-- [ ] BE: restart saat `downloading` → requeue jalan
+- [x] BE: probe menolak video >4 jam & >2 GB **sebelum** mengunduh (2 jam & 500 MB tetap lolos)
+- [x] BE: URL ngawur → 422 "URL tidak valid"; platform tak didukung → 422 dengan pesan jelas
+- [x] BE: unduh end-to-end (Big Buck Bunny CC-BY, 597 dtk) → 46 MB di `upload_path`, status
+      `downloaded`, `duration_ms` terisi dari probe, `/source` balas 206 `video/mp4`
+- [x] BE: unduhan gagal **tidak** meninggalkan file (dst_dir kosong setelah CaptureError)
+- [x] BE: guard 409 ganti model ASR **tidak** aktif saat `downloading` (diuji saat unduhan jalan)
+- [x] BE: `downloaded` tidak diantre ulang setelah restart
+- [ ] BE: restart tepat saat `downloading` → requeue melanjutkan (belum diuji langsung; himpunan
+      status & `_kind_for` sudah diverifikasi)
 - [ ] FE: pindah tab, tab aktif bertahan setelah reload
 - [ ] FE: unduh lewat UI → progress jalan → video muncul di tab Unduh → bisa diputar di kolom kanan
 - [ ] FE: rekaman `downloaded` **tidak** muncul di Riwayat dan **tidak** dihitung "Diproses"

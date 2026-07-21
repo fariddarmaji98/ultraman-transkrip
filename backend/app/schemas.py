@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from constants import DEFAULT_LANGUAGE
+
 
 class SegmentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -20,6 +22,8 @@ class RecordingOut(BaseModel):
     id: int
     title: str
     source_filename: str
+    source_kind: str
+    source_url: str | None
     status: str
     duration_ms: int | None
     language: str
@@ -54,6 +58,11 @@ class RenameIn(BaseModel):
 
 class ConfigIn(BaseModel):
     model: str
+
+
+class FromUrlIn(BaseModel):
+    url: str
+    language: str = DEFAULT_LANGUAGE
 
 
 class LlmIn(BaseModel):

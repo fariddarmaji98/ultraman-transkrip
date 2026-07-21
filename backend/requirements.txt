@@ -14,4 +14,9 @@ loguru>=0.7
 
 # ASR
 faster-whisper>=1.0       # CTranslate2 (melepas GIL), tanpa torch
-httpx>=0.27               # provider Groq (default spec, dipakai saat GROQ_API_KEY diset)
+httpx>=0.27               # provider Groq + adapter LLM OpenAI-compatible (analysis/)
+
+# Unduh dari URL (capture/)
+# Channel NIGHTLY wajib: extractor rusak tiap situs berubah — update rutin, bukan opsional.
+#   uv pip install -U --prerelease=allow "yt-dlp[default]"
+yt-dlp[default]>=2026.7

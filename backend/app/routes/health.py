@@ -7,11 +7,11 @@ from app.config import settings
 from app.deps import DbDep
 from app.schemas import ConfigIn
 from constants import (
-    ACTIVE_STATUSES,
     GROQ_MODEL,
     LOCAL_MODEL_CHOICES,
     LOCAL_MODEL_IDS,
     MAX_UPLOAD_BYTES,
+    TRANSCRIBE_BUSY_STATUSES,
 )
 from store import models
 
@@ -52,9 +52,10 @@ def _payload() -> dict:
 
 
 async def _active_count(db) -> int:
+    """Hanya job transkrip — mengunduh tidak memakai model Whisper, jadi tak mengunci."""
     result = await db.execute(
         select(func.count())
         .select_from(models.Recording)
-        .where(models.Recording.status.in_(ACTIVE_STATUSES))
+        .where(models.Recording.status.in_(TRANSCRIBE_BUSY_STATUSES))
     )
     return result.scalar_one()

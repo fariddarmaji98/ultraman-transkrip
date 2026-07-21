@@ -6,7 +6,19 @@ JOB_EXTRACTING = "extracting"
 JOB_TRANSCRIBING = "transcribing"
 JOB_DONE = "done"
 JOB_FAILED = "failed"
-ACTIVE_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING)  # belum selesai
+JOB_DOWNLOADING = "downloading"  # sedang diunduh dari URL
+JOB_DOWNLOADED = "downloaded"    # file siap, belum ditranskrip (terminal sampai user minta)
+
+# Dua himpunan berbeda — jangan disatukan (spec video-downloader §Status):
+#   requeue butuh `downloading`; guard model ASR tidak (mengunduh tak memakai Whisper).
+ACTIVE_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING, JOB_DOWNLOADING)
+TRANSCRIBE_BUSY_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING)
+
+# Jenis job & asal rekaman
+JOB_KIND_FETCH = "fetch"
+JOB_KIND_TRANSCRIBE = "transcribe"
+SOURCE_UPLOAD = "upload"
+SOURCE_URL = "url"
 
 # Batas upload & streaming
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
@@ -70,6 +82,10 @@ ASR_CHANNELS = 1
 
 # Retensi media (transkrip tetap; media dihapus setelah N hari)
 MEDIA_RETENTION_DAYS = 30
+
+# Unduhan dari URL (yt-dlp)
+DOWNLOAD_MAX_HEIGHT = 720          # cap resolusi — hemat disk, cukup untuk ditonton
+DOWNLOAD_MAX_DURATION_S = 4 * 3600  # tolak saat probe, sebelum sebyte pun diunduh
 
 # Format media yang diterima (dikenali ffmpeg)
 ACCEPTED_SUFFIXES = {

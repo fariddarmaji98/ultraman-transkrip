@@ -9,7 +9,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from constants import JOB_QUEUED
+from constants import JOB_QUEUED, SOURCE_UPLOAD
 
 
 def _now() -> datetime:
@@ -26,6 +26,8 @@ class Recording(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(255))
     source_filename: Mapped[str] = mapped_column(String(255))
+    source_kind: Mapped[str] = mapped_column(String(8), default=SOURCE_UPLOAD)
+    source_url: Mapped[str | None] = mapped_column(String(1024), default=None)
     upload_path: Mapped[str] = mapped_column(String(512))
     media_path: Mapped[str | None] = mapped_column(String(512), default=None)
     duration_ms: Mapped[int | None] = mapped_column(default=None)

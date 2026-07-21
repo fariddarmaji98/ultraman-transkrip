@@ -1,4 +1,5 @@
-"""Endpoint recordings: upload (streaming), list, detail+transkrip, delete, media, export."""
+"""Endpoint recordings: upload (streaming), unduh dari URL, list, detail, delete, export."""
+import asyncio
 from pathlib import Path
 from uuid import uuid4
 
@@ -11,16 +12,25 @@ from app.config import settings
 from app.deps import DbDep
 from app.naming import clean_title
 from app.schemas import (
+    FromUrlIn,
     RecordingDetail,
     RecordingOut,
     RenameIn,
     SegmentOut,
     UploadResponse,
 )
+# alias: nama `get_source` sudah dipakai route penyaji file di bawah
+from capture import get_source as get_media_source
+from capture import CaptureError, MediaInfo, NeedsAuth, UnsupportedUrl
 from constants import (
     ACCEPTED_SUFFIXES,
+    DOWNLOAD_MAX_DURATION_S,
+    JOB_DOWNLOADING,
+    JOB_KIND_FETCH,
+    JOB_KIND_TRANSCRIBE,
     JOB_QUEUED,
     MAX_UPLOAD_BYTES,
+    SOURCE_URL,
     UPLOAD_CHUNK_BYTES,
 )
 from export.render import render_export
@@ -42,8 +52,18 @@ async def upload_recording(
     upload_path = await _stream_to_disk(file)
     duration_ms = await _probe_or_reject(upload_path)
     rec = await _create_recording(db, file, title, language, upload_path, duration_ms)
-    job = await _create_job(db, rec.id)
-    await enqueue(rec.id)
+    job = await _create_job(db, rec.id, JOB_KIND_TRANSCRIBE)
+    await enqueue(rec.id, JOB_KIND_TRANSCRIBE)
+    return UploadResponse(recording=RecordingOut.model_validate(rec), job_id=job.id)
+
+
+@router.post("/recordings/from-url", response_model=UploadResponse, status_code=201)
+async def create_from_url(db: DbDep, body: FromUrlIn) -> UploadResponse:
+    """Probe jalan sinkron (mirip ffprobe di jalur upload) — tolak sebelum sebyte diunduh."""
+    info = await _probe_or_reject(body.url)
+    rec = await _create_url_recording(db, body, info)
+    job = await _create_job(db, rec.id, JOB_KIND_FETCH)
+    await enqueue(rec.id, JOB_KIND_FETCH)
     return UploadResponse(recording=RecordingOut.model_validate(rec), job_id=job.id)
 
 
@@ -157,8 +177,43 @@ async def _create_recording(db, file, title, language, path, duration_ms):
     return rec
 
 
-async def _create_job(db, recording_id: int):
-    job = models.Job(recording_id=recording_id, kind="transcribe", status=JOB_QUEUED)
+async def _probe_or_reject(url: str) -> MediaInfo:
+    try:
+        info = await asyncio.to_thread(get_media_source().probe, url)
+    except (UnsupportedUrl, NeedsAuth) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except CaptureError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    _reject_too_large(info)
+    return info
+
+
+def _reject_too_large(info: MediaInfo) -> None:
+    """Tolak dari hasil probe — satu URL panjang tak boleh bisa memenuhi disk."""
+    if info.duration_ms and info.duration_ms > DOWNLOAD_MAX_DURATION_S * 1000:
+        jam = DOWNLOAD_MAX_DURATION_S // 3600
+        raise HTTPException(422, f"video terlalu panjang (maks {jam} jam)")
+    if info.filesize_bytes and info.filesize_bytes > MAX_UPLOAD_BYTES:
+        gb = MAX_UPLOAD_BYTES // (1024 ** 3)
+        raise HTTPException(422, f"perkiraan ukuran melebihi batas {gb} GB")
+
+
+async def _create_url_recording(db, body: FromUrlIn, info: MediaInfo):
+    """Judul dari platform sudah bersih — jangan lewatkan ke `clean_title` (memangkas
+    apa pun setelah titik terakhir, mis. "Rapat 2.0 final" jadi "Rapat 2")."""
+    rec = models.Recording(
+        title=info.title[:255], source_filename="", source_kind=SOURCE_URL,
+        source_url=body.url, upload_path="", language=body.language,
+        duration_ms=info.duration_ms, status=JOB_DOWNLOADING,
+    )
+    db.add(rec)
+    await db.commit()
+    await db.refresh(rec)
+    return rec
+
+
+async def _create_job(db, recording_id: int, kind: str):
+    job = models.Job(recording_id=recording_id, kind=kind, status=JOB_QUEUED)
     db.add(job)
     await db.commit()
     await db.refresh(job)
@@ -191,6 +246,7 @@ async def _progress_of(db, rid: int) -> int:
 def _to_detail(rec, segments, progress: int) -> RecordingDetail:
     return RecordingDetail(
         id=rec.id, title=rec.title, source_filename=rec.source_filename,
+        source_kind=rec.source_kind, source_url=rec.source_url,
         status=rec.status, duration_ms=rec.duration_ms, language=rec.language,
         created_at=rec.created_at, progress=progress,
         source_available=bool(rec.upload_path and Path(rec.upload_path).exists()),
