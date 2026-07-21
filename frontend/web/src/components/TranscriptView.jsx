@@ -4,8 +4,12 @@ import { currentSegment, isVideo } from '../utils'
 import TranscriptHeader from './TranscriptHeader'
 import SegmentList from './SegmentList'
 import ProgressSteps from './ProgressSteps'
+import AiPanel from './AiPanel'
+import ResizeHandle from './ResizeHandle'
+import usePanelWidth from '../hooks/usePanelWidth'
 
 const PENDING = ['queued', 'extracting', 'transcribing']
+const SOURCE_W = { key: 'source-width', min: 360, max: 900, initial: 560, handleSide: 'left' }
 const PHASE = {
   queued: 'Mengantre…',
   extracting: 'Mengekstrak audio…',
@@ -53,9 +57,33 @@ function Detail({ rec, onTitleChange, onClose }) {
     setActiveIdx(currentSegment(rec.segments, mediaRef.current.currentTime))
 
   return (
-    <div>
+    <div className="flex min-w-0 flex-1 flex-col">
       <TranscriptHeader rec={rec} onTitleChange={onTitleChange} onClose={onClose} />
-      <div className="mx-auto max-w-3xl px-6 py-6">
+      <div className="flex min-h-0 flex-1">
+        <AiPanel rec={rec} />
+        <SourcePanel
+          rec={rec}
+          mediaRef={mediaRef}
+          activeIdx={activeIdx}
+          onTime={onTime}
+          onSeek={seek}
+        />
+      </div>
+    </div>
+  )
+}
+
+function SourcePanel({ rec, mediaRef, activeIdx, onTime, onSeek }) {
+  const { width, dragging, handlers } = usePanelWidth(SOURCE_W)
+  return (
+    <section
+      style={{ width }}
+      className={`relative flex shrink-0 flex-col border-l border-edge ${
+        dragging ? 'select-none' : ''
+      }`}
+    >
+      <ResizeHandle side="left" dragging={dragging} handlers={handlers} />
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <MediaPlayer rec={rec} mediaRef={mediaRef} onTime={onTime} />
         {PENDING.includes(rec.status) && (
           <>
@@ -66,9 +94,9 @@ function Detail({ rec, onTitleChange, onClose }) {
         {rec.status === 'failed' && (
           <p className="text-red-400">Transkripsi gagal. Coba unggah ulang.</p>
         )}
-        <Transcript rec={rec} activeIdx={activeIdx} onSeek={seek} />
+        <Transcript rec={rec} activeIdx={activeIdx} onSeek={onSeek} />
       </div>
-    </div>
+    </section>
   )
 }
 

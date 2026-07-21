@@ -41,12 +41,15 @@ App (flex h-screen)
 │   ├─ EnginePanel (provider + ModelPicker dari /api/config + status engine)
 │   ├─ StatsGrid (Selesai / Diproses / Gagal / Total — dihitung dari riwayat)
 │   └─ RecordingList (Riwayat: item + StatusBadge ikon + tanggal·durasi + hapus)
-└─ main (flex-1, scroll)
-    ├─ TranscriptView (bila ada rekaman dipilih)
-    │   ├─ TranscriptHeader (top bar lengket: judul editable + Ekspor + tutup)
-    │   ├─ MediaPlayer (video/audio dari /source)
-    │   ├─ ProgressSteps + ProgressBar (saat status pending)
-    │   └─ SegmentList (transkrip; klik segmen → seek player)
+└─ main (flex-1)
+    ├─ TranscriptView (bila ada rekaman dipilih) — bersama sidebar = 3 kolom
+    │   ├─ TranscriptHeader (membentang penuh: judul editable + Ekspor + tutup)
+    │   ├─ AiPanel (KOLOM TENGAH, flex-1) — ringkasan + chat; terkunci s/d M2/M3
+    │   └─ SourcePanel (KOLOM KANAN, 360–900px, default 560; scroll sendiri)
+    │       ├─ ResizeHandle (tepi kiri)
+    │       ├─ MediaPlayer (video/audio dari /source)
+    │       ├─ ProgressSteps + ProgressBar (saat status pending)
+    │       └─ SegmentList (transkrip; klik segmen → seek player)
     └─ EmptyState (bila tak ada dipilih: ikon + info, bukan kotak kosong)
 ```
 
@@ -54,8 +57,10 @@ App (flex h-screen)
 
 | Komponen | Tugas |
 |---|---|
-| `Sidebar` | rangka sidebar + sub-komponen Brand/EnginePanel/StatsGrid/ResizeHandle |
+| `Sidebar` | rangka sidebar + sub-komponen Brand/EnginePanel/StatsGrid |
 | `ModelPicker` | dropdown model lokal (`PATCH /api/config`); terkunci saat engine sibuk |
+| `ResizeHandle` | batang geser lebar panel (dipakai sidebar & kolom kanan); induk wajib `relative` |
+| `AiPanel` | kolom tengah: kartu Ringkasan + chat. Kontrol sengaja `disabled` selama backend M2/M3 belum ada — jangan tampilkan hasil palsu |
 | `UploadPanel` | pilih file + bahasa, unggah (XHR + progress), panggil `onUploaded` |
 | `RecordingList` | daftar riwayat + `ConfirmModal` hapus |
 | `StatusBadge` | status → ikon (jam/spinner/centang/peringatan) + tooltip |
@@ -74,7 +79,8 @@ Data ke FE: `GET /api/config` (provider, model, batas upload) untuk EnginePanel;
 - **Ubah warna tema**: edit token di `@theme` (`index.css`) → seluruh util ikut. Jangan hardcode hex di komponen.
 - **Tambah mode terang** (nanti): tambah override token di `:root[data-theme=light]` / media query + toggle; komponen tak berubah karena pakai util token.
 - **Tambah info sidebar**: bikin sub-komponen di `Sidebar.jsx` (pola `EnginePanel`/`StatsGrid`), jaga ≤ 20 baris.
-- **Ubah batas lebar sidebar**: konstanta `MIN`/`MAX`/`DEFAULT` di `hooks/useSidebarWidth.js` (lebar tersimpan di `localStorage`).
+- **Ubah batas lebar panel**: konstanta `WIDTH` (Sidebar) / `SOURCE_W` (TranscriptView) — `{ key, min, max, initial, handleSide }` dioper ke `hooks/usePanelWidth.js`; lebar tersimpan di `localStorage`.
+- **Aktifkan AI**: ganti kontrol `disabled` di `AiPanel.jsx` begitu endpoint ringkasan/chat siap; strukturnya sudah pada tempatnya.
 
 ## Anti-pattern (jangan)
 

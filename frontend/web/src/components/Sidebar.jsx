@@ -1,9 +1,11 @@
 import UploadPanel from './UploadPanel'
 import RecordingList from './RecordingList'
 import ModelPicker from './ModelPicker'
-import useSidebarWidth from '../hooks/useSidebarWidth'
+import ResizeHandle from './ResizeHandle'
+import usePanelWidth from '../hooks/usePanelWidth'
 
 const ACTIVE_ST = ['queued', 'extracting', 'transcribing']
+const WIDTH = { key: 'sidebar-width', min: 280, max: 560, initial: 340, handleSide: 'right' }
 
 export default function Sidebar({
   recordings,
@@ -16,7 +18,7 @@ export default function Sidebar({
   onConfigChange,
 }) {
   const busy = recordings.some((r) => ACTIVE_ST.includes(r.status))
-  const { width, dragging, handlers } = useSidebarWidth()
+  const { width, dragging, handlers } = usePanelWidth(WIDTH)
   return (
     <aside
       style={{ width }}
@@ -24,7 +26,7 @@ export default function Sidebar({
         dragging ? 'select-none' : ''
       }`}
     >
-      <ResizeHandle dragging={dragging} handlers={handlers} />
+      <ResizeHandle side="right" dragging={dragging} handlers={handlers} />
       <Brand />
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <UploadPanel onUploaded={onUploaded} />
@@ -42,26 +44,6 @@ export default function Sidebar({
         </div>
       </div>
     </aside>
-  )
-}
-
-function ResizeHandle({ dragging, handlers }) {
-  return (
-    <div
-      {...handlers}
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Geser untuk mengubah lebar sidebar"
-      title="Geser untuk mengubah lebar · klik ganda untuk reset"
-      tabIndex={0}
-      className="group absolute inset-y-0 -right-1 z-20 flex w-2 cursor-col-resize justify-center outline-none"
-    >
-      <span
-        className={`h-full w-px transition-colors ${
-          dragging ? 'bg-mint' : 'bg-transparent group-hover:bg-mint/60 group-focus:bg-mint/60'
-        }`}
-      />
-    </div>
   )
 }
 

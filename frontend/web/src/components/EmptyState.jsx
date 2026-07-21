@@ -1,6 +1,6 @@
 export default function EmptyState({ count }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
+    <div className="flex h-full flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-edge bg-panel2 text-mint">
         <WaveIcon />
       </div>

@@ -35,7 +35,7 @@ export default function App() {
         onDeselect={() => setSelectedId(null)}
         onConfigChange={setConfig}
       />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex min-w-0 flex-1 overflow-hidden">
         {selectedId ? (
           <TranscriptView
             key={selectedId}
