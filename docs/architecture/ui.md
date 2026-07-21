@@ -34,10 +34,11 @@ scrollbar) ikut gelap; `index.html` set background gelap anti-flash.
 
 ```
 App (flex h-screen)
-├─ Sidebar (340px, bg-panel, border kanan)          ── selalu tampil
+├─ Sidebar (lebar bisa digeser 280–560px, default 340; bg-panel)  ── selalu tampil
+│   ├─ ResizeHandle (hairline mint di tepi kanan; klik ganda = reset)
 │   ├─ Brand (logo mint + nama + tagline)
 │   ├─ UploadPanel (file, bahasa, tombol Transkrip, progress upload)
-│   ├─ EnginePanel (provider + model dari /api/config + "Engine siap")
+│   ├─ EnginePanel (provider + ModelPicker dari /api/config + status engine)
 │   ├─ StatsGrid (Selesai / Diproses / Gagal / Total — dihitung dari riwayat)
 │   └─ RecordingList (Riwayat: item + StatusBadge ikon + tanggal·durasi + hapus)
 └─ main (flex-1, scroll)
@@ -53,7 +54,8 @@ App (flex h-screen)
 
 | Komponen | Tugas |
 |---|---|
-| `Sidebar` | rangka sidebar + sub-komponen Brand/EnginePanel/StatsGrid |
+| `Sidebar` | rangka sidebar + sub-komponen Brand/EnginePanel/StatsGrid/ResizeHandle |
+| `ModelPicker` | dropdown model lokal (`PATCH /api/config`); terkunci saat engine sibuk |
 | `UploadPanel` | pilih file + bahasa, unggah (XHR + progress), panggil `onUploaded` |
 | `RecordingList` | daftar riwayat + `ConfirmModal` hapus |
 | `StatusBadge` | status → ikon (jam/spinner/centang/peringatan) + tooltip |
@@ -72,6 +74,7 @@ Data ke FE: `GET /api/config` (provider, model, batas upload) untuk EnginePanel;
 - **Ubah warna tema**: edit token di `@theme` (`index.css`) → seluruh util ikut. Jangan hardcode hex di komponen.
 - **Tambah mode terang** (nanti): tambah override token di `:root[data-theme=light]` / media query + toggle; komponen tak berubah karena pakai util token.
 - **Tambah info sidebar**: bikin sub-komponen di `Sidebar.jsx` (pola `EnginePanel`/`StatsGrid`), jaga ≤ 20 baris.
+- **Ubah batas lebar sidebar**: konstanta `MIN`/`MAX`/`DEFAULT` di `hooks/useSidebarWidth.js` (lebar tersimpan di `localStorage`).
 
 ## Anti-pattern (jangan)
 
