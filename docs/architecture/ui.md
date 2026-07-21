@@ -36,7 +36,7 @@ scrollbar) ikut gelap; `index.html` set background gelap anti-flash.
 App (flex h-screen)
 ├─ Sidebar (lebar bisa digeser 280–560px, default 340; bg-panel)  ── selalu tampil
 │   ├─ ResizeHandle (hairline mint di tepi kanan; klik ganda = reset)
-│   ├─ Brand (logo mint + nama + tagline)
+│   ├─ Brand (logo mint + nama + tagline + ikon gerigi → SettingsModal)
 │   ├─ UploadPanel (file, bahasa, tombol Transkrip, progress upload)
 │   ├─ EnginePanel (provider + ModelPicker dari /api/config + status engine)
 │   ├─ StatsGrid (Selesai / Diproses / Gagal / Total — dihitung dari riwayat)
@@ -60,6 +60,7 @@ App (flex h-screen)
 | `Sidebar` | rangka sidebar + sub-komponen Brand/EnginePanel/StatsGrid |
 | `ModelPicker` | dropdown model lokal (`PATCH /api/config`); terkunci saat engine sibuk |
 | `ResizeHandle` | batang geser lebar panel (dipakai sidebar & kolom kanan); induk wajib `relative` |
+| `SettingsModal` | popup mesin AI dari ikon gerigi di header sidebar: pilih provider, model, kunci API (masked), tes koneksi ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)) |
 | `AiPanel` | kolom tengah: kartu Ringkasan + chat. Kontrol sengaja `disabled` selama backend M2/M3 belum ada — jangan tampilkan hasil palsu |
 | `UploadPanel` | pilih file + bahasa, unggah (XHR + progress), panggil `onUploaded` |
 | `RecordingList` | daftar riwayat + `ConfirmModal` hapus |

@@ -37,7 +37,7 @@ hilang saat restart) — jadi job tidak nyangkut.
 |---|---|---|
 | `app/` | `main.py` (app factory + lifespan), `config.py` (settings env `TRANSKRIP_*`), `deps.py` (sesi DB), `schemas.py`, `naming.py` (bersihkan judul dari nama file), `routes/` | lifespan: init DB → start worker → requeue |
 | `asr/` | `base.py` (protocol `ASRProvider` + `Segment`), `local_whisper.py`, `groq.py`, `__init__.get_provider()` | interface tunggal; lokal lapor progres per-segmen |
-| `analysis/` | `base.py` stub `LLMProvider`/`EmbeddingProvider` | **seam AI** — belum diimplementasi (ringkasan/chat nanti) |
+| `analysis/` | `base.py` (Protocol `LLMProvider` async / `EmbeddingProvider`), `openai_compat.py` (adapter httpx), `__init__.resolve()`/`get_llm()` | satu jalur OpenAI-compatible untuk Ollama/Groq/DeepSeek/Claude/OpenAI ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)); pemakainya (ringkasan M2) menyusul |
 | `media/` | `ffmpeg.py`: `probe_duration_ms`, `extract_audio` | subprocess asyncio |
 | `worker/` | `queue.py` (antrean, `enqueue`, `pending_count`, `requeue_pending`), `pipeline.py` (`run_transcribe`) | concurrency=1; poller progres via holder thread-safe |
 | `store/` | `models.py` (Recording, Job, Segment), `db.py` (engine async + `init_db`/create_all) | SQLite (`aiosqlite`) |
@@ -94,6 +94,10 @@ Tambah pos = 1 entri di `build_protections()`.
 | `GET /api/recordings/{id}/source` | file asli (video/audio) untuk player (Range) |
 | `GET /api/recordings/{id}/export?fmt=txt\|srt\|json` | ekspor transkrip |
 | `GET /api/jobs/{id}` | status + progress (poll FE) |
+| `GET /api/llm` | katalog mesin AI + provider aktif + `key_set` (nilai kunci tidak pernah dikirim) |
+| `PATCH /api/llm` | simpan provider/model/kunci — 422 provider tak dikenal |
+| `POST /api/llm/test` | ping provider sungguhan → `{ok, detail}` (gagal tetap 200) |
+| `DELETE /api/llm/{provider}/key` | lupakan kunci tersimpan |
 
 ## 8. Frontend
 
@@ -122,4 +126,4 @@ Dibangun sebagai MVP lokal; deviasi terukur & reversibel (detail di
 ## 10. Dokumen terkait
 
 Planning: [webapp transkrip](../planning/webapp-upload-transkrip.md) · [arah Colibri](../planning/colibri-direction.md) ·
-[video downloader](../planning/video-downloader.md). ADR: [0001](../adr/0001-centralized-constants.md)–[0006](../adr/0006-workspace-tiga-kolom.md).
+[video downloader](../planning/video-downloader.md). ADR: [0001](../adr/0001-centralized-constants.md)–[0007](../adr/0007-mesin-ai-dipilih-dari-ui.md).

@@ -112,6 +112,57 @@
 - error: 422 model tidak dikenal · 409 provider Groq / ada transkrip berjalan
 - catatan: env `TRANSKRIP_LOCAL_WHISPER_MODEL` menang saat startup — bila diset, `runtime.json` diabaikan
 
+# setelan mesin AI (popup Setelan di FE)
+
+- api: `/api/llm`
+- method: GET
+- auth: session cookie
+- response 200:
+
+```json
+{
+  "provider": "ollama",
+  "model": "llama3.1",
+  "base_url": "http://localhost:11434/v1",
+  "providers": [
+    { "id": "ollama", "label": "Ollama (lokal)", "base_url": "…", "default_model": "llama3.1",
+      "needs_key": false, "note": "…", "key_set": false }
+  ]
+}
+```
+
+- **Nilai kunci API tidak pernah dikirim** — hanya `key_set` per provider
+
+# ganti mesin AI
+
+- api: `/api/llm`
+- method: PATCH
+- auth: session cookie
+- body: `{ "provider": "deepseek", "model": "deepseek-chat", "api_key": "…" }` — `api_key` opsional,
+  kosong = pertahankan yang tersimpan
+- efek: simpan pilihan + kunci ke `data/runtime.json`
+- response 200: payload sama seperti GET
+- error: 422 provider tidak dikenal
+- catatan: env `TRANSKRIP_LLM_PROVIDER` / `TRANSKRIP_LLM_API_KEY` menang saat startup
+
+# tes koneksi mesin AI
+
+- api: `/api/llm/test`
+- method: POST
+- auth: session cookie
+- body: sama seperti PATCH (memakai isian form, bukan yang tersimpan)
+- efek: completion kecil (`max_tokens: 5`) ke provider sungguhan
+- response 200: `{ "ok": true, "detail": "deepseek-chat merespons" }` — **gagal juga 200**
+  (`{"ok": false, "detail": "…"}`), karena ini hasil diagnostik bukan request yang gagal
+- error: 422 provider tidak dikenal
+
+# hapus kunci API tersimpan
+
+- api: `/api/llm/{provider}/key`
+- method: DELETE
+- auth: session cookie
+- response: 204; 422 provider tidak dikenal
+
 # login
 
 - api: `/api/auth/login`

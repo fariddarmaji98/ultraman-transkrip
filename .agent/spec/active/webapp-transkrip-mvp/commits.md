@@ -16,3 +16,5 @@
 - `48ca051` Model ASR bisa dipilih dari panel ENGINE (PATCH /api/config + runtime.json) — ADR 0005
 - `5b7ff0d` Sidebar bisa digeser lebarnya
 - `02d3c9c` Detail rekaman jadi 3 kolom: sidebar | AI | sumber — ADR 0006
+- `237fb4e` Docs: ADR 0005 + ADR 0006
+- `a8d406f` Popup Setelan: pilih mesin AI (lokal atau API) — ADR 0007
