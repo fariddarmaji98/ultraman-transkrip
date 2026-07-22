@@ -41,6 +41,9 @@ class Recording(Base):
     jobs: Mapped[list["Job"]] = relationship(
         back_populates="recording", cascade="all, delete-orphan"
     )
+    summaries: Mapped[list["Summary"]] = relationship(
+        back_populates="recording", cascade="all, delete-orphan"
+    )
 
 
 class Job(Base):
@@ -55,6 +58,25 @@ class Job(Base):
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
     recording: Mapped["Recording"] = relationship(back_populates="jobs")
+
+
+class Summary(Base):
+    """Ringkasan AI. Satu per recording — dibuat ulang = baris lama diganti.
+
+    Provider & model ikut dicatat: hasil dari mesin berbeda tidak sebanding,
+    dan tanpa jejak ini tidak ada cara tahu ringkasan lama dibuat oleh apa.
+    """
+
+    __tablename__ = "summaries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    text: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(32))
+    model: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+    recording: Mapped["Recording"] = relationship(back_populates="summaries")
 
 
 class Segment(Base):

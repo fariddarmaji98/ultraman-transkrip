@@ -6,7 +6,7 @@ from uuid import uuid4
 import aiofiles
 from fastapi import APIRouter, Form, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from app.config import settings
 from app.deps import DbDep
@@ -17,8 +17,12 @@ from app.schemas import (
     RecordingOut,
     RenameIn,
     SegmentOut,
+    SummaryOut,
     UploadResponse,
 )
+import analysis
+from analysis.openai_compat import LLMError
+from analysis.summarize import summarize
 # alias: nama `get_source` sudah dipakai route penyaji file di bawah
 from capture import get_source as get_media_source
 from capture import CaptureError, MediaInfo, NeedsAuth, UnsupportedUrl
@@ -82,7 +86,20 @@ async def get_recording(rid: int, db: DbDep) -> RecordingDetail:
     rec = await _get_or_404(db, rid)
     segments = await _segments_of(db, rid)
     progress = await _progress_of(db, rid)
-    return _to_detail(rec, segments, progress)
+    return _to_detail(rec, segments, progress, await _summary_of(db, rid))
+
+
+@router.post("/recordings/{rid}/summarize", response_model=SummaryOut)
+async def summarize_recording(rid: int, db: DbDep) -> models.Summary:
+    """Ringkas transkrip pakai mesin AI aktif (ADR 0007). Sinkron: bisa puluhan detik."""
+    await _get_or_404(db, rid)
+    segments = await _segments_of(db, rid)
+    if not segments:
+        raise HTTPException(422, "belum ada transkrip untuk diringkas")
+    cfg = analysis.resolve()
+    _reject_if_llm_unset(cfg)
+    text = await _run_summary(segments, cfg)
+    return await _save_summary(db, rid, text, cfg)
 
 
 @router.post("/recordings/{rid}/transcribe", response_model=RecordingOut, status_code=202)
@@ -148,6 +165,32 @@ async def export_transcript(rid: int, db: DbDep, fmt: str = "txt") -> Response:
 
 
 # --- helpers ---------------------------------------------------------------
+
+def _reject_if_llm_unset(cfg: dict) -> None:
+    if cfg["needs_key"] and not cfg["api_key"]:
+        raise HTTPException(422, "mesin AI belum punya kunci API — atur di popup Setelan")
+
+
+async def _run_summary(segments, cfg: dict) -> str:
+    try:
+        return await summarize(segments, analysis.get_llm())
+    except LLMError as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
+async def _save_summary(db, rid: int, text: str, cfg: dict) -> models.Summary:
+    """Satu ringkasan per recording — yang lama diganti, bukan ditumpuk."""
+    await db.execute(
+        delete(models.Summary).where(models.Summary.recording_id == rid)
+    )
+    row = models.Summary(
+        recording_id=rid, text=text, provider=cfg["provider"], model=cfg["model"]
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return row
+
 
 def _reject_if_not_transcribable(rec) -> None:
     if rec.status in ACTIVE_STATUSES:
@@ -292,7 +335,14 @@ def _with_progress(rec, progress: int) -> RecordingOut:
     return out
 
 
-def _to_detail(rec, segments, progress: int) -> RecordingDetail:
+async def _summary_of(db, rid: int) -> models.Summary | None:
+    result = await db.execute(
+        select(models.Summary).where(models.Summary.recording_id == rid)
+    )
+    return result.scalars().first()
+
+
+def _to_detail(rec, segments, progress: int, summary) -> RecordingDetail:
     return RecordingDetail(
         id=rec.id, title=rec.title, source_filename=rec.source_filename,
         source_kind=rec.source_kind, source_url=rec.source_url,
@@ -301,6 +351,7 @@ def _to_detail(rec, segments, progress: int) -> RecordingDetail:
         source_available=bool(rec.upload_path and Path(rec.upload_path).exists()),
         media_available=bool(rec.media_path and Path(rec.media_path).exists()),
         segments=[SegmentOut.model_validate(s) for s in segments],
+        summary=SummaryOut.model_validate(summary) if summary else None,
     )
 
 

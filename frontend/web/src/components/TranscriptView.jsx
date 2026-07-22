@@ -64,13 +64,14 @@ export default function TranscriptView({ id, onDone, onClose }) {
       rec={rec}
       error={error}
       onTranscribe={transcribe}
+      onRefresh={() => setRound((n) => n + 1)}
       onTitleChange={applyTitle}
       onClose={onClose}
     />
   )
 }
 
-function Detail({ rec, error, onTranscribe, onTitleChange, onClose }) {
+function Detail({ rec, error, onTranscribe, onRefresh, onTitleChange, onClose }) {
   const mediaRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
 
@@ -90,7 +91,7 @@ function Detail({ rec, error, onTranscribe, onTitleChange, onClose }) {
         onClose={onClose}
       />
       <div className="flex min-h-0 flex-1">
-        <AiPanel rec={rec} />
+        <AiPanel rec={rec} onSummarized={onRefresh} />
         <SourcePanel
           rec={rec}
           error={error}

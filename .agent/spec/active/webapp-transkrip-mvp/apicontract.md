@@ -163,6 +163,32 @@
 - auth: session cookie
 - response: 204; 422 provider tidak dikenal
 
+# ringkasan AI (M2)
+
+- api: `/api/recordings/{id}/summarize`
+- method: POST (tanpa body)
+- auth: session cookie
+- efek: ringkas transkrip pakai mesin AI aktif; simpan ke tabel `summaries`
+  (satu baris per recording — dibuat ulang = **mengganti**, bukan menumpuk)
+- **sinkron**: 4,9 detik untuk transkrip 5:43; 16 detik untuk 28 menit (map-reduce)
+- response 200:
+
+```json
+{ "text": "## Ringkasan\n…", "provider": "deepseek", "model": "deepseek-chat", "created_at": "…" }
+```
+
+- error:
+  - `404` rekaman tidak ditemukan
+  - `422 belum ada transkrip untuk diringkas` — segmen kosong
+  - `422 mesin AI belum punya kunci API — atur di popup Setelan`
+  - `502` provider gagal (pesan aslinya diteruskan)
+- transkrip melebihi `SUMMARY_MAX_CHUNKS`: ringkasan diakhiri catatan bahwa hanya bagian awal
+  yang tercakup — pemotongan tidak senyap ([ADR 0009](../../../../docs/adr/0009-ringkasan-transkrip.md))
+
+# detail recording — tambahan
+
+`GET /api/recordings/{id}` kini menyertakan `summary` (objek seperti di atas) atau `null`.
+
 # login
 
 - api: `/api/auth/login`

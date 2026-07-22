@@ -31,10 +31,20 @@ class RecordingOut(BaseModel):
     progress: int = 0  # diisi route dari job terbaru; 0 saat baru dibuat
 
 
+class SummaryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    text: str
+    provider: str
+    model: str
+    created_at: datetime
+
+
 class RecordingDetail(RecordingOut):
     source_available: bool
     media_available: bool
     segments: list[SegmentOut]
+    summary: SummaryOut | None = None
 
 
 class JobOut(BaseModel):

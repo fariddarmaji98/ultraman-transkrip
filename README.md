@@ -25,6 +25,8 @@ fitur AI (ringkasan, chat, "second brain").
 - **Unduh video dari URL**: tempel link → video (maks 720p) masuk arsip dan bisa ditonton; transkrip
   dijalankan terpisah. TikTok & X paling mulus, YouTube kadang minta login
   ([ADR 0008](docs/adr/0008-video-downloader-dua-langkah.md)).
+- **Ringkasan AI**: ringkasan + poin utama + poin aksi dari transkrip, lewat mesin AI pilihanmu.
+  Transkrip panjang dipotong dan digabung otomatis ([ADR 0009](docs/adr/0009-ringkasan-transkrip.md)).
 - **Bahasa Indonesia divalidasi**: `large-v3-turbo` ~5,4% WER pada FLEURS-id (lihat `samples/`).
 
 ## Arsitektur (saat ini)
@@ -124,7 +126,7 @@ Arah berikutnya (planning tersedia): ringkasan + action item AI (M2) → chat/se
 ## Dokumentasi
 
 - Arsitektur: [architecture/overview.md](docs/architecture/overview.md) · [constants](docs/architecture/constants.md) · [ui](docs/architecture/ui.md)
-- Keputusan (ADR): [0001 constants](docs/adr/0001-centralized-constants.md) · [0002 pivot webapp](docs/adr/0002-pivot-webapp-upload-transkrip.md) · [0003 modular monolith](docs/adr/0003-modular-monolith-not-microservices.md) · [0004 UI gelap](docs/adr/0004-dark-ui-colibri.md) · [0005 model runtime](docs/adr/0005-model-asr-runtime.md) · [0006 workspace 3 kolom](docs/adr/0006-workspace-tiga-kolom.md) · [0007 mesin AI dari UI](docs/adr/0007-mesin-ai-dipilih-dari-ui.md) · [0008 video downloader](docs/adr/0008-video-downloader-dua-langkah.md)
+- Keputusan (ADR): [0001 constants](docs/adr/0001-centralized-constants.md) · [0002 pivot webapp](docs/adr/0002-pivot-webapp-upload-transkrip.md) · [0003 modular monolith](docs/adr/0003-modular-monolith-not-microservices.md) · [0004 UI gelap](docs/adr/0004-dark-ui-colibri.md) · [0005 model runtime](docs/adr/0005-model-asr-runtime.md) · [0006 workspace 3 kolom](docs/adr/0006-workspace-tiga-kolom.md) · [0007 mesin AI dari UI](docs/adr/0007-mesin-ai-dipilih-dari-ui.md) · [0008 video downloader](docs/adr/0008-video-downloader-dua-langkah.md) · [0009 ringkasan](docs/adr/0009-ringkasan-transkrip.md)
 - Rencana: [webapp transkrip](docs/planning/webapp-upload-transkrip.md) · [arah Colibri](docs/planning/colibri-direction.md) · [video downloader](docs/planning/video-downloader.md)
 
 ## Privasi & etika

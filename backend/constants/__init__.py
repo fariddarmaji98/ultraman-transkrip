@@ -76,6 +76,11 @@ LLM_PROVIDER_IDS = tuple(p["id"] for p in LLM_PROVIDERS)
 LLM_TIMEOUT_S = 120  # transkrip panjang butuh waktu; jangan putus di tengah
 LLM_TEST_TIMEOUT_S = 20  # tombol "tes koneksi" harus cepat gagal
 
+# Ringkasan (M2). Batas konservatif: Ollama lokal sering hanya 8k context,
+# jadi potongan dibuat aman untuk provider terkecil, bukan yang terbesar.
+SUMMARY_CHUNK_CHARS = 12000
+SUMMARY_MAX_CHUNKS = 12  # >12 potongan: transkrip dipangkas, dan itu diberitahukan
+
 # Target audio untuk Whisper (16 kHz mono)
 ASR_SAMPLE_RATE = 16000
 ASR_CHANNELS = 1

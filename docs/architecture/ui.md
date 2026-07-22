@@ -73,7 +73,8 @@ App (flex h-screen)
 | `ResizeHandle` | batang geser lebar panel (dipakai sidebar & kolom kanan); induk wajib `relative` |
 | `SettingsModal` | popup mesin AI dari ikon gerigi: pilih provider, model, kunci API, tes koneksi. Kunci tersimpan → field **dikunci**; ganti kunci = hapus dulu, dan hapus wajib konfirmasi ([ADR 0007 §Amandemen](../adr/0007-mesin-ai-dipilih-dari-ui.md)) |
 | `ConfirmModal` | konfirmasi aksi tak-bisa-dibatalkan (hapus rekaman, hapus kunci API). `z-40` — selalu di atas modal lain, termasuk saat dipanggil dari dalam `SettingsModal` (`z-30`) |
-| `AiPanel` | kolom tengah: kartu Ringkasan + chat. Kontrol sengaja `disabled` selama backend M2/M3 belum ada — jangan tampilkan hasil palsu |
+| `AiPanel` | kolom tengah: kartu Ringkasan (**aktif**, `POST /summarize`) + chat (masih `disabled`, M3). Tombol mati sampai transkrip `done` ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
+| `SummaryText` | render subset Markdown yang diminta di prompt (`## judul`, `- butir`, paragraf) — sengaja bukan library |
 | `UploadPanel` | pilih file + bahasa, unggah (XHR + progress), panggil `onUploaded` |
 | `RecordingList` | daftar riwayat + `ConfirmModal` hapus |
 | `StatusBadge` | status → ikon (jam/spinner/centang/peringatan) + tooltip |
@@ -93,7 +94,7 @@ Data ke FE: `GET /api/config` (provider, model, batas upload) untuk EnginePanel;
 - **Tambah mode terang** (nanti): tambah override token di `:root[data-theme=light]` / media query + toggle; komponen tak berubah karena pakai util token.
 - **Tambah info sidebar**: bikin sub-komponen di `Sidebar.jsx` (pola `EnginePanel`/`StatsGrid`), jaga ≤ 20 baris.
 - **Ubah batas lebar panel**: konstanta `WIDTH` (Sidebar) / `SOURCE_W` (TranscriptView) — `{ key, min, max, initial, handleSide }` dioper ke `hooks/usePanelWidth.js`; lebar tersimpan di `localStorage`.
-- **Aktifkan AI**: ganti kontrol `disabled` di `AiPanel.jsx` begitu endpoint ringkasan/chat siap; strukturnya sudah pada tempatnya.
+- **Aktifkan chat (M3)**: pola sudah ada di `AiPanel` — tiru bagian Ringkasan (state busy/error lokal + `onSummarized` untuk menyegarkan detail).
 
 ## Anti-pattern (jangan)
 

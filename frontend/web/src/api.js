@@ -32,6 +32,13 @@ export async function createFromUrl(url, language = 'auto') {
   return data
 }
 
+export async function summarizeRecording(id) {
+  const res = await fetch(`/api/recordings/${id}/summarize`, { method: 'POST' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal membuat ringkasan')
+  return data
+}
+
 export async function startTranscribe(id) {
   const res = await fetch(`/api/recordings/${id}/transcribe`, { method: 'POST' })
   const data = await res.json().catch(() => ({}))
