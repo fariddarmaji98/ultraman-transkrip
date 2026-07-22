@@ -66,7 +66,7 @@ App (flex h-screen)
 | `Sidebar` | rangka: Brand + SidebarTabs + isi tab aktif; lebar & tab tersimpan di `localStorage` |
 | `SidebarTabs` | pemisah Transkrip vs Unduh, dengan badge jumlah item tiap tab |
 | `TranscribeTab` | unggah + engine + statistik + Riwayat (filter: di luar `downloading`/`downloaded`) |
-| `DownloadTab` | form URL + pemakaian disk + arsip video (filter: `source_kind === 'url'`) |
+| `DownloadTab` | form URL + pemakaian disk + arsip video (filter: `source_kind === 'url'`); daftarnya pakai `showDownload` sehingga tiap item punya tombol simpan-ke-komputer |
 | `UrlForm` | tempel URL → `POST /recordings/from-url`; error probe tampil di sini, isian tidak dihapus |
 | `StorageInfo` | angka disk — dipakai ganti kebijakan retensi otomatis yang sengaja belum ada |
 | `ModelPicker` | dropdown model lokal (`PATCH /api/config`); terkunci saat engine sibuk |
@@ -76,7 +76,7 @@ App (flex h-screen)
 | `AiPanel` | kolom tengah: kartu Ringkasan (**aktif**, `POST /summarize`) + chat (masih `disabled`, M3). Tombol mati sampai transkrip `done` ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
 | `SummaryText` | render subset Markdown yang diminta di prompt (`## judul`, `- butir`, paragraf) — sengaja bukan library |
 | `UploadPanel` | pilih file + bahasa, unggah (XHR + progress), panggil `onUploaded` |
-| `RecordingList` | daftar riwayat + `ConfirmModal` hapus |
+| `RecordingList` | daftar dipakai dua tab; prop `emptyText`/`confirmTitle`/`confirmMessage`/`showDownload` membedakannya tanpa komponen kembar. `ConfirmModal` untuk hapus |
 | `StatusBadge` | status → ikon (jam/spinner/centang/peringatan) + tooltip |
 | `TranscriptView` | poll detail rekaman, susun header + player + progress + transkrip |
 | `TranscriptHeader` | top bar: judul editable (`PATCH`), **Transkrip ulang** (status `done`/`failed`), ekspor, tombol tutup |

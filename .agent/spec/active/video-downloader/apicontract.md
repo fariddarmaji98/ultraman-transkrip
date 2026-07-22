@@ -56,11 +56,18 @@ FE memakai `source_kind` untuk memfilter isi tab (Unduh vs Riwayat) — tidak ad
 `GET /api/jobs/{id}` tidak berubah bentuknya; `kind` kini bisa bernilai `fetch`.
 Untuk job `fetch`, `progress` = persen unduhan (0–100).
 
-# tonton hasil unduhan (tidak berubah)
+# tonton & simpan hasil unduhan
 
-`GET /api/recordings/{id}/source` sudah bekerja apa adanya — file hasil unduhan disimpan ke
-`upload_path` dengan pola nama yang sama seperti upload, jadi player, Range request, `DELETE`,
-dan rename semuanya jalan tanpa perubahan.
+`GET /api/recordings/{id}/source` melayani dua hal sekaligus:
+
+- **player** — `<video src>` mengabaikan `Content-Disposition`, jadi tetap bisa diputar; Range
+  request (206) jalan
+- **simpan ke komputer** — header `attachment` dengan nama berkas dari **judul rekaman**, bukan
+  UUID di disk (`app.naming.download_name`). Karakter terlarang (`< > : " / \ | ? *`) dibuang;
+  judul non-ASCII aman lewat encoding `filename*=utf-8''`
+
+File hasil unduhan disimpan ke `upload_path` dengan pola nama yang sama seperti upload, jadi
+player, `DELETE`, dan rename semuanya jalan tanpa perubahan.
 
 # pemakaian disk
 

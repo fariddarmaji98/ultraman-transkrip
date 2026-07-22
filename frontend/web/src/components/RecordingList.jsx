@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { deleteRecording } from '../api'
+import { deleteRecording, sourceUrl } from '../api'
 import { fmtDate, fmtTime, isActive } from '../utils'
 import StatusBadge from './StatusBadge'
 import ConfirmModal from './ConfirmModal'
@@ -13,6 +13,7 @@ export default function RecordingList({
   emptyText = 'Belum ada rekaman.',
   confirmTitle = 'Hapus transkrip?',
   confirmMessage = 'Transkrip dan media rekaman ini akan dihapus permanen dan tidak bisa dikembalikan.',
+  showDownload = false,
 }) {
   const [pendingId, setPendingId] = useState(null)
 
@@ -34,6 +35,7 @@ export default function RecordingList({
             key={r.id}
             rec={r}
             selected={r.id === selectedId}
+            showDownload={showDownload}
             onSelect={() => onSelect(r.id)}
             onDelete={(e) => {
               e.stopPropagation()
@@ -55,7 +57,10 @@ export default function RecordingList({
   )
 }
 
-function RecordingItem({ rec, selected, onSelect, onDelete }) {
+// Berkasnya baru ada setelah unduhan selesai — jangan tawarkan simpan sebelum itu.
+const HAS_FILE = (rec) => !['downloading', 'failed'].includes(rec.status)
+
+function RecordingItem({ rec, selected, showDownload, onSelect, onDelete }) {
   return (
     <li
       onClick={onSelect}
@@ -76,14 +81,28 @@ function RecordingItem({ rec, selected, onSelect, onDelete }) {
         </div>
         {isActive(rec) && <MiniBar progress={rec.progress} />}
       </div>
-      <button
-        title="Hapus"
-        aria-label="Hapus"
-        onClick={onDelete}
-        className="shrink-0 rounded p-1.5 text-fg3 transition hover:bg-red-500/10 hover:text-red-400"
-      >
-        <TrashIcon />
-      </button>
+      <div className="flex shrink-0 items-center">
+        {showDownload && HAS_FILE(rec) && (
+          <a
+            href={sourceUrl(rec.id)}
+            download
+            onClick={(e) => e.stopPropagation()}
+            title="Simpan video ke komputer"
+            aria-label="Simpan ke komputer"
+            className="rounded p-1.5 text-fg3 transition hover:bg-mint/10 hover:text-mint"
+          >
+            <SaveIcon />
+          </a>
+        )}
+        <button
+          title="Hapus"
+          aria-label="Hapus"
+          onClick={onDelete}
+          className="rounded p-1.5 text-fg3 transition hover:bg-red-500/10 hover:text-red-400"
+        >
+          <TrashIcon />
+        </button>
+      </div>
     </li>
   )
 }
@@ -96,6 +115,25 @@ function MiniBar({ progress }) {
         style={{ width: `${progress ?? 0}%` }}
       />
     </div>
+  )
+}
+
+function SaveIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 4v11m0 0 4-4m-4 4-4-4M5 17v1.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V17"
+      />
+    </svg>
   )
 }
 

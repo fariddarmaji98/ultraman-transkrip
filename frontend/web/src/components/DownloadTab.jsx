@@ -31,6 +31,7 @@ export default function DownloadTab({
           onChanged={onChanged}
           onDeselect={onDeselect}
           emptyText="Belum ada video diunduh."
+          showDownload
           confirmTitle="Hapus video?"
           confirmMessage="File video dan transkripnya (bila ada) akan dihapus permanen dan tidak bisa dikembalikan."
         />

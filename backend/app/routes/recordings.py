@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select
 
 from app.config import settings
 from app.deps import DbDep
-from app.naming import clean_title
+from app.naming import clean_title, download_name
 from app.schemas import (
     FromUrlIn,
     RecordingDetail,
@@ -151,7 +151,9 @@ async def get_source(rid: int, db: DbDep) -> FileResponse:
     rec = await _get_or_404(db, rid)
     if not rec.upload_path or not Path(rec.upload_path).exists():
         raise HTTPException(404, "sumber tidak tersedia")
-    return FileResponse(rec.upload_path, filename=rec.source_filename)
+    return FileResponse(
+        rec.upload_path, filename=download_name(rec.title, rec.upload_path)
+    )
 
 
 @router.get("/recordings/{rid}/export")
