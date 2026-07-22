@@ -106,8 +106,16 @@ Transkrip bukan scope (Fase B). Aturan mengikat di [rules.md](rules.md).
 - [x] uji: transkrip ulang rekaman Indonesia 5:43 → **104 segmen → 104 segmen**, tidak menggandakan
 - [x] uji: guard 404 / 409 / 422
 
-## Sisa untuk fase berikutnya
+## 10. Fase C — pengerasan ✅ (kecuali PO token)
 
-- [ ] Fase C: PO token, cookies per-platform, rate-limit, auto-update yt-dlp
+- [x] jeda acak 3–10 dtk sejak unduhan terakhir **selesai** (`_throttle`) — teruji 7,8 / 4,1 / 9,4 dtk
+- [x] versi yt-dlp + umurnya tampil di tab Unduh; kuning bila lewat `YTDLP_STALE_DAYS`
+- [x] `scripts/update_ytdlp.py` (nightly, laporkan versi sebelum/sesudah)
+- [x] cookies per-platform: unggah/hapus, disimpan server-side, dipilih otomatis dari domain URL;
+      validasi format Netscape; isi tidak pernah dikirim balik
+- [ ] **PO token — ditunda ke fase deploy** (keputusan user). Docker absen; manfaatnya tak bisa
+      diverifikasi dari IP rumah. Pasang bersamaan kerja VPS agar teruji dari IP pusat data.
+
+## Sisa untuk fase berikutnya
 - [ ] Fase D: Instagram/Facebook, subtitle-first sebagai opsi
 - [ ] Fase E: SSE, cancel job, batch/playlist, proxy, pilih kualitas

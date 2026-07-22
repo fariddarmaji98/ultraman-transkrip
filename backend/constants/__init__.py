@@ -101,6 +101,33 @@ FETCH_GAP_MAX_S = 10
 # ini gotcha nomor satu di planning, jadi harus kelihatan di UI.
 YTDLP_STALE_DAYS = 14
 
+# Cookies per-platform (format Netscape cookies.txt). Diperlakukan seperti kunci
+# API: disimpan server-side, isinya tidak pernah dikirim balik ke browser.
+COOKIE_MAX_BYTES = 512 * 1024
+COOKIE_PLATFORMS = (
+    {
+        "id": "instagram", "label": "Instagram", "domains": ("instagram.com",),
+        "note": "Praktis wajib — tanpa cookies hampir selalu gagal.",
+    },
+    {
+        "id": "facebook", "label": "Facebook", "domains": ("facebook.com", "fb.watch"),
+        "note": "Wajib untuk konten non-publik.",
+    },
+    {
+        "id": "youtube", "label": "YouTube", "domains": ("youtube.com", "youtu.be"),
+        "note": "Membantu saat kena bot-check. Pakai akun cadangan, bukan akun utama.",
+    },
+    {
+        "id": "tiktok", "label": "TikTok", "domains": ("tiktok.com",),
+        "note": "Biasanya tidak perlu; berguna bila kena rate-limit.",
+    },
+    {
+        "id": "twitter", "label": "X / Twitter", "domains": ("x.com", "twitter.com"),
+        "note": "Opsional — cookies justru bisa memicu error CSRF. Coba tanpa dulu.",
+    },
+)
+COOKIE_PLATFORM_IDS = tuple(p["id"] for p in COOKIE_PLATFORMS)
+
 # Format media yang diterima (dikenali ffmpeg)
 ACCEPTED_SUFFIXES = {
     ".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".wma",

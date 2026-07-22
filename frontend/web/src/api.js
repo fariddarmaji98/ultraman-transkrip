@@ -46,6 +46,24 @@ export async function startTranscribe(id) {
   return data
 }
 
+export async function getCookies() {
+  const res = await fetch('/api/cookies')
+  return res.json()
+}
+
+export async function uploadCookies(platform, file) {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`/api/cookies/${platform}`, { method: 'POST', body: form })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal mengunggah cookies')
+  return data
+}
+
+export async function forgetCookies(platform) {
+  await fetch(`/api/cookies/${platform}`, { method: 'DELETE' })
+}
+
 export async function getStorage() {
   const res = await fetch('/api/storage')
   return res.json()

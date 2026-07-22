@@ -38,7 +38,7 @@ hilang saat restart) — jadi job tidak nyangkut.
 | `app/` | `main.py` (app factory + lifespan), `config.py` (settings env `TRANSKRIP_*`), `deps.py` (sesi DB), `schemas.py`, `naming.py` (bersihkan judul dari nama file), `routes/` | lifespan: init DB → start worker → requeue |
 | `asr/` | `base.py` (protocol `ASRProvider` + `Segment`), `local_whisper.py`, `groq.py`, `__init__.get_provider()` | interface tunggal; lokal lapor progres per-segmen |
 | `analysis/` | `base.py` (Protocol `LLMProvider` async), `openai_compat.py` (adapter httpx), `summarize.py` (map-reduce), `__init__.resolve()`/`get_llm()` | satu jalur OpenAI-compatible untuk Ollama/Groq/DeepSeek/Claude/OpenAI ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)); ringkasan = pemakai pertamanya ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
-| `capture/` | `base.py` (Protocol `MediaSource` + `MediaInfo`), `ytdlp.py` (`YtDlpSource`), `__init__.get_source()` | unduh dari URL via yt-dlp ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)); probe dulu, unduh ke temp lalu pindah |
+| `capture/` | `base.py` (Protocol `MediaSource` + `MediaInfo`), `ytdlp.py` (`YtDlpSource`), `cookies.py` (kredensial per-platform), `__init__.get_source()` | unduh dari URL via yt-dlp ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)); probe dulu, unduh ke temp lalu pindah; cookies dipilih otomatis dari domain URL |
 | `media/` | `ffmpeg.py`: `probe_duration_ms`, `extract_audio` | subprocess asyncio |
 | `worker/` | `queue.py` (antrean `(id, kind)`, `enqueue`, `pending_count`, `requeue_pending`), `pipeline.py` (`run_fetch`, `run_transcribe`) | concurrency=1; pipeline dipilih dari `Job.kind`; poller progres via holder thread-safe |
 | `store/` | `models.py` (Recording, Job, Segment), `db.py` (engine async + `init_db`/create_all) | SQLite (`aiosqlite`) |
@@ -99,6 +99,9 @@ Tambah pos = 1 entri di `build_protections()`.
 | `POST /api/recordings/{id}/transcribe` | jalankan transkrip untuk rekaman yang filenya sudah ada — 409 bila sedang diproses, 422 bila file hilang. Generik: dipakai video terunduh **dan** transkrip ulang rekaman upload |
 | `POST /api/recordings/{id}/summarize` | ringkasan AI (sinkron, belasan detik) — 422 bila belum ada transkrip / kunci AI belum diisi, 502 bila provider gagal ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
 | `GET /api/storage` | pemakaian disk folder unggahan (tab Unduh) |
+| `GET /api/cookies` | katalog platform + flag `stored` — **isi cookies tidak pernah dikirim** |
+| `POST /api/cookies/{platform}` | unggah `cookies.txt` (Netscape) — 422 bila formatnya salah, 413 bila >512 KB |
+| `DELETE /api/cookies/{platform}` | lupakan cookies platform |
 | `GET /api/recordings` | daftar (terbaru dulu) |
 | `GET /api/recordings/{id}` | detail + segments + `progress`, `source_available` |
 | `PATCH /api/recordings/{id}` | rename judul |

@@ -69,6 +69,8 @@ App (flex h-screen)
 | `DownloadTab` | form URL + pemakaian disk + arsip video (filter: `source_kind === 'url'`); daftarnya pakai `showDownload` sehingga tiap item punya tombol simpan-ke-komputer |
 | `UrlForm` | tempel URL → `POST /recordings/from-url`; error probe tampil di sini, isian tidak dihapus |
 | `StorageInfo` | angka disk — dipakai ganti kebijakan retensi otomatis yang sengaja belum ada |
+| `DownloaderInfo` | versi yt-dlp + umurnya; berubah kuning saat lewat ambang basi |
+| `CookiesPanel` | unggah/hapus `cookies.txt` per platform; isinya tidak pernah ditampilkan, hapus lewat `ConfirmModal` |
 | `ModelPicker` | dropdown model lokal (`PATCH /api/config`); terkunci saat engine sibuk |
 | `ResizeHandle` | batang geser lebar panel (dipakai sidebar & kolom kanan); induk wajib `relative` |
 | `SettingsModal` | popup mesin AI dari ikon gerigi: pilih provider, model, kunci API, tes koneksi. Kunci tersimpan → field **dikunci**; ganti kunci = hapus dulu, dan hapus wajib konfirmasi ([ADR 0007 §Amandemen](../adr/0007-mesin-ai-dipilih-dari-ui.md)) |

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getStorage } from '../api'
 import { isDownload } from '../utils'
+import CookiesPanel from './CookiesPanel'
 import DownloaderInfo from './DownloaderInfo'
 import RecordingList from './RecordingList'
 import SectionLabel from './SectionLabel'
@@ -24,6 +25,7 @@ export default function DownloadTab({
     <>
       <UrlForm onCreated={onCreated} />
       <DownloaderInfo downloader={config?.downloader} />
+      <CookiesPanel />
       <StorageInfo storage={storage} />
       <div>
         <SectionLabel>Video terunduh</SectionLabel>

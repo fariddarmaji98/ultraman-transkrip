@@ -274,8 +274,11 @@ Transkrip → Selesai`. Rekaman upload tetap seperti sekarang.
 2. ~~**Fase B — Tombol transkrip**~~ ✅ **selesai** (`659355e`)
    `POST /api/recordings/{id}/transcribe`, `Job.kind` dipakai sungguhan, tombol di FE. Sekaligus
    membuka **transkrip ulang** untuk rekaman upload — teruji 104 segmen → 104 segmen.
-3. **Fase C — Pengerasan YouTube** ← sedang dikerjakan
-   Sidecar PO-token, cookies per-platform, rate-limit, auto-update nightly (§8, §9, §10).
+3. **Fase C — Pengerasan** ✅ **sebagian selesai** (`16eeff8`, + commit cookies)
+   Jeda acak antar unduhan, versi yt-dlp terlihat + skrip update, cookies per-platform.
+   **PO token ditunda ke fase deploy**: Docker tidak tersedia di mesin dev (planning §8 menulisnya
+   sebagai sidecar port 4416), dan manfaatnya tidak bisa diverifikasi dari IP rumah yang
+   YouTube-nya sudah mulus. Dipasang bersamaan kerja VPS agar bisa diuji dari IP pusat data.
 4. **Fase D — Meta & subtitle-first**
    Cookies Instagram/Facebook, penanganan gagal + retry yang rapi, opsi "pakai caption platform" (§7).
 5. **Fase E — Nice-to-have**

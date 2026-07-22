@@ -9,6 +9,7 @@ from pathlib import Path
 
 import yt_dlp
 
+from capture import cookies
 from capture.base import (
     CaptureError,
     MediaInfo,
@@ -33,9 +34,18 @@ _QUIET = {
 }
 
 
+def _opts(url: str, extra: dict | None = None) -> dict:
+    """Opsi dasar + cookies platform bila ada (Instagram/Facebook praktis wajib)."""
+    opts = {**_QUIET, **(extra or {})}
+    jar = cookies.for_url(url)
+    if jar:
+        opts["cookiefile"] = str(jar)
+    return opts
+
+
 class YtDlpSource:
     def probe(self, url: str) -> MediaInfo:
-        with yt_dlp.YoutubeDL(_QUIET) as ydl:
+        with yt_dlp.YoutubeDL(_opts(url)) as ydl:
             try:
                 info = ydl.extract_info(url, download=False)
             except yt_dlp.utils.DownloadError as exc:
@@ -53,13 +63,12 @@ class YtDlpSource:
 
     def _download(self, url: str, tmp_dir: Path, on_progress: ProgressCb | None) -> None:
         seen = {"pct": 0}
-        opts = {
-            **_QUIET,
+        opts = _opts(url, {
             "format": _FORMAT,
             "outtmpl": str(tmp_dir / "media.%(ext)s"),
             "merge_output_format": "mp4",
             "progress_hooks": [lambda d: _report(d, seen, on_progress)],
-        }
+        })
         with yt_dlp.YoutubeDL(opts) as ydl:
             try:
                 ydl.download([url])

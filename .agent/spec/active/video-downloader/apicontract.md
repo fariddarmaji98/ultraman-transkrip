@@ -103,7 +103,24 @@ lalu `transcribe`, dan tanpa ini bar unduhan di sidebar tidak bergerak.
 - catatan bentuk data: balasan ini `RecordingOut` (**tanpa** `segments`), bukan `RecordingDetail` —
   pemanggil yang butuh segmen harus mengambil ulang detailnya
 
+# cookies per-platform (Fase C)
+
+- api: `/api/cookies` · GET → katalog platform + flag `stored`
+- api: `/api/cookies/{platform}` · POST (multipart `file`) → 201 + katalog terbaru
+- api: `/api/cookies/{platform}` · DELETE → 204
+- **isi cookies tidak pernah dikirim balik** — hanya `stored: true|false`, sepola kunci API
+  ([ADR 0007](../../../../docs/adr/0007-mesin-ai-dipilih-dari-ui.md))
+- disimpan di `data/cookies/{platform}.txt` (folder `data/` sudah gitignore)
+- validasi: berkas harus format **Netscape** (ada baris data 7 kolom dipisah tab). Tanpa cek ini,
+  mengunggah berkas keliru baru ketahuan saat unduhan gagal dengan pesan membingungkan
+- error: `422 platform tidak dikenal` · `422 bukan berkas cookies.txt format Netscape` ·
+  `422 berkas terlihat biner` · `413` >512 KB
+- dipakai otomatis: `capture.cookies.for_url()` mencocokkan domain URL ke platform, lalu
+  diteruskan ke yt-dlp sebagai `cookiefile`
+
 # yang BELUM ada
 
-- unggah `cookies.txt` per-platform (**Fase C**)
+- **PO token YouTube** (`bgutil-ytdlp-pot-provider`) — **ditunda ke fase deploy**. Docker tidak
+  tersedia di mesin dev, dan manfaatnya tak bisa diverifikasi dari IP rumah yang YouTube-nya sudah
+  mulus. Dipasang bersamaan kerja VPS supaya bisa diuji dari IP pusat data
 - opsi kualitas per-unduhan (**Fase E**)
