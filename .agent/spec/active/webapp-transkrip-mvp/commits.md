@@ -19,4 +19,4 @@
 - `237fb4e` Docs: ADR 0005 + ADR 0006
 - `a8d406f` Popup Setelan: pilih mesin AI (lokal atau API) — ADR 0007
 - `0740096` Docs: ADR 0007 + kontrak /api/llm
-- (berikutnya) Setelan: kunci API tak lagi ambigu + hapus wajib konfirmasi — ADR 0007 §Amandemen
+- `ec83b54` Setelan: kunci API tak lagi ambigu + hapus wajib konfirmasi — ADR 0007 §Amandemen
