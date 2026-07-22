@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getStorage } from '../api'
 import { isDownload } from '../utils'
+import DownloaderInfo from './DownloaderInfo'
 import RecordingList from './RecordingList'
 import SectionLabel from './SectionLabel'
 import StorageInfo from './StorageInfo'
@@ -10,6 +11,7 @@ import UrlForm from './UrlForm'
 
 export default function DownloadTab({
   recordings,
+  config,
   selectedId,
   onSelect,
   onChanged,
@@ -21,6 +23,7 @@ export default function DownloadTab({
   return (
     <>
       <UrlForm onCreated={onCreated} />
+      <DownloaderInfo downloader={config?.downloader} />
       <StorageInfo storage={storage} />
       <div>
         <SectionLabel>Video terunduh</SectionLabel>

@@ -7,6 +7,8 @@ Keduanya idempoten: unduhan yang filenya sudah ada dilewati, segmen lama dihapus
 sebelum ditulis ulang — jadi requeue setelah restart aman.
 """
 import asyncio
+import random
+import time
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,6 +19,8 @@ from app.config import settings
 from asr import get_provider
 from capture import get_source
 from constants import (
+    FETCH_GAP_MAX_S,
+    FETCH_GAP_MIN_S,
     JOB_DONE,
     JOB_DOWNLOADED,
     JOB_DOWNLOADING,
@@ -71,9 +75,27 @@ async def _load(db, recording_id: int, kind: str):
     return rec, result.scalars().first()
 
 
+_last_fetch_end = 0.0
+
+
+async def _throttle() -> None:
+    """Jeda acak sejak unduhan terakhir selesai.
+
+    Antrean sudah serial (concurrency=1), tapi tanpa jeda dua URL yang dikirim
+    beruntun tetap terbaca sebagai burst oleh platform.
+    """
+    gap = random.uniform(FETCH_GAP_MIN_S, FETCH_GAP_MAX_S)
+    wait = _last_fetch_end + gap - time.monotonic()
+    if wait > 0:
+        logger.info("jeda {:.1f} dtk sebelum unduhan berikutnya", wait)
+        await asyncio.sleep(wait)
+
+
 async def _fetch(db, rec, job) -> None:
+    global _last_fetch_end
     if rec.upload_path and Path(rec.upload_path).exists():
         return  # unduhan sebelumnya sudah tuntas (requeue setelah restart)
+    await _throttle()
     await _set(db, rec, job, JOB_DOWNLOADING, 1)
     holder = {"pct": 1}
     poller = asyncio.create_task(_poll(db, rec, job, holder, JOB_DOWNLOADING))
@@ -86,6 +108,7 @@ async def _fetch(db, rec, job) -> None:
         poller.cancel()
         await _await_cancel(poller)
     rec.upload_path, rec.source_filename = str(path), path.name
+    _last_fetch_end = time.monotonic()
     await db.commit()
 
 

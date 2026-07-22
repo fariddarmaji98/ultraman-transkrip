@@ -1,6 +1,8 @@
 """Healthcheck + info config (panel engine di FE) + ganti model lokal + pemakaian disk."""
 import shutil
+from datetime import date
 
+import yt_dlp
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
@@ -14,6 +16,7 @@ from constants import (
     LOCAL_MODEL_IDS,
     MAX_UPLOAD_BYTES,
     TRANSCRIBE_BUSY_STATUSES,
+    YTDLP_STALE_DAYS,
 )
 from store import models
 
@@ -62,7 +65,30 @@ def _payload() -> dict:
         "model": GROQ_MODEL if is_groq else settings.local_whisper_model,
         "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
         "models": [] if is_groq else list(LOCAL_MODEL_CHOICES),
+        "downloader": _downloader(),
     }
+
+
+def _downloader() -> dict:
+    """Umur yt-dlp harus kelihatan: extractor rusak tiap situs berubah, dan
+    versi basi adalah penyebab kegagalan unduh nomor satu."""
+    version = yt_dlp.version.__version__
+    age = _age_days(version)
+    return {
+        "name": "yt-dlp",
+        "version": version,
+        "age_days": age,
+        "stale": age is not None and age > YTDLP_STALE_DAYS,
+    }
+
+
+def _age_days(version: str) -> int | None:
+    """Versi nightly berformat tanggal (2026.07.20.234742)."""
+    try:
+        year, month, day = (int(p) for p in version.split(".")[:3])
+        return (date.today() - date(year, month, day)).days
+    except (ValueError, TypeError):
+        return None
 
 
 async def _active_count(db) -> int:

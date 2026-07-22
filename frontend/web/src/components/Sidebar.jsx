@@ -31,7 +31,12 @@ export default function Sidebar({ recordings, config, onCreated, ...tabProps }) 
       <SidebarTabs active={tab} counts={counts} onChange={setTab} />
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         {tab === 'unduh' ? (
-          <DownloadTab recordings={recordings} onCreated={onCreated} {...tabProps} />
+          <DownloadTab
+            recordings={recordings}
+            config={config}
+            onCreated={onCreated}
+            {...tabProps}
+          />
         ) : (
           <TranscribeTab recordings={recordings} config={config} {...tabProps} />
         )}

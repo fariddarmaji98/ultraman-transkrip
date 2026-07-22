@@ -92,6 +92,15 @@ MEDIA_RETENTION_DAYS = 30
 DOWNLOAD_MAX_HEIGHT = 720          # cap resolusi — hemat disk, cukup untuk ditonton
 DOWNLOAD_MAX_DURATION_S = 4 * 3600  # tolak saat probe, sebelum sebyte pun diunduh
 
+# Jeda acak antar unduhan. Burst dari satu IP paling cepat memancing rate-limit
+# platform; acak supaya polanya tidak seragam seperti bot.
+FETCH_GAP_MIN_S = 3
+FETCH_GAP_MAX_S = 10
+
+# Umur yt-dlp sebelum dianggap basi. Extractor rusak tiap situs berubah —
+# ini gotcha nomor satu di planning, jadi harus kelihatan di UI.
+YTDLP_STALE_DAYS = 14
+
 # Format media yang diterima (dikenali ffmpeg)
 ACCEPTED_SUFFIXES = {
     ".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".opus", ".wma",
