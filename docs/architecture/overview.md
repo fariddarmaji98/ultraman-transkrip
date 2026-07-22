@@ -123,8 +123,8 @@ Tambah pos = 1 entri di `build_protections()`.
 React + Vite + Tailwind (tema gelap, [ui.md](ui.md)). Semua request lewat `/api` (proxy Vite).
 
 Halaman detail = **workspace 3 kolom** ([ADR 0006](../adr/0006-workspace-tiga-kolom.md)):
-`Sidebar` (upload + panel Engine + statistik + riwayat) │ `AiPanel` (ringkasan + chat — masih
-dikunci sampai M2/M3) │ `SourcePanel` (player + `ProgressSteps`/`ProgressBar` + `SegmentList`).
+`Sidebar` (upload + panel Engine + statistik + riwayat) │ `AiPanel` (tab Ringkasan / Chat, masing-
+masing tinggi penuh) │ `SourcePanel` (player + `ProgressSteps`/`ProgressBar` + `SegmentList`).
 `TranscriptHeader` membentang di atas dua kolom kanan. Lebar sidebar & kolom kanan bisa digeser
 (`hooks/usePanelWidth.js` + `ResizeHandle`, tersimpan di `localStorage`).
 

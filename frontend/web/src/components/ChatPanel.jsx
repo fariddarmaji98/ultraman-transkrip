@@ -5,7 +5,7 @@ import { clearChat, getChat, sendChat } from '../api'
 import CitedText from './CitedText'
 import ConfirmModal from './ConfirmModal'
 
-export default function ChatPanel({ rec, ready, onSeek }) {
+export default function ChatPanel({ rec, ready, active, onSeek, onCount }) {
   const [messages, setMessages] = useState([])
   const [question, setQuestion] = useState('')
   const [busy, setBusy] = useState(false)
@@ -18,8 +18,14 @@ export default function ChatPanel({ rec, ready, onSeek }) {
   }, [rec.id])
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' })
-  }, [messages, busy])
+    onCount?.(messages.length)
+  }, [messages, onCount])
+
+  useEffect(() => {
+    // `active` ikut jadi pemicu: scrollIntoView tak berpengaruh saat panel
+    // masih display:none, jadi harus diulang begitu tabnya dibuka.
+    if (active) endRef.current?.scrollIntoView({ block: 'end' })
+  }, [messages, busy, active])
 
   async function send(e) {
     e.preventDefault()
@@ -49,8 +55,8 @@ export default function ChatPanel({ rec, ready, onSeek }) {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <Header count={messages.length} onClear={() => setConfirming(true)} />
+      <section className={`min-h-0 flex-1 flex-col ${active ? 'flex' : 'hidden'}`}>
+        <Header messages={messages} onClear={() => setConfirming(true)} />
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {messages.length === 0 && !busy && <Empty ready={ready} />}
           {messages.map((m) => (
@@ -60,14 +66,14 @@ export default function ChatPanel({ rec, ready, onSeek }) {
           {error && <p className="text-xs leading-snug text-red-400">{error}</p>}
           <div ref={endRef} />
         </div>
-      </div>
-      <Composer
-        value={question}
-        ready={ready}
-        busy={busy}
-        onChange={setQuestion}
-        onSubmit={send}
-      />
+        <Composer
+          value={question}
+          ready={ready}
+          busy={busy}
+          onChange={setQuestion}
+          onSubmit={send}
+        />
+      </section>
       {confirming && (
         <ConfirmModal
           title="Bersihkan percakapan?"
@@ -81,20 +87,21 @@ export default function ChatPanel({ rec, ready, onSeek }) {
   )
 }
 
-function Header({ count, onClear }) {
+// Judul "Chat" sudah ada di tab, jadi baris ini menampilkan yang belum
+// terlihat di mana pun: mesin yang menjawab (sepola kartu Ringkasan).
+// Percakapan kosong = tidak ada baris sama sekali, tidak ada ruang terbuang.
+function Header({ messages, onClear }) {
+  if (messages.length === 0) return null
+  const model = [...messages].reverse().find((m) => m.model)?.model
   return (
-    <div className="flex items-center justify-between border-t border-edge px-5 py-2">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-fg3">
-        Chat
-      </span>
-      {count > 0 && (
-        <button
-          onClick={onClear}
-          className="text-[10px] text-fg3 transition hover:text-red-400"
-        >
-          Bersihkan
-        </button>
-      )}
+    <div className="flex shrink-0 items-center justify-between border-b border-edge px-5 py-2">
+      <span className="font-mono text-[10px] text-fg3">{model ?? ''}</span>
+      <button
+        onClick={onClear}
+        className="text-[10px] text-fg3 transition hover:text-red-400"
+      >
+        Bersihkan
+      </button>
     </div>
   )
 }

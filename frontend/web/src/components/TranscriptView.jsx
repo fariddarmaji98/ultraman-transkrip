@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getRecording, sourceUrl, startTranscribe } from '../api'
-import { currentSegment, isVideo } from '../utils'
+import { currentSegment, isVideo, nearestSegment } from '../utils'
 import TranscriptHeader from './TranscriptHeader'
 import SegmentList from './SegmentList'
 import ProgressSteps from './ProgressSteps'
@@ -11,6 +11,7 @@ import usePanelWidth from '../hooks/usePanelWidth'
 const TRANSCRIBING = ['queued', 'extracting', 'transcribing']
 const PENDING = [...TRANSCRIBING, 'downloading']  // masih berjalan -> terus di-poll
 const SOURCE_W = { key: 'source-width', min: 360, max: 900, initial: 560, handleSide: 'left' }
+const SCROLL_MS = 420  // durasi animasi gulir ke segmen tujuan
 const PHASE = {
   queued: 'Mengantre…',
   extracting: 'Mengekstrak audio…',
@@ -73,14 +74,29 @@ export default function TranscriptView({ id, onDone, onClose }) {
 
 function Detail({ rec, error, onTranscribe, onRefresh, onTitleChange, onClose }) {
   const mediaRef = useRef(null)
+  const scrollRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
 
+  // Satu pintu untuk semua lompatan waktu — dari klik segmen maupun dari sitasi
+  // di chat. Player boleh tidak ada (media kena retensi), transkripnya tetap
+  // ikut bergulir ke titik yang dimaksud.
+  //
+  // Sengaja tanpa play(): klik menit memindahkan posisi, bukan mengubah status.
+  // Yang sedang main tetap main, yang jeda tetap jeda — orang yang lagi membaca
+  // jawaban chat tidak dikagetkan suara yang tiba-tiba menyala.
   const seek = (ms) => {
-    mediaRef.current.currentTime = ms / 1000
-    mediaRef.current.play()
+    const pos = nearestSegment(rec.segments ?? [], ms)
+    if (mediaRef.current) mediaRef.current.currentTime = ms / 1000
+    setActiveIdx(pos)  // jangan tunggu timeupdate: waktunya bisa jatuh di jeda hening
+    revealSegment(scrollRef.current, pos)
   }
-  const onTime = () =>
-    setActiveIdx(currentSegment(rec.segments ?? [], mediaRef.current.currentTime))
+
+  // Jeda hening di antara segmen bikin `currentSegment` mengembalikan -1;
+  // pertahankan sorotan terakhir daripada memadamkannya sekejap-sekejap.
+  const onTime = () => {
+    const pos = currentSegment(rec.segments ?? [], mediaRef.current.currentTime)
+    if (pos !== -1) setActiveIdx(pos)
+  }
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
@@ -97,6 +113,7 @@ function Detail({ rec, error, onTranscribe, onRefresh, onTitleChange, onClose })
           error={error}
           onTranscribe={onTranscribe}
           mediaRef={mediaRef}
+          scrollRef={scrollRef}
           activeIdx={activeIdx}
           onTime={onTime}
           onSeek={seek}
@@ -106,7 +123,46 @@ function Detail({ rec, error, onTranscribe, onRefresh, onTitleChange, onClose })
   )
 }
 
-function SourcePanel({ rec, error, onTranscribe, mediaRef, activeIdx, onTime, onSeek }) {
+// Gulirkan transkrip ke segmen tujuan — hanya bila ia belum terlihat, supaya
+// klik pada segmen yang sudah di layar tidak menggeser bacaan orang.
+function revealSegment(scroller, pos) {
+  const el = scroller?.querySelector(`[data-pos="${pos}"]`)
+  if (!el) return
+  const view = scroller.getBoundingClientRect()
+  // Player menempel di atas; segmen yang tertutup olehnya belum benar-benar terlihat.
+  const top = scroller.querySelector('[data-sticky]')?.getBoundingClientRect().bottom ?? view.top
+  const box = el.getBoundingClientRect()
+  if (box.top >= top && box.bottom <= view.bottom) return
+  // Pusatkan di ruang yang benar-benar terlihat, yaitu di bawah player.
+  const tengah = (top + view.bottom) / 2 - box.height / 2
+  glideTo(scroller, scroller.scrollTop + box.top - tengah)
+}
+
+let tujuanGlide = null  // lompatan terakhir yang menang, bila diklik beruntun
+
+// Animasi gulir sendiri, bukan `behavior: 'smooth'` bawaan: browser mematikan
+// yang bawaan saat `prefers-reduced-motion: reduce` — dan lingkungan tertentu
+// (mis. panel pratinjau di editor) melaporkannya walau bukan maunya pengguna.
+function glideTo(el, jauh) {
+  const to = Math.max(0, Math.min(jauh, el.scrollHeight - el.clientHeight))
+  const dari = el.scrollTop
+  const mulai = performance.now()
+  tujuanGlide = to
+  const langkah = (now) => {
+    if (tujuanGlide !== to) return  // sudah ada lompatan yang lebih baru
+    const p = Math.min((now - mulai) / SCROLL_MS, 1)
+    el.scrollTop = dari + (to - dari) * (1 - (1 - p) ** 3)  // ease-out kubik
+    if (p < 1) requestAnimationFrame(langkah)
+  }
+  requestAnimationFrame(langkah)
+  // Jaring pengaman: ada lingkungan yang cuma melukis saat perlu, jadi rAF bisa
+  // berhenti di tengah animasi. Tujuannya wajib tercapai walau mulusnya hilang.
+  setTimeout(() => {
+    if (tujuanGlide === to && Math.abs(el.scrollTop - to) > 1) el.scrollTop = to
+  }, SCROLL_MS + 80)
+}
+
+function SourcePanel({ rec, error, onTranscribe, mediaRef, scrollRef, activeIdx, onTime, onSeek }) {
   const { width, dragging, handlers } = usePanelWidth(SOURCE_W)
   return (
     <section
@@ -116,7 +172,15 @@ function SourcePanel({ rec, error, onTranscribe, mediaRef, activeIdx, onTime, on
       }`}
     >
       <ResizeHandle side="left" dragging={dragging} handlers={handlers} />
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+      {/* Tanpa padding atas selama ada player: elemen `sticky` tidak boleh keluar
+          dari content box induknya, jadi padding atas berubah jadi celah tempat
+          teks yang lewat mengintip. Jaraknya diberikan player itu sendiri. */}
+      <div
+        ref={scrollRef}
+        className={`min-h-0 flex-1 overflow-y-auto px-5 pb-5 ${
+          rec.source_available ? '' : 'pt-5'
+        }`}
+      >
         <MediaPlayer rec={rec} mediaRef={mediaRef} onTime={onTime} />
         {rec.status === 'downloading' && (
           <ProgressBar status={rec.status} progress={rec.progress} />
@@ -144,16 +208,22 @@ function MediaPlayer({ rec, mediaRef, onTime }) {
   const Tag = isVideo(rec.source_filename) ? 'video' : 'audio'
   const cls =
     Tag === 'video'
-      ? 'mb-5 max-h-96 w-full rounded-xl border border-edge bg-black'
-      : 'mb-5 w-full'
+      ? 'max-h-96 w-full rounded-xl border border-edge bg-black'
+      : 'w-full'
   return (
-    <Tag
-      ref={mediaRef}
-      src={sourceUrl(rec.id)}
-      controls
-      onTimeUpdate={onTime}
-      className={cls}
-    />
+    // Menempel di atas saat transkrip digulir — nonton sambil ikut membaca.
+    // `-mx-5 px-5`: latarnya harus menutup sampai tepi kolom, kalau tidak teks
+    // yang lewat di belakangnya mengintip di sela padding. `pt-5` menggantikan
+    // padding atas induk yang sengaja ditiadakan (lihat SourcePanel).
+    <div data-sticky className="sticky top-0 z-10 -mx-5 mb-5 bg-canvas px-5 pb-3 pt-5">
+      <Tag
+        ref={mediaRef}
+        src={sourceUrl(rec.id)}
+        controls
+        onTimeUpdate={onTime}
+        className={cls}
+      />
+    </div>
   )
 }
 

@@ -11,15 +11,17 @@ fitur AI (ringkasan, chat, "second brain").
 ## Apa yang bisa
 
 - **Unggah** audio/video (mp3, wav, m4a, mp4, mkv, webm, …) → transkrip per-segmen + timestamp.
-- **Player tersinkron**: tonton video / dengar audio; klik segmen → player lompat ke waktu itu.
+- **Player tersinkron**: tonton video / dengar audio; player menempel di atas saat transkrip
+  digulir. Klik menit (di transkrip maupun sitasi chat) memindahkan posisi dan menggulirkan
+  transkrip ke sana — tanpa mengubah status main/jeda.
 - **Progress**: stepper tahap (Antre → Ekstrak → Transkrip → Selesai) + bar persen.
 - **Riwayat**: semua transkrip tersimpan (SQLite), bisa dibuka ulang, rename judul, hapus.
 - **Ekspor**: TXT / SRT / JSON.
 - **Provider ASR bisa ditukar**: faster-whisper lokal (default) atau Groq API — ganti lewat env.
 - **Model bisa dipilih dari UI**: dropdown di panel Engine (`base` … `large-v3`), tersimpan lintas
   restart, terkunci saat ada transkrip berjalan ([ADR 0005](docs/adr/0005-model-asr-runtime.md)).
-- **Workspace 3 kolom**: riwayat │ asisten AI (menyusul M2/M3) │ player + transkrip; lebar panel
-  bisa digeser ([ADR 0006](docs/adr/0006-workspace-tiga-kolom.md)).
+- **Workspace 3 kolom**: riwayat │ asisten AI (tab Ringkasan / Chat) │ player + transkrip; lebar
+  panel bisa digeser ([ADR 0006](docs/adr/0006-workspace-tiga-kolom.md)).
 - **Mesin AI dipilih dari popup Setelan**: Ollama lokal, Groq, DeepSeek, Claude, OpenAI — satu jalur
   OpenAI-compatible, lengkap dengan tes koneksi ([ADR 0007](docs/adr/0007-mesin-ai-dipilih-dari-ui.md)).
 - **Unduh video dari URL**: tempel link → video (maks 720p) masuk arsip, bisa ditonton, dan bisa
@@ -29,7 +31,9 @@ fitur AI (ringkasan, chat, "second brain").
 - **Ringkasan AI**: ringkasan + poin utama + poin aksi dari transkrip, lewat mesin AI pilihanmu.
   Transkrip panjang dipotong dan digabung otomatis ([ADR 0009](docs/adr/0009-ringkasan-transkrip.md)).
 - **Chat dengan transkrip**: tanya isi rekaman, jawabannya menyertakan menit sumber `[mm:ss]` yang
-  **bisa diklik** untuk memutar dari titik itu ([ADR 0010](docs/adr/0010-chat-transkrip.md)).
+  **bisa diklik** untuk melompat ke titik itu ([ADR 0010](docs/adr/0010-chat-transkrip.md)).
+  Ringkasan dan chat dipisah tab agar keduanya dapat tinggi penuh
+  ([ADR 0006 §Amandemen](docs/adr/0006-workspace-tiga-kolom.md)).
 - **Bahasa Indonesia divalidasi**: `large-v3-turbo` ~5,4% WER pada FLEURS-id (lihat `samples/`).
 
 ## Arsitektur (saat ini)

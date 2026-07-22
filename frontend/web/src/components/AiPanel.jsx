@@ -1,15 +1,48 @@
-// Kolom tengah: ringkasan (aktif) + chat (menyusul M3).
+// Kolom tengah: dua tab — Ringkasan dan Chat. Dipisah tab supaya masing-masing
+// dapat tinggi penuh; sebelumnya chat cuma kebagian sisa ruang di bawah kartu
+// ringkasan. Tab yang tidak aktif disembunyikan (bukan dilepas) agar percakapan
+// yang sedang dijawab tidak hilang saat pindah tab.
 // Mesin AI-nya dipilih di popup Setelan — lihat ADR 0007.
 import { useState } from 'react'
 import { summarizeRecording } from '../api'
 import { fmtDate } from '../utils'
+import useLocalState from '../hooks/useLocalState'
 import ChatPanel from './ChatPanel'
 import SummaryText from './SummaryText'
+import TabBar from './TabBar'
 
 export default function AiPanel({ rec, onSummarized, onSeek }) {
+  const [tab, setTab] = useLocalState('ai-tab', 'ringkasan')
+  const [chatCount, setChatCount] = useState(0)
+  const ready = rec.status === 'done' && rec.segments?.length > 0
+  const tabs = [
+    { id: 'ringkasan', label: 'Ringkasan' },
+    { id: 'chat', label: 'Chat', count: chatCount },
+  ]
+
+  return (
+    <section className="flex min-w-0 flex-1 flex-col">
+      <TabBar tabs={tabs} active={tab} onChange={setTab} />
+      <SummaryPane
+        rec={rec}
+        ready={ready}
+        active={tab === 'ringkasan'}
+        onSummarized={onSummarized}
+      />
+      <ChatPanel
+        rec={rec}
+        ready={ready}
+        active={tab === 'chat'}
+        onSeek={onSeek}
+        onCount={setChatCount}
+      />
+    </section>
+  )
+}
+
+function SummaryPane({ rec, ready, active, onSummarized }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
-  const ready = rec.status === 'done' && rec.segments?.length > 0
 
   async function run() {
     setBusy(true)
@@ -25,28 +58,14 @@ export default function AiPanel({ rec, onSummarized, onSeek }) {
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col">
-      <PanelHeader />
-      <div className="shrink-0 overflow-y-auto p-5 pb-0">
-        <SummaryCard
-          summary={rec.summary}
-          ready={ready}
-          busy={busy}
-          error={error}
-          onRun={run}
-        />
-      </div>
-      <ChatPanel rec={rec} ready={ready} onSeek={onSeek} />
-    </section>
-  )
-}
-
-function PanelHeader() {
-  return (
-    <div className="flex items-center justify-between border-b border-edge px-5 py-3">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-fg3">
-        Asisten AI
-      </span>
+    <div className={`${active ? 'block' : 'hidden'} min-h-0 flex-1 overflow-y-auto p-5`}>
+      <SummaryCard
+        summary={rec.summary}
+        ready={ready}
+        busy={busy}
+        error={error}
+        onRun={run}
+      />
     </div>
   )
 }

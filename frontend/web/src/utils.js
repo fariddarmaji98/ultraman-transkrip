@@ -12,6 +12,14 @@ export function currentSegment(segments, currentSec) {
   return segments.findIndex((s) => t >= s.start_ms && t < s.end_ms)
 }
 
+// Segmen terdekat untuk sebuah waktu — dipakai saat melompat, jadi sengaja
+// tidak menuntut waktunya jatuh persis di dalam segmen: sitasi model bisa
+// membulatkan detik, dan ada jeda hening di antara segmen.
+export function nearestSegment(segments, ms) {
+  const pos = segments.findIndex((s) => ms < s.end_ms)
+  return pos === -1 ? segments.length - 1 : pos
+}
+
 // Tanggal singkat lokal (mis. "19 Jul 2026").
 export function fmtDate(iso) {
   const d = new Date(iso)

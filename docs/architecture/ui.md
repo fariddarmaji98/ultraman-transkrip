@@ -37,7 +37,7 @@ App (flex h-screen)
 ├─ Sidebar (lebar bisa digeser 280–560px, default 340; bg-panel)  ── selalu tampil
 │   ├─ ResizeHandle (hairline mint di tepi kanan; klik ganda = reset)
 │   ├─ Brand (logo mint + nama + tagline + ikon gerigi → SettingsModal)
-│   ├─ SidebarTabs [Transkrip] [Unduh] — tab aktif di localStorage (ADR 0008)
+│   ├─ SidebarTabs [Transkrip] [Unduh] — `TabBar`; tab aktif di localStorage (ADR 0008)
 │   ├─ TranscribeTab (tab 1)
 │   │   ├─ UploadPanel (file, bahasa, tombol Transkrip, progress upload)
 │   │   ├─ EnginePanel (provider + ModelPicker dari /api/config + status engine)
@@ -50,10 +50,16 @@ App (flex h-screen)
 └─ main (flex-1)
     ├─ TranscriptView (bila ada rekaman dipilih) — bersama sidebar = 3 kolom
     │   ├─ TranscriptHeader (membentang penuh: judul editable + Ekspor + tutup)
-    │   ├─ AiPanel (KOLOM TENGAH, flex-1) — ringkasan + chat; terkunci s/d M2/M3
+    │   ├─ AiPanel (KOLOM TENGAH, flex-1)
+    │   │   ├─ TabBar [Ringkasan] [Chat] — badge = jumlah pesan; aktif di localStorage
+    │   │   ├─ SummaryPane (tab 1) — kartu ringkasan + tombol buat/buat ulang
+    │   │   └─ ChatPanel (tab 2) — pesan + composer, tinggi penuh kolom
+    │   │       Tab non-aktif disembunyikan (`display:none`), bukan dilepas —
+    │   │       jawaban yang sedang ditunggu tidak hilang saat pindah tab.
     │   └─ SourcePanel (KOLOM KANAN, 360–900px, default 560; scroll sendiri)
     │       ├─ ResizeHandle (tepi kiri)
-    │       ├─ MediaPlayer (video/audio dari /source)
+    │       ├─ MediaPlayer (video/audio dari /source) — `sticky top-0`, tetap
+    │       │   terlihat saat transkrip digulir; induknya sengaja tanpa `pt`
     │       ├─ ProgressSteps + ProgressBar (saat status pending)
     │       └─ SegmentList (transkrip; klik segmen → seek player)
     └─ EmptyState (bila tak ada dipilih: ikon + info, bukan kotak kosong)
@@ -64,6 +70,7 @@ App (flex h-screen)
 | Komponen | Tugas |
 |---|---|
 | `Sidebar` | rangka: Brand + SidebarTabs + isi tab aktif; lebar & tab tersimpan di `localStorage` |
+| `TabBar` | baris tab generik (`{id,label,count}[]`) — dipakai sidebar **dan** kolom AI, supaya keduanya tidak pelan-pelan beda rupa |
 | `SidebarTabs` | pemisah Transkrip vs Unduh, dengan badge jumlah item tiap tab |
 | `TranscribeTab` | unggah + engine + statistik + Riwayat (filter: di luar `downloading`/`downloaded`) |
 | `DownloadTab` | form URL + pemakaian disk + arsip video (filter: `source_kind === 'url'`); daftarnya pakai `showDownload` sehingga tiap item punya tombol simpan-ke-komputer |
@@ -75,16 +82,16 @@ App (flex h-screen)
 | `ResizeHandle` | batang geser lebar panel (dipakai sidebar & kolom kanan); induk wajib `relative` |
 | `SettingsModal` | popup mesin AI dari ikon gerigi: pilih provider, model, kunci API, tes koneksi. Kunci tersimpan → field **dikunci**; ganti kunci = hapus dulu, dan hapus wajib konfirmasi ([ADR 0007 §Amandemen](../adr/0007-mesin-ai-dipilih-dari-ui.md)) |
 | `ConfirmModal` | konfirmasi aksi tak-bisa-dibatalkan (hapus rekaman, hapus kunci API). `z-40` — selalu di atas modal lain, termasuk saat dipanggil dari dalam `SettingsModal` (`z-30`) |
-| `AiPanel` | kolom tengah: kartu Ringkasan + `ChatPanel`. Keduanya aktif; tombol mati sampai transkrip `done` ([ADR 0009](../adr/0009-ringkasan-transkrip.md), [0010](../adr/0010-chat-transkrip.md)) |
-| `ChatPanel` | tanya-jawab tersimpan per rekaman, gelembung pesan, bersihkan percakapan lewat `ConfirmModal` |
+| `AiPanel` | kolom tengah: `TabBar` + tab Ringkasan/Chat, masing-masing tinggi penuh ([ADR 0006 §Amandemen](../adr/0006-workspace-tiga-kolom.md)). Tombolnya mati sampai transkrip `done` ([ADR 0009](../adr/0009-ringkasan-transkrip.md), [0010](../adr/0010-chat-transkrip.md)) |
+| `ChatPanel` | tanya-jawab tersimpan per rekaman, gelembung pesan, bersihkan percakapan lewat `ConfirmModal`. Prop `active` menyalakan panel **dan** memicu scroll ke bawah — `scrollIntoView` tak berpengaruh saat masih `display:none` |
 | `CitedText` | render `[mm:ss]` (dan rentang `[mm:ss-mm:ss]`) jadi tombol seek; sitasi di luar durasi dicoret, tidak bisa diklik |
 | `SummaryText` | render subset Markdown yang diminta di prompt (`## judul`, `- butir`, paragraf) — sengaja bukan library |
 | `UploadPanel` | pilih file + bahasa, unggah (XHR + progress), panggil `onUploaded` |
 | `RecordingList` | daftar dipakai dua tab; prop `emptyText`/`confirmTitle`/`confirmMessage`/`showDownload` membedakannya tanpa komponen kembar. `ConfirmModal` untuk hapus |
 | `StatusBadge` | status → ikon (jam/spinner/centang/peringatan) + tooltip |
-| `TranscriptView` | poll detail rekaman, susun header + player + progress + transkrip |
+| `TranscriptView` | poll detail rekaman, susun header + player + progress + transkrip. `seek(ms)` adalah **satu pintu** semua lompatan waktu (klik segmen maupun sitasi chat): geser player — **tanpa `play()`**, status main/jeda tidak diubah — lalu gulirkan transkrip lewat `revealSegment`, yang diam bila segmennya sudah terlihat dan tahu bagian atas tertutup player sticky. Gulirannya dianimasikan `glideTo` sendiri, sebab `behavior: 'smooth'` dimatikan browser saat `prefers-reduced-motion` |
 | `TranscriptHeader` | top bar: judul editable (`PATCH`), **Transkrip ulang** (status `done`/`failed`), ekspor, tombol tutup |
-| `SegmentList` | render segmen + highlight aktif + seek |
+| `SegmentList` | render segmen + highlight aktif + seek. Tiap baris ber-`data-pos` supaya `revealSegment` bisa menemukannya tanpa peta ref |
 | `ProgressSteps` | stepper tahap (Antre→Ekstrak→Transkrip→Selesai) |
 | `ConfirmModal` | dialog konfirmasi (hapus) |
 | `EmptyState` | placeholder area utama saat kosong |
