@@ -124,6 +124,8 @@ real-time (besar).
    sebelum dipakai orang lain.
 3. **Fase III — real-time**: `realtime/` streaming ASR + WebSocket, 1 metode `capture/` dulu (ekstensi
    tab paling dekat dgn kerja lama). Transkrip live + ringkasan pasca-call.
+   → rencana rincinya: [meeting-capture.md](meeting-capture.md), termasuk **cara membedakan siapa
+   yang bicara** (channel stereo + indikator DOM) dan kenapa audio-batch dulu, real-time menyusul.
 4. **Fase IV — integrasi & analitik**: Zoom/Meet/Slack/CRM, dashboard conversation intelligence,
    coaching. Ini yang membuatnya jadi produk, bukan tool.
 
