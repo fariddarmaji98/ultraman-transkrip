@@ -77,9 +77,26 @@ dan rename semuanya jalan tanpa perubahan.
 terbaru** (`MAX(jobs.id)` per recording) — perlu karena satu recording bisa punya job `fetch`
 lalu `transcribe`, dan tanpa ini bar unduhan di sidebar tidak bergerak.
 
-# yang BELUM ada di Fase A
+# jalankan transkrip (Fase B)
 
-- `POST /api/recordings/{id}/transcribe` — memulai transkrip untuk rekaman `downloaded`
-  (**Fase B**; sekalian membuka transkrip ulang untuk rekaman upload)
+- api: `/api/recordings/{id}/transcribe`
+- method: POST (tanpa body)
+- auth: session cookie
+- efek: buat Job `transcribe` baru, set status `queued`, enqueue
+- response 202: `RecordingOut` (status `queued`)
+- error:
+  - `404` rekaman tidak ditemukan
+  - `409 rekaman ini sedang diproses` — status masih di `ACTIVE_STATUSES`
+  - `422 file sumber tidak tersedia` — `upload_path` kosong atau filenya hilang
+- **sengaja generik**: dipakai untuk video hasil unduhan (`downloaded`) sekaligus **transkrip ulang**
+  rekaman upload, mis. setelah ganti model ASR ([ADR 0005](../../../../docs/adr/0005-model-asr-runtime.md))
+- idempoten: `run_transcribe` menghapus segmen lama sebelum menulis yang baru — transkrip ulang
+  **mengganti**, tidak menggandakan. Segmen lama baru dihapus setelah ASR sukses, jadi kegagalan
+  di tengah tidak menghilangkan transkrip yang sudah ada
+- catatan bentuk data: balasan ini `RecordingOut` (**tanpa** `segments`), bukan `RecordingDetail` —
+  pemanggil yang butuh segmen harus mengambil ulang detailnya
+
+# yang BELUM ada
+
 - unggah `cookies.txt` per-platform (**Fase C**)
 - opsi kualitas per-unduhan (**Fase E**)

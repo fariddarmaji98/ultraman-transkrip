@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getRecording, sourceUrl } from '../api'
+import { getRecording, sourceUrl, startTranscribe } from '../api'
 import { currentSegment, isVideo } from '../utils'
 import TranscriptHeader from './TranscriptHeader'
 import SegmentList from './SegmentList'
@@ -20,6 +20,8 @@ const PHASE = {
 
 export default function TranscriptView({ id, onDone, onClose }) {
   const [rec, setRec] = useState(null)
+  const [round, setRound] = useState(0)  // dinaikkan untuk memulai ulang polling
+  const [error, setError] = useState(null)
   const onDoneRef = useRef(onDone)
   onDoneRef.current = onDone
 
@@ -36,18 +38,39 @@ export default function TranscriptView({ id, onDone, onClose }) {
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, round])
 
   const applyTitle = (title) => {
     setRec((r) => ({ ...r, title }))
     onDoneRef.current?.()
   }
 
+  async function transcribe() {
+    setError(null)
+    try {
+      // Jangan pasang balasan POST ke state: bentuknya RecordingOut (tanpa
+      // `segments`), sedangkan komponen ini butuh RecordingDetail. Cukup mulai
+      // ulang polling — tick() langsung mengambil detail yang utuh.
+      await startTranscribe(id)
+      setRound((n) => n + 1)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   if (!rec) return <p className="p-6 text-fg3">Memuat…</p>
-  return <Detail rec={rec} onTitleChange={applyTitle} onClose={onClose} />
+  return (
+    <Detail
+      rec={rec}
+      error={error}
+      onTranscribe={transcribe}
+      onTitleChange={applyTitle}
+      onClose={onClose}
+    />
+  )
 }
 
-function Detail({ rec, onTitleChange, onClose }) {
+function Detail({ rec, error, onTranscribe, onTitleChange, onClose }) {
   const mediaRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
 
@@ -56,15 +79,22 @@ function Detail({ rec, onTitleChange, onClose }) {
     mediaRef.current.play()
   }
   const onTime = () =>
-    setActiveIdx(currentSegment(rec.segments, mediaRef.current.currentTime))
+    setActiveIdx(currentSegment(rec.segments ?? [], mediaRef.current.currentTime))
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <TranscriptHeader rec={rec} onTitleChange={onTitleChange} onClose={onClose} />
+      <TranscriptHeader
+        rec={rec}
+        onTitleChange={onTitleChange}
+        onRetranscribe={onTranscribe}
+        onClose={onClose}
+      />
       <div className="flex min-h-0 flex-1">
         <AiPanel rec={rec} />
         <SourcePanel
           rec={rec}
+          error={error}
+          onTranscribe={onTranscribe}
           mediaRef={mediaRef}
           activeIdx={activeIdx}
           onTime={onTime}
@@ -75,7 +105,7 @@ function Detail({ rec, onTitleChange, onClose }) {
   )
 }
 
-function SourcePanel({ rec, mediaRef, activeIdx, onTime, onSeek }) {
+function SourcePanel({ rec, error, onTranscribe, mediaRef, activeIdx, onTime, onSeek }) {
   const { width, dragging, handlers } = usePanelWidth(SOURCE_W)
   return (
     <section
@@ -90,7 +120,9 @@ function SourcePanel({ rec, mediaRef, activeIdx, onTime, onSeek }) {
         {rec.status === 'downloading' && (
           <ProgressBar status={rec.status} progress={rec.progress} />
         )}
-        {rec.status === 'downloaded' && <DownloadedNote />}
+        {rec.status === 'downloaded' && (
+          <DownloadedCard onTranscribe={onTranscribe} error={error} />
+        )}
         {TRANSCRIBING.includes(rec.status) && (
           <>
             <ProgressSteps status={rec.status} />
@@ -142,19 +174,27 @@ function ProgressBar({ status, progress }) {
   )
 }
 
-function DownloadedNote() {
+function DownloadedCard({ onTranscribe, error }) {
   return (
-    <div className="mb-5 rounded-xl border border-edge bg-panel2 p-4 text-sm">
-      <p className="font-medium text-fg">Video tersimpan dan siap ditonton.</p>
+    <div className="mb-5 rounded-xl border border-edge bg-panel2 p-4">
+      <p className="text-sm font-medium text-fg">Video tersimpan dan siap ditonton.</p>
       <p className="mt-1 text-xs leading-relaxed text-fg3">
-        Transkrip belum dijalankan — tombolnya menyusul di fase berikutnya.
+        Transkrip belum dijalankan. Prosesnya memakai CPU dan bisa lama untuk video panjang.
       </p>
+      <button
+        onClick={onTranscribe}
+        className="mt-3 rounded-lg bg-mint px-3 py-2 text-xs font-semibold text-canvas transition hover:bg-mint2"
+      >
+        Transkrip sekarang
+      </button>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
     </div>
   )
 }
 
 function Transcript({ rec, activeIdx, onSeek }) {
-  if (rec.segments.length > 0)
+  // `?.` sengaja: satu field hilang tak boleh merobohkan seluruh halaman.
+  if (rec.segments?.length > 0)
     return (
       <SegmentList segments={rec.segments} activeIdx={activeIdx} onSeek={onSeek} />
     )

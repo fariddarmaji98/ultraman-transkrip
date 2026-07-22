@@ -93,6 +93,7 @@ Tambah pos = 1 entri di `build_protections()`.
 | `PATCH /api/config` | ganti model lokal — 422 di luar katalog, 409 saat Groq/ada job jalan ([ADR 0005](../adr/0005-model-asr-runtime.md)) |
 | `POST /api/recordings` | upload (multipart streaming) → 201 `{recording, job_id}` |
 | `POST /api/recordings/from-url` | unduh dari URL — probe sinkron, tolak 422 lebih awal ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)) |
+| `POST /api/recordings/{id}/transcribe` | jalankan transkrip untuk rekaman yang filenya sudah ada — 409 bila sedang diproses, 422 bila file hilang. Generik: dipakai video terunduh **dan** transkrip ulang rekaman upload |
 | `GET /api/storage` | pemakaian disk folder unggahan (tab Unduh) |
 | `GET /api/recordings` | daftar (terbaru dulu) |
 | `GET /api/recordings/{id}` | detail + segments + `progress`, `source_available` |

@@ -72,8 +72,9 @@ Transkrip bukan scope (Fase B). Aturan mengikat di [rules.md](rules.md).
 - [x] BE: unduhan gagal **tidak** meninggalkan file (dst_dir kosong setelah CaptureError)
 - [x] BE: guard 409 ganti model ASR **tidak** aktif saat `downloading` (diuji saat unduhan jalan)
 - [x] BE: `downloaded` tidak diantre ulang setelah restart
-- [ ] BE: restart tepat saat `downloading` → requeue melanjutkan (belum diuji langsung; himpunan
-      status & `_kind_for` sudah diverifikasi)
+- [x] BE: restart tepat saat `downloading` → requeue melanjutkan. Diuji sungguhan: backend dibunuh
+      saat progres 33%, DB tersangkut `downloading` dengan `upload_path` kosong dan **tanpa file
+      separuh** di `uploads`; setelah restart unduhan dipungut lagi dan tuntas (61% → 99% → 100%)
 - [x] FE: pindah tab, tab aktif bertahan setelah reload (`sidebar-tab` = `unduh`)
 - [x] FE: unduh lewat UI → bar bergerak tanpa reload → video muncul di tab Unduh → diputar di kolom
       kanan dari `/api/recordings/{id}/source`
@@ -94,7 +95,19 @@ Transkrip bukan scope (Fase B). Aturan mengikat di [rules.md](rules.md).
 - [x] README: fitur + index ADR
 - [x] `commits.md`
 
-## Sisa untuk Fase B
+## 9. Fase B — tombol transkrip ✅
 
-- [ ] `POST /api/recordings/{id}/transcribe` + tombol di FE (sekalian transkrip ulang untuk upload)
-- [ ] uji restart tepat saat `downloading` (himpunan status sudah diverifikasi, skenario utuh belum)
+- [x] `POST /api/recordings/{id}/transcribe`: buat job `transcribe`, status `queued`, enqueue;
+      404 / 409 (sedang diproses) / 422 (file sumber hilang)
+- [x] FE: tombol **"Transkrip sekarang"** pada rekaman `downloaded` di kolom kanan
+- [x] FE: tombol **"Transkrip ulang"** di header untuk status `done`/`failed`
+- [x] polling `TranscriptView` bisa dimulai ulang (state `round`) setelah tombol ditekan
+- [x] uji: video terunduh → transkrip jalan penuh (`extracting → transcribing → done`)
+- [x] uji: transkrip ulang rekaman Indonesia 5:43 → **104 segmen → 104 segmen**, tidak menggandakan
+- [x] uji: guard 404 / 409 / 422
+
+## Sisa untuk fase berikutnya
+
+- [ ] Fase C: PO token, cookies per-platform, rate-limit, auto-update yt-dlp
+- [ ] Fase D: Instagram/Facebook, subtitle-first sebagai opsi
+- [ ] Fase E: SSE, cancel job, batch/playlist, proxy, pilih kualitas

@@ -78,7 +78,7 @@ App (flex h-screen)
 | `RecordingList` | daftar riwayat + `ConfirmModal` hapus |
 | `StatusBadge` | status → ikon (jam/spinner/centang/peringatan) + tooltip |
 | `TranscriptView` | poll detail rekaman, susun header + player + progress + transkrip |
-| `TranscriptHeader` | top bar: judul editable (`PATCH`), ekspor, tombol tutup |
+| `TranscriptHeader` | top bar: judul editable (`PATCH`), **Transkrip ulang** (status `done`/`failed`), ekspor, tombol tutup |
 | `SegmentList` | render segmen + highlight aktif + seek |
 | `ProgressSteps` | stepper tahap (Antre→Ekstrak→Transkrip→Selesai) |
 | `ConfirmModal` | dialog konfirmasi (hapus) |

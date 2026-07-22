@@ -24,6 +24,7 @@ from capture import get_source as get_media_source
 from capture import CaptureError, MediaInfo, NeedsAuth, UnsupportedUrl
 from constants import (
     ACCEPTED_SUFFIXES,
+    ACTIVE_STATUSES,
     DOWNLOAD_MAX_DURATION_S,
     JOB_DOWNLOADING,
     JOB_KIND_FETCH,
@@ -84,6 +85,23 @@ async def get_recording(rid: int, db: DbDep) -> RecordingDetail:
     return _to_detail(rec, segments, progress)
 
 
+@router.post("/recordings/{rid}/transcribe", response_model=RecordingOut, status_code=202)
+async def start_transcribe(rid: int, db: DbDep) -> RecordingOut:
+    """Jalankan transkrip untuk rekaman yang filenya sudah ada.
+
+    Sengaja generik: dipakai untuk video hasil unduhan (`downloaded`) sekaligus
+    transkrip ulang rekaman upload — mis. setelah ganti model ASR (ADR 0005).
+    """
+    rec = await _get_or_404(db, rid)
+    _reject_if_not_transcribable(rec)
+    job = await _create_job(db, rec.id, JOB_KIND_TRANSCRIBE)
+    rec.status = JOB_QUEUED
+    await db.commit()
+    await db.refresh(rec)
+    await enqueue(rec.id, JOB_KIND_TRANSCRIBE)
+    return _with_progress(rec, job.progress)
+
+
 @router.patch("/recordings/{rid}", response_model=RecordingOut)
 async def rename_recording(rid: int, body: RenameIn, db: DbDep) -> models.Recording:
     rec = await _get_or_404(db, rid)
@@ -130,6 +148,13 @@ async def export_transcript(rid: int, db: DbDep, fmt: str = "txt") -> Response:
 
 
 # --- helpers ---------------------------------------------------------------
+
+def _reject_if_not_transcribable(rec) -> None:
+    if rec.status in ACTIVE_STATUSES:
+        raise HTTPException(409, "rekaman ini sedang diproses")
+    if not rec.upload_path or not Path(rec.upload_path).exists():
+        raise HTTPException(422, "file sumber tidak tersedia")
+
 
 def _reject_bad_suffix(filename: str) -> None:
     if Path(filename).suffix.lower() not in ACCEPTED_SUFFIXES:

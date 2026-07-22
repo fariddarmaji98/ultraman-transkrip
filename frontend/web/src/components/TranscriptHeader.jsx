@@ -4,7 +4,9 @@ import { fmtTime } from '../utils'
 
 const FORMATS = ['txt', 'srt', 'json']
 
-export default function TranscriptHeader({ rec, onTitleChange, onClose }) {
+const REDO_OK = ['done', 'failed']
+
+export default function TranscriptHeader({ rec, onTitleChange, onRetranscribe, onClose }) {
   return (
     <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-edge bg-panel/80 px-6 py-4 backdrop-blur">
       <div className="min-w-0">
@@ -16,6 +18,15 @@ export default function TranscriptHeader({ rec, onTitleChange, onClose }) {
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        {REDO_OK.includes(rec.status) && onRetranscribe && (
+          <button
+            onClick={onRetranscribe}
+            title="Jalankan ulang transkrip (mis. setelah ganti model)"
+            className="rounded-md border border-edge px-2.5 py-1 text-xs font-medium text-fg2 transition hover:border-edge2 hover:text-fg"
+          >
+            Transkrip ulang
+          </button>
+        )}
         {rec.status === 'done' && <ExportLinks rec={rec} />}
         {onClose && (
           <button
