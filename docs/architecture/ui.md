@@ -71,7 +71,8 @@ App (flex h-screen)
 | `StorageInfo` | angka disk — dipakai ganti kebijakan retensi otomatis yang sengaja belum ada |
 | `ModelPicker` | dropdown model lokal (`PATCH /api/config`); terkunci saat engine sibuk |
 | `ResizeHandle` | batang geser lebar panel (dipakai sidebar & kolom kanan); induk wajib `relative` |
-| `SettingsModal` | popup mesin AI dari ikon gerigi di header sidebar: pilih provider, model, kunci API (masked), tes koneksi ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)) |
+| `SettingsModal` | popup mesin AI dari ikon gerigi: pilih provider, model, kunci API, tes koneksi. Kunci tersimpan → field **dikunci**; ganti kunci = hapus dulu, dan hapus wajib konfirmasi ([ADR 0007 §Amandemen](../adr/0007-mesin-ai-dipilih-dari-ui.md)) |
+| `ConfirmModal` | konfirmasi aksi tak-bisa-dibatalkan (hapus rekaman, hapus kunci API). `z-40` — selalu di atas modal lain, termasuk saat dipanggil dari dalam `SettingsModal` (`z-30`) |
 | `AiPanel` | kolom tengah: kartu Ringkasan + chat. Kontrol sengaja `disabled` selama backend M2/M3 belum ada — jangan tampilkan hasil palsu |
 | `UploadPanel` | pilih file + bahasa, unggah (XHR + progress), panggil `onUploaded` |
 | `RecordingList` | daftar riwayat + `ConfirmModal` hapus |
@@ -99,3 +100,6 @@ Data ke FE: `GET /api/config` (provider, model, batas upload) untuk EnginePanel;
 - Hardcode warna hex di komponen (pakai util token `@theme`).
 - Kembalikan area utama jadi kotak kosong besar tanpa isi (isi dengan info/aksi).
 - Impor library ikon berat untuk beberapa glyph (cukup SVG inline).
+- Aksi merusak yang tak bisa dibatalkan (hapus rekaman/kunci API) **tanpa** `ConfirmModal`.
+- Tombol mati yang labelnya berbunyi seperti tombol hidup — sertakan penanda status dan `title`
+  yang menyebut apa yang kurang (pelajaran dari "Buat ringkasan" yang tampak rusak, padahal disabled).

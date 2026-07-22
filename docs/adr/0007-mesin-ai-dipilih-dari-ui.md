@@ -1,6 +1,6 @@
 # ADR 0007 — Mesin AI dipilih dari UI (lokal atau API) + penyimpanan kunci
 
-- Status: accepted
+- Status: accepted · **diamandemen 2026-07-22** (lihat §Amandemen di bawah)
 - Tanggal: 2026-07-21
 - Terkait: [ADR 0003](0003-modular-monolith-not-microservices.md), [ADR 0005](0005-model-asr-runtime.md), [ADR 0006](0006-workspace-tiga-kolom.md), [colibri-direction.md](../planning/colibri-direction.md)
 
@@ -74,3 +74,48 @@ disimpan di sisi server dan tidak pernah dikirim balik ke browser.**
 - **Kolom tengah masih mati.** ADR ini hanya menyiapkan mesinnya; endpoint ringkasan (M2) yang akan
   memakainya menyusul. Ini disengaja: memilih mesin dan memakai mesin adalah dua langkah terpisah
   yang bisa diuji sendiri-sendiri.
+
+## Amandemen 2026-07-22 — penanganan kunci di UI
+
+### Kejadian yang memicu
+
+User melapor kuncinya "hilang" setelah disimpan. Investigasi: **jalur simpannya sehat** — direproduksi
+lewat UI, kunci langsung masuk `data/runtime.json`. Yang rusak adalah UI-nya, yang membuka tiga cara
+untuk *mengira* sudah menyimpan padahal belum:
+
+1. **"Tes koneksi" tidak menyimpan apa pun**, tapi menampilkan pesan sukses hijau yang terasa seperti
+   "beres". Kunci yang cuma dites lalu modal ditutup = hilang.
+2. **Ganti provider mengosongkan field kunci** (kunci milik satu provider). Klik Simpan setelah itu
+   menyimpan provider baru dengan kunci kosong — persis kondisi yang ditemukan di file.
+3. **"hapus kunci tersimpan" menghapus seketika tanpa konfirmasi**, tulisannya kecil dan persis di
+   atas kolom input.
+
+Ditambah satu ambiguitas: saat kunci sudah tersimpan, field tetap kosong dan bisa diketik — tidak ada
+cara membedakan "belum ada kunci" dari "ada kunci, tapi tidak ditampilkan".
+
+### Keputusan tambahan
+
+1. **Kunci tersimpan → field dikunci** (`disabled`), placeholder `•••• tersimpan di server`.
+   Satu-satunya jalan mengganti kunci: **hapus dulu, baru isi**. Mengetik di atas kunci yang sudah ada
+   tidak punya arti yang jelas (mengganti? menambah?), jadi kemungkinannya dihilangkan.
+2. **Hapus kunci wajib konfirmasi** lewat `ConfirmModal` — menghapus kredensial itu tak bisa dibatalkan
+   dan memutus fitur AI, jadi setara dengan menghapus rekaman.
+3. **Pesan sukses tes menyebut langkah berikutnya**: "… merespons — klik Simpan agar kuncinya
+   tersimpan."
+4. **Peringatan kuning** saat provider butuh kunci tapi tidak ada satu pun (baik yang diketik maupun
+   yang tersimpan).
+5. **`ConfirmModal` dinaikkan ke `z-40`** (sebelumnya `z-20`, di bawah `SettingsModal` `z-30`) supaya
+   bisa dipanggil dari dalam modal lain. Tanpa ini konfirmasinya muncul di belakang dan tombolnya
+   seolah tidak berfungsi.
+
+### Konsekuensi
+
+- **Mengganti kunci jadi dua langkah** (hapus → isi). Disengaja: satu langkah tambahan lebih murah
+  daripada satu kredensial hilang diam-diam.
+- **`ConfirmModal` kini komponen konfirmasi lintas-aplikasi**, bukan khusus hapus rekaman. Pemanggil
+  baru tidak perlu memikirkan lapisan lagi.
+- **Tetap tidak ada cara melihat kunci yang tersimpan** — keputusan inti ADR ini tidak berubah: nilai
+  kunci tidak pernah dikirim balik ke browser, hanya flag `key_set`. Konsekuensinya user harus
+  menyimpan kuncinya sendiri di tempat lain; UI hanya bisa memberitahu *ada* atau *tidak ada*.
+- Penanda **"belum aktif"** di `AiPanel` diubah jadi merah agar terbaca sebagai "ada yang belum beres",
+  bukan sekadar keterangan netral.

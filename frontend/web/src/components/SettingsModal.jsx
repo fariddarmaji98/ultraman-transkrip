@@ -2,12 +2,14 @@
 // Kunci API hanya dikirim ke backend — nilainya tidak pernah dibaca balik.
 import { useEffect, useState } from 'react'
 import { forgetLlmKey, getLlm, setLlm, testLlm } from '../api'
+import ConfirmModal from './ConfirmModal'
 
 export default function SettingsModal({ onClose }) {
   const [cfg, setCfg] = useState(null)
   const [form, setForm] = useState({ provider: '', model: '', api_key: '' })
   const [test, setTest] = useState(null)
   const [busy, setBusy] = useState('')
+  const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
     getLlm().then((data) => {
@@ -33,6 +35,15 @@ export default function SettingsModal({ onClose }) {
     }
   }
 
+  async function forget() {
+    setConfirming(false)
+    await run('forget', async () => {
+      await forgetLlmKey(form.provider)
+      setCfg(await getLlm())
+      setForm((f) => ({ ...f, api_key: '' }))
+    })
+  }
+
   const active = cfg?.providers.find((p) => p.id === form.provider)
   return (
     <Shell onClose={onClose}>
@@ -56,13 +67,19 @@ export default function SettingsModal({ onClose }) {
               value={form.api_key}
               stored={active.key_set}
               onChange={(api_key) => setForm({ ...form, api_key })}
-              onForget={() => run('forget', async () => {
-                await forgetLlmKey(active.id)
-                setCfg(await getLlm())
-              })}
+              onForget={() => setConfirming(true)}
             />
           )}
           {test && <TestBanner result={test} />}
+          {confirming && (
+            <ConfirmModal
+              title="Hapus kunci API?"
+              message={`Kunci ${active.label} akan dihapus dari server. Ringkasan dan chat tidak bisa dipakai sampai kamu memasukkan kunci baru.`}
+              confirmLabel="Hapus kunci"
+              onConfirm={forget}
+              onCancel={() => setConfirming(false)}
+            />
+          )}
           <Actions
             busy={busy}
             onClose={onClose}
@@ -136,26 +153,50 @@ function ModelField({ value, onChange }) {
   )
 }
 
+// Kunci tersimpan -> field dikunci. Mengetik di atas kunci yang sudah ada bikin
+// ambigu (mengganti? menambah?), jadi satu-satunya jalan ganti = hapus dulu.
 function KeyField({ value, stored, onChange, onForget }) {
   return (
-    <label className="mt-3 block">
-      <span className="flex items-center justify-between text-xs text-fg3">
-        <span>API key</span>
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-xs text-fg3">
+        <label htmlFor="llm-key">API key</label>
         {stored && (
-          <button onClick={onForget} type="button" className="text-[10px] text-red-400 hover:underline">
-            hapus kunci tersimpan
+          <button
+            type="button"
+            onClick={onForget}
+            className="text-[10px] text-red-400 transition hover:underline"
+          >
+            Hapus kunci
           </button>
         )}
-      </span>
+      </div>
       <input
+        id="llm-key"
         type="password"
         autoComplete="off"
-        value={value}
+        disabled={stored}
+        value={stored ? '' : value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={stored ? 'tersimpan — kosongkan bila tidak diubah' : 'tempel kunci di sini'}
-        className="mt-1 w-full rounded-lg border border-edge bg-panel2 px-3 py-2 font-mono text-xs text-fg outline-none focus:border-mint/60 placeholder:font-sans placeholder:text-fg3"
+        placeholder={stored ? '•••••••••••• tersimpan di server' : 'tempel kunci di sini'}
+        className="mt-1 w-full rounded-lg border border-edge bg-panel2 px-3 py-2 font-mono text-xs text-fg outline-none focus:border-mint/60 placeholder:font-sans placeholder:text-fg3 disabled:cursor-not-allowed disabled:opacity-60"
       />
-    </label>
+      <KeyHint stored={stored} typed={!!value} />
+    </div>
+  )
+}
+
+function KeyHint({ stored, typed }) {
+  if (stored)
+    return (
+      <span className="mt-1 block text-[10px] leading-snug text-fg3">
+        Hapus kunci dulu bila ingin menggantinya.
+      </span>
+    )
+  if (typed) return null
+  return (
+    <span className="mt-1 block text-[10px] leading-snug text-amber-400">
+      Belum ada kunci tersimpan — provider ini belum bisa dipakai meski disimpan.
+    </span>
   )
 }
 
@@ -166,6 +207,8 @@ function TestBanner({ result }) {
   return (
     <p className={`mt-3 rounded-lg border px-3 py-2 text-xs leading-snug ${tone}`}>
       {result.detail}
+      {/* Tes tidak menyimpan apa pun — tanpa pengingat ini, sukses hijau terasa "selesai". */}
+      {result.ok && ' — klik Simpan agar kuncinya tersimpan.'}
     </p>
   )
 }

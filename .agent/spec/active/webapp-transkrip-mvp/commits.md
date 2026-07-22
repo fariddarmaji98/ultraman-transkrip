@@ -18,3 +18,5 @@
 - `02d3c9c` Detail rekaman jadi 3 kolom: sidebar | AI | sumber — ADR 0006
 - `237fb4e` Docs: ADR 0005 + ADR 0006
 - `a8d406f` Popup Setelan: pilih mesin AI (lokal atau API) — ADR 0007
+- `0740096` Docs: ADR 0007 + kontrak /api/llm
+- (berikutnya) Setelan: kunci API tak lagi ambigu + hapus wajib konfirmasi — ADR 0007 §Amandemen

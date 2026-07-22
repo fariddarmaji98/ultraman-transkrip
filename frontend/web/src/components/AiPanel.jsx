@@ -20,7 +20,7 @@ function PanelHeader() {
       <span className="text-[10px] font-semibold uppercase tracking-widest text-fg3">
         Asisten AI
       </span>
-      <span className="rounded-full border border-edge2 px-2 py-0.5 text-[10px] text-fg3">
+      <span className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400">
         belum aktif
       </span>
     </div>

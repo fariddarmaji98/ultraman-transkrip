@@ -1,4 +1,5 @@
 // Modal konfirmasi (tema gelap): backdrop + panel tengah + ikon + aksi.
+// z-40 supaya selalu di atas SettingsModal (z-30) saat dipanggil dari dalamnya.
 export default function ConfirmModal({
   title,
   message,
@@ -7,9 +8,9 @@ export default function ConfirmModal({
   onCancel,
 }) {
   return (
-    <div className="relative z-20" role="dialog" aria-modal="true">
+    <div className="relative z-40" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-black/60" onClick={onCancel} />
-      <div className="fixed inset-0 z-20 flex min-h-full items-end justify-center p-4 sm:items-center">
+      <div className="fixed inset-0 z-40 flex min-h-full items-end justify-center p-4 sm:items-center">
         <div className="relative w-full max-w-md rounded-xl border border-edge bg-panel p-6 text-left shadow-2xl">
           <div className="sm:flex sm:items-start">
             <div className="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-500/15 text-red-400 sm:mx-0 sm:h-10 sm:w-10">
