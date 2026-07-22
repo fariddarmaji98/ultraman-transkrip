@@ -6,7 +6,7 @@ from uuid import uuid4
 import aiofiles
 from fastapi import APIRouter, Form, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.config import settings
 from app.deps import DbDep
@@ -68,11 +68,12 @@ async def create_from_url(db: DbDep, body: FromUrlIn) -> UploadResponse:
 
 
 @router.get("/recordings", response_model=list[RecordingOut])
-async def list_recordings(db: DbDep) -> list[models.Recording]:
+async def list_recordings(db: DbDep) -> list[RecordingOut]:
     result = await db.execute(
         select(models.Recording).order_by(models.Recording.created_at.desc())
     )
-    return list(result.scalars().all())
+    latest = await _latest_progress(db)
+    return [_with_progress(r, latest.get(r.id, 0)) for r in result.scalars().all()]
 
 
 @router.get("/recordings/{rid}", response_model=RecordingDetail)
@@ -237,10 +238,33 @@ async def _segments_of(db, rid: int) -> list[models.Segment]:
 
 
 async def _progress_of(db, rid: int) -> int:
+    """Job terbaru: satu recording bisa punya `fetch` lalu `transcribe`."""
     result = await db.execute(
-        select(models.Job.progress).where(models.Job.recording_id == rid)
+        select(models.Job.progress)
+        .where(models.Job.recording_id == rid)
+        .order_by(models.Job.id.desc())
     )
     return result.scalars().first() or 0
+
+
+async def _latest_progress(db) -> dict[int, int]:
+    """Progress job terbaru per recording — sekali query untuk seluruh daftar."""
+    newest = (
+        select(func.max(models.Job.id))
+        .group_by(models.Job.recording_id)
+        .scalar_subquery()
+    )
+    rows = await db.execute(
+        select(models.Job.recording_id, models.Job.progress)
+        .where(models.Job.id.in_(newest))
+    )
+    return {rid: progress for rid, progress in rows.all()}
+
+
+def _with_progress(rec, progress: int) -> RecordingOut:
+    out = RecordingOut.model_validate(rec)
+    out.progress = progress
+    return out
 
 
 def _to_detail(rec, segments, progress: int) -> RecordingDetail:

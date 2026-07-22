@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { deleteRecording } from '../api'
-import { fmtDate, fmtTime } from '../utils'
+import { fmtDate, fmtTime, isActive } from '../utils'
 import StatusBadge from './StatusBadge'
 import ConfirmModal from './ConfirmModal'
 
@@ -10,6 +10,9 @@ export default function RecordingList({
   onSelect,
   onChanged,
   onDeselect,
+  emptyText = 'Belum ada rekaman.',
+  confirmTitle = 'Hapus transkrip?',
+  confirmMessage = 'Transkrip dan media rekaman ini akan dihapus permanen dan tidak bisa dikembalikan.',
 }) {
   const [pendingId, setPendingId] = useState(null)
 
@@ -21,8 +24,7 @@ export default function RecordingList({
     onChanged()
   }
 
-  if (!items.length)
-    return <p className="text-sm text-fg3">Belum ada rekaman.</p>
+  if (!items.length) return <p className="text-sm text-fg3">{emptyText}</p>
 
   return (
     <>
@@ -42,8 +44,8 @@ export default function RecordingList({
       </ul>
       {pendingId !== null && (
         <ConfirmModal
-          title="Hapus transkrip?"
-          message="Transkrip dan media rekaman ini akan dihapus permanen dan tidak bisa dikembalikan."
+          title={confirmTitle}
+          message={confirmMessage}
           confirmLabel="Hapus"
           onConfirm={confirmDelete}
           onCancel={() => setPendingId(null)}
@@ -63,7 +65,7 @@ function RecordingItem({ rec, selected, onSelect, onDelete }) {
           : 'border-edge bg-panel2 hover:border-edge2'
       }`}
     >
-      <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate text-sm font-medium text-fg">{rec.title}</span>
         <div className="flex items-center gap-1.5">
           <StatusBadge status={rec.status} />
@@ -72,6 +74,7 @@ function RecordingItem({ rec, selected, onSelect, onDelete }) {
             {rec.duration_ms ? ` · ${fmtTime(rec.duration_ms)}` : ''}
           </span>
         </div>
+        {isActive(rec) && <MiniBar progress={rec.progress} />}
       </div>
       <button
         title="Hapus"
@@ -82,6 +85,17 @@ function RecordingItem({ rec, selected, onSelect, onDelete }) {
         <TrashIcon />
       </button>
     </li>
+  )
+}
+
+function MiniBar({ progress }) {
+  return (
+    <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-edge">
+      <div
+        className="h-full rounded-full bg-mint transition-all duration-500"
+        style={{ width: `${progress ?? 0}%` }}
+      />
+    </div>
   )
 }
 

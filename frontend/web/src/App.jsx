@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getConfig, listRecordings } from './api'
+import { isActive } from './utils'
 import Sidebar from './components/Sidebar'
 import TranscriptView from './components/TranscriptView'
 import EmptyState from './components/EmptyState'
@@ -18,7 +19,17 @@ export default function App() {
     getConfig().then(setConfig).catch(() => {})
   }, [refresh])
 
-  async function handleUploaded(res) {
+  // Selama ada unduhan/transkrip berjalan, segarkan daftar supaya progres di
+  // sidebar ikut bergerak. Bergantung pada boolean, bukan array — agar interval
+  // tidak dibuat ulang tiap kali data datang.
+  const busy = recordings.some(isActive)
+  useEffect(() => {
+    if (!busy) return
+    const timer = setInterval(refresh, 2000)
+    return () => clearInterval(timer)
+  }, [busy, refresh])
+
+  async function handleNew(res) {
     await refresh()
     setSelectedId(res.recording.id)
   }
@@ -30,7 +41,8 @@ export default function App() {
         config={config}
         selectedId={selectedId}
         onSelect={setSelectedId}
-        onUploaded={handleUploaded}
+        onUploaded={handleNew}
+        onCreated={handleNew}
         onChanged={refresh}
         onDeselect={() => setSelectedId(null)}
         onConfigChange={setConfig}

@@ -21,6 +21,22 @@ export async function setModel(model) {
   return data
 }
 
+export async function createFromUrl(url, language = 'auto') {
+  const res = await fetch('/api/recordings/from-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, language }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal memulai unduhan')
+  return data
+}
+
+export async function getStorage() {
+  const res = await fetch('/api/storage')
+  return res.json()
+}
+
 export async function getLlm() {
   const res = await fetch('/api/llm')
   return res.json()

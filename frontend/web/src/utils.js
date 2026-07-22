@@ -23,6 +23,23 @@ export function fmtDate(iso) {
   })
 }
 
+// Ukuran file ringkas (mis. "1,4 GB" / "820 MB").
+export function fmtBytes(n) {
+  if (!n) return '0 MB'
+  const gb = n / 1024 ** 3
+  if (gb >= 1) return `${gb.toFixed(1).replace('.', ',')} GB`
+  return `${Math.round(n / 1024 ** 2)} MB`
+}
+
+// Status yang masih berjalan — dipakai polling, statistik, dan bar progres.
+const ACTIVE = ['queued', 'extracting', 'transcribing', 'downloading']
+// Status khas unduhan: belum masuk pipeline transkrip sama sekali.
+const DOWNLOAD_ONLY = ['downloading', 'downloaded']
+
+export const isActive = (rec) => ACTIVE.includes(rec.status)
+export const isDownload = (rec) => rec.source_kind === 'url'
+export const inTranscriptPhase = (rec) => !DOWNLOAD_ONLY.includes(rec.status)
+
 const VIDEO_EXT = ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v']
 
 // True bila nama file berekstensi video (untuk pilih <video> vs <audio>).

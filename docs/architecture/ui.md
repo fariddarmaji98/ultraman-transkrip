@@ -37,10 +37,16 @@ App (flex h-screen)
 ├─ Sidebar (lebar bisa digeser 280–560px, default 340; bg-panel)  ── selalu tampil
 │   ├─ ResizeHandle (hairline mint di tepi kanan; klik ganda = reset)
 │   ├─ Brand (logo mint + nama + tagline + ikon gerigi → SettingsModal)
-│   ├─ UploadPanel (file, bahasa, tombol Transkrip, progress upload)
-│   ├─ EnginePanel (provider + ModelPicker dari /api/config + status engine)
-│   ├─ StatsGrid (Selesai / Diproses / Gagal / Total — dihitung dari riwayat)
-│   └─ RecordingList (Riwayat: item + StatusBadge ikon + tanggal·durasi + hapus)
+│   ├─ SidebarTabs [Transkrip] [Unduh] — tab aktif di localStorage (ADR 0008)
+│   ├─ TranscribeTab (tab 1)
+│   │   ├─ UploadPanel (file, bahasa, tombol Transkrip, progress upload)
+│   │   ├─ EnginePanel (provider + ModelPicker dari /api/config + status engine)
+│   │   ├─ StatsGrid (Selesai / Diproses / Gagal / Total)
+│   │   └─ RecordingList "Riwayat" — hanya yang sudah masuk pipeline transkrip
+│   └─ DownloadTab (tab 2)
+│       ├─ UrlForm (tempel URL + notice ToS + batas 720p/4 jam/2 GB)
+│       ├─ StorageInfo (jumlah berkas + terpakai + sisa disk, dari /api/storage)
+│       └─ RecordingList "Video terunduh" — semua `source_kind === 'url'`
 └─ main (flex-1)
     ├─ TranscriptView (bila ada rekaman dipilih) — bersama sidebar = 3 kolom
     │   ├─ TranscriptHeader (membentang penuh: judul editable + Ekspor + tutup)
@@ -57,7 +63,12 @@ App (flex h-screen)
 
 | Komponen | Tugas |
 |---|---|
-| `Sidebar` | rangka sidebar + sub-komponen Brand/EnginePanel/StatsGrid |
+| `Sidebar` | rangka: Brand + SidebarTabs + isi tab aktif; lebar & tab tersimpan di `localStorage` |
+| `SidebarTabs` | pemisah Transkrip vs Unduh, dengan badge jumlah item tiap tab |
+| `TranscribeTab` | unggah + engine + statistik + Riwayat (filter: di luar `downloading`/`downloaded`) |
+| `DownloadTab` | form URL + pemakaian disk + arsip video (filter: `source_kind === 'url'`) |
+| `UrlForm` | tempel URL → `POST /recordings/from-url`; error probe tampil di sini, isian tidak dihapus |
+| `StorageInfo` | angka disk — dipakai ganti kebijakan retensi otomatis yang sengaja belum ada |
 | `ModelPicker` | dropdown model lokal (`PATCH /api/config`); terkunci saat engine sibuk |
 | `ResizeHandle` | batang geser lebar panel (dipakai sidebar & kolom kanan); induk wajib `relative` |
 | `SettingsModal` | popup mesin AI dari ikon gerigi di header sidebar: pilih provider, model, kunci API (masked), tes koneksi ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)) |

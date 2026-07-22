@@ -8,8 +8,8 @@ export default function EmptyState({ count }) {
         <p className="text-lg font-semibold text-fg">Pilih rekaman, atau unggah yang baru</p>
         <p className="mt-1 text-sm text-fg2">
           {count > 0
-            ? `${count} rekaman tersimpan di riwayat.`
-            : 'Unggah audio atau video untuk mulai transkrip.'}
+            ? `${count} rekaman tersimpan.`
+            : 'Unggah file, atau tempel URL di tab Unduh.'}
         </p>
       </div>
     </div>

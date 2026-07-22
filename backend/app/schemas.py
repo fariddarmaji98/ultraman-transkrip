@@ -28,12 +28,12 @@ class RecordingOut(BaseModel):
     duration_ms: int | None
     language: str
     created_at: datetime
+    progress: int = 0  # diisi route dari job terbaru; 0 saat baru dibuat
 
 
 class RecordingDetail(RecordingOut):
     source_available: bool
     media_available: bool
-    progress: int
     segments: list[SegmentOut]
 
 

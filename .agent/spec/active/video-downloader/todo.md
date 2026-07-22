@@ -35,28 +35,33 @@ Transkrip bukan scope (Fase B). Aturan mengikat di [rules.md](rules.md).
 - [x] `worker_loop` memilih `run_fetch` vs `run_transcribe` berdasarkan `Job.kind`
 - [x] idempoten: `_fetch` melewati unduhan bila file sudah ada; `_load` memilih job per-kind
 
-## 4. Retensi & disk (rules §Aturan wajib no.6 — jangan ditunda)
+## 4. Retensi & disk ✅
 
-- [ ] hitung pemakaian disk `upload_dir` → endpoint atau field di `/api/config`
-- [ ] tampilkan di tab Unduh
-- [ ] putuskan kebijakan retensi `upload_path` (dan catat keputusannya, walau hasilnya "belum
-      dihapus otomatis")
+- [x] `GET /api/storage`: jumlah berkas + terpakai + sisa disk (endpoint sendiri, bukan `/api/config`
+      — agar pemindaian folder tidak jalan tiap kali panel Engine dimuat)
+- [x] tampilkan di tab Unduh (`StorageInfo`)
+- [x] **kebijakan retensi diputuskan: belum ada penghapusan otomatis.** Menghapus file besar milik
+      user diam-diam lebih berbahaya daripada disk penuh yang kelihatan. Angka disk ditampilkan dulu;
+      kebijakan menyusul saat polanya terlihat. Alasan lengkap di ADR 0008.
 
-## 5. FE — tab
+## 5. FE — tab ✅
 
-- [ ] `SidebarTabs` di bawah `Brand`, tab aktif di `localStorage`
-- [ ] pindahkan `UploadPanel`/`EnginePanel`/`StatsGrid`/`RecordingList` jadi isi tab Transkrip
-      (**pindah, bukan tulis ulang**)
-- [ ] `StatsGrid` abaikan `downloading`/`downloaded`
-- [ ] `RecordingList` (Riwayat) filter: status di luar `downloading`/`downloaded`
+- [x] `SidebarTabs` di bawah `Brand`, tab aktif di `localStorage` (`useLocalState`)
+- [x] `UploadPanel`/`EnginePanel`/`StatsGrid`/`RecordingList` pindah ke `TranscribeTab` apa adanya
+- [x] `StatsGrid` hanya menghitung item tab Transkrip (unduhan tak ikut "Diproses")
+- [x] Riwayat filter `inTranscriptPhase`; badge jumlah di tiap tab
+- [x] `RecordingList` diberi prop `emptyText`/`confirmTitle`/`confirmMessage` supaya dipakai ulang
+      dua tab tanpa komponen kembar
 
-## 6. FE — tab Unduh
+## 6. FE — tab Unduh ✅
 
-- [ ] `UrlForm`: input URL + tombol Unduh + **notice ToS** (satu baris, tidak bisa disembunyikan)
-- [ ] `DownloadList`: semua `source_kind === 'url'`, progress unduhan, klik → buka di kolom kanan
-- [ ] `StatusBadge` tambah ikon `downloading` (spinner) + `downloaded`
-- [ ] tampilkan pemakaian disk
-- [ ] pesan error dari 422/502 ditampilkan apa adanya (sudah diterjemahkan di BE)
+- [x] `UrlForm`: input URL + tombol + **notice ToS**; error tampil, isian tidak dihapus
+- [x] daftar `source_kind === 'url'` dengan bar progres unduhan (`MiniBar`)
+- [x] `StatusBadge` tambah `downloading` (spinner) + `downloaded` (ikon unduh)
+- [x] `StorageInfo` pemakaian disk
+- [x] `TranscriptView` menangani `downloading` (bar) dan `downloaded` (catatan jujur, tanpa stepper
+      transkrip yang tidak relevan)
+- [x] polling daftar saat ada job aktif (App) supaya bar bergerak tanpa reload
 
 ## 7. Uji
 
@@ -69,15 +74,27 @@ Transkrip bukan scope (Fase B). Aturan mengikat di [rules.md](rules.md).
 - [x] BE: `downloaded` tidak diantre ulang setelah restart
 - [ ] BE: restart tepat saat `downloading` → requeue melanjutkan (belum diuji langsung; himpunan
       status & `_kind_for` sudah diverifikasi)
-- [ ] FE: pindah tab, tab aktif bertahan setelah reload
-- [ ] FE: unduh lewat UI → progress jalan → video muncul di tab Unduh → bisa diputar di kolom kanan
-- [ ] FE: rekaman `downloaded` **tidak** muncul di Riwayat dan **tidak** dihitung "Diproses"
-- [ ] FE: 0 error konsol
+- [x] FE: pindah tab, tab aktif bertahan setelah reload (`sidebar-tab` = `unduh`)
+- [x] FE: unduh lewat UI → bar bergerak tanpa reload → video muncul di tab Unduh → diputar di kolom
+      kanan dari `/api/recordings/{id}/source`
+- [x] FE: rekaman `downloaded` **tidak** muncul di Riwayat (2 dari 3) dan **tidak** dihitung
+      "Diproses" (Total 2, Diproses 0)
+- [x] FE: URL salah → pesan Indonesia tampil, isian tidak dihapus
+- [x] FE: hapus dari tab Unduh → konfirmasi "Hapus video?", file hilang dari disk, angka disk ikut
+      turun
+- [x] FE: 0 error konsol
 
-## 8. Dokumentasi
+## 8. Dokumentasi ✅
 
-- [ ] ADR 0008: yt-dlp sebagai library + video-first + alur dua langkah + status baru
-- [ ] `docs/architecture/overview.md`: modul `capture/`, tabel endpoint, status baru
-- [ ] `docs/architecture/ui.md`: sidebar bertab
-- [ ] README: fitur + env baru (bila ada)
-- [ ] `commits.md`
+- [x] [ADR 0008](../../../../docs/adr/0008-video-downloader-dua-langkah.md): yt-dlp sebagai library,
+      video-first, alur dua langkah, status baru, alasan menolak API downloader pihak ketiga
+- [x] `docs/architecture/overview.md`: modul `capture/`, tabel endpoint, model data + status
+- [x] `docs/architecture/ui.md`: sidebar bertab + peta komponen
+- [x] `apicontract.md`: `/api/storage` + `progress` di daftar
+- [x] README: fitur + index ADR
+- [x] `commits.md`
+
+## Sisa untuk Fase B
+
+- [ ] `POST /api/recordings/{id}/transcribe` + tombol di FE (sekalian transkrip ulang untuk upload)
+- [ ] uji restart tepat saat `downloading` (himpunan status sudah diverifikasi, skenario utuh belum)

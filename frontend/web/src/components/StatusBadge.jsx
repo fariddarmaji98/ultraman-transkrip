@@ -1,5 +1,7 @@
 // Status rekaman sebagai ikon (tooltip menampilkan labelnya).
 const META = {
+  downloading: { label: 'Mengunduh video', color: 'text-sky-400', Icon: SpinnerIcon },
+  downloaded: { label: 'Terunduh — belum ditranskrip', color: 'text-sky-400', Icon: DownloadIcon },
   queued: { label: 'Antre', color: 'text-amber-400', Icon: ClockIcon },
   extracting: { label: 'Mengekstrak audio', color: 'text-amber-400', Icon: SpinnerIcon },
   transcribing: { label: 'Mentranskripsi', color: 'text-mint', Icon: SpinnerIcon },
@@ -40,6 +42,18 @@ function AlertIcon() {
       <path
         fillRule="evenodd"
         d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M10 2a.75.75 0 0 1 .75.75v7.19l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 1.06-1.06l2.22 2.22V2.75A.75.75 0 0 1 10 2ZM3.5 14a.75.75 0 0 1 .75.75v1.5h11.5v-1.5a.75.75 0 0 1 1.5 0v2.25a.75.75 0 0 1-.75.75H3.5a.75.75 0 0 1-.75-.75v-2.25A.75.75 0 0 1 3.5 14Z"
         clipRule="evenodd"
       />
     </svg>

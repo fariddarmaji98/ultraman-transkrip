@@ -1,4 +1,6 @@
-"""Healthcheck + info config (panel engine di FE) + ganti model lokal."""
+"""Healthcheck + info config (panel engine di FE) + ganti model lokal + pemakaian disk."""
+import shutil
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
@@ -26,6 +28,18 @@ async def health() -> dict:
 @router.get("/config")
 async def config() -> dict:
     return _payload()
+
+
+@router.get("/storage")
+async def storage() -> dict:
+    """Pemakaian disk folder unggahan. Video hasil unduhan tidak dihapus otomatis —
+    angka ini yang membuat masalahnya kelihatan sebelum disk penuh."""
+    files = [p for p in settings.upload_dir.glob("*") if p.is_file()]
+    return {
+        "files": len(files),
+        "used_bytes": sum(p.stat().st_size for p in files),
+        "free_bytes": shutil.disk_usage(settings.upload_dir).free,
+    }
 
 
 @router.patch("/config")

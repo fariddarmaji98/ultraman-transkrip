@@ -38,8 +38,9 @@ hilang saat restart) — jadi job tidak nyangkut.
 | `app/` | `main.py` (app factory + lifespan), `config.py` (settings env `TRANSKRIP_*`), `deps.py` (sesi DB), `schemas.py`, `naming.py` (bersihkan judul dari nama file), `routes/` | lifespan: init DB → start worker → requeue |
 | `asr/` | `base.py` (protocol `ASRProvider` + `Segment`), `local_whisper.py`, `groq.py`, `__init__.get_provider()` | interface tunggal; lokal lapor progres per-segmen |
 | `analysis/` | `base.py` (Protocol `LLMProvider` async / `EmbeddingProvider`), `openai_compat.py` (adapter httpx), `__init__.resolve()`/`get_llm()` | satu jalur OpenAI-compatible untuk Ollama/Groq/DeepSeek/Claude/OpenAI ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)); pemakainya (ringkasan M2) menyusul |
+| `capture/` | `base.py` (Protocol `MediaSource` + `MediaInfo`), `ytdlp.py` (`YtDlpSource`), `__init__.get_source()` | unduh dari URL via yt-dlp ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)); probe dulu, unduh ke temp lalu pindah |
 | `media/` | `ffmpeg.py`: `probe_duration_ms`, `extract_audio` | subprocess asyncio |
-| `worker/` | `queue.py` (antrean, `enqueue`, `pending_count`, `requeue_pending`), `pipeline.py` (`run_transcribe`) | concurrency=1; poller progres via holder thread-safe |
+| `worker/` | `queue.py` (antrean `(id, kind)`, `enqueue`, `pending_count`, `requeue_pending`), `pipeline.py` (`run_fetch`, `run_transcribe`) | concurrency=1; pipeline dipilih dari `Job.kind`; poller progres via holder thread-safe |
 | `store/` | `models.py` (Recording, Job, Segment), `db.py` (engine async + `init_db`/create_all) | SQLite (`aiosqlite`) |
 | `export/` | `render.py`: TXT / SRT / JSON | tanpa dependency tambahan |
 | `protection/` | middleware ASGI + pos proteksi | lihat §6 |
@@ -47,10 +48,15 @@ hilang saat restart) — jadi job tidak nyangkut.
 
 ## 4. Data model (SQLite)
 
-- **recordings** — `id, title, source_filename, upload_path, media_path, duration_ms, language,
-  status, created_at`. (`source_url`/`source_kind` menyusul saat fitur video-downloader.)
-- **jobs** — `id, recording_id, kind, status, progress (0–100), error, created_at`. Satu job
-  transkripsi per recording (MVP).
+- **recordings** — `id, title, source_filename, source_kind (upload|url), source_url, upload_path,
+  media_path, duration_ms, language, status, created_at`.
+- **jobs** — `id, recording_id, kind (fetch|transcribe), status, progress (0–100), error,
+  created_at`. Satu recording bisa punya **dua** job berurutan: `fetch` lalu `transcribe` — kode
+  yang membaca job harus memilih per-`kind` atau mengambil yang terbaru.
+- **status recording** — `downloading → downloaded` (sumber URL) lalu
+  `queued → extracting → transcribing → done`; `failed` bisa dari mana saja. Rekaman upload mulai
+  langsung dari `queued`. `downloaded` = menunggu aksi user, bukan menunggu mesin: tidak di-requeue
+  dan tidak dihitung "Diproses".
 - **segments** — `id, recording_id, idx, start_ms, end_ms, text, speaker (nullable)`. `speaker`
   diisi saat diarization (M4). Ditulis bulk, idempoten.
 
@@ -86,6 +92,8 @@ Tambah pos = 1 entri di `build_protections()`.
 | `GET /api/config` | info provider/model/limit + katalog model lokal (panel Engine FE) |
 | `PATCH /api/config` | ganti model lokal — 422 di luar katalog, 409 saat Groq/ada job jalan ([ADR 0005](../adr/0005-model-asr-runtime.md)) |
 | `POST /api/recordings` | upload (multipart streaming) → 201 `{recording, job_id}` |
+| `POST /api/recordings/from-url` | unduh dari URL — probe sinkron, tolak 422 lebih awal ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)) |
+| `GET /api/storage` | pemakaian disk folder unggahan (tab Unduh) |
 | `GET /api/recordings` | daftar (terbaru dulu) |
 | `GET /api/recordings/{id}` | detail + segments + `progress`, `source_available` |
 | `PATCH /api/recordings/{id}` | rename judul |
@@ -126,4 +134,4 @@ Dibangun sebagai MVP lokal; deviasi terukur & reversibel (detail di
 ## 10. Dokumen terkait
 
 Planning: [webapp transkrip](../planning/webapp-upload-transkrip.md) · [arah Colibri](../planning/colibri-direction.md) ·
-[video downloader](../planning/video-downloader.md). ADR: [0001](../adr/0001-centralized-constants.md)–[0007](../adr/0007-mesin-ai-dipilih-dari-ui.md).
+[video downloader](../planning/video-downloader.md). ADR: [0001](../adr/0001-centralized-constants.md)–[0008](../adr/0008-video-downloader-dua-langkah.md).

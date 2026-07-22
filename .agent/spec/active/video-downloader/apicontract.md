@@ -62,6 +62,21 @@ Untuk job `fetch`, `progress` = persen unduhan (0–100).
 `upload_path` dengan pola nama yang sama seperti upload, jadi player, Range request, `DELETE`,
 dan rename semuanya jalan tanpa perubahan.
 
+# pemakaian disk
+
+- api: `/api/storage`
+- method: GET
+- auth: session cookie
+- response 200: `{ "files": 3, "used_bytes": 142430000, "free_bytes": 84700000000 }`
+- catatan: memindai `upload_dir`; dipanggil FE hanya saat daftar/status unduhan berubah, bukan
+  tiap poll
+
+# progress di daftar
+
+`GET /api/recordings` kini menyertakan **`progress`** (0–100) per rekaman, diambil dari **job
+terbaru** (`MAX(jobs.id)` per recording) — perlu karena satu recording bisa punya job `fetch`
+lalu `transcribe`, dan tanpa ini bar unduhan di sidebar tidak bergerak.
+
 # yang BELUM ada di Fase A
 
 - `POST /api/recordings/{id}/transcribe` — memulai transkrip untuk rekaman `downloaded`

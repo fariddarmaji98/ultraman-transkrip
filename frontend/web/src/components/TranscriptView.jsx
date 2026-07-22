@@ -8,12 +8,14 @@ import AiPanel from './AiPanel'
 import ResizeHandle from './ResizeHandle'
 import usePanelWidth from '../hooks/usePanelWidth'
 
-const PENDING = ['queued', 'extracting', 'transcribing']
+const TRANSCRIBING = ['queued', 'extracting', 'transcribing']
+const PENDING = [...TRANSCRIBING, 'downloading']  // masih berjalan -> terus di-poll
 const SOURCE_W = { key: 'source-width', min: 360, max: 900, initial: 560, handleSide: 'left' }
 const PHASE = {
   queued: 'Mengantre…',
   extracting: 'Mengekstrak audio…',
   transcribing: 'Mentranskripsi…',
+  downloading: 'Mengunduh video…',
 }
 
 export default function TranscriptView({ id, onDone, onClose }) {
@@ -85,14 +87,18 @@ function SourcePanel({ rec, mediaRef, activeIdx, onTime, onSeek }) {
       <ResizeHandle side="left" dragging={dragging} handlers={handlers} />
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
         <MediaPlayer rec={rec} mediaRef={mediaRef} onTime={onTime} />
-        {PENDING.includes(rec.status) && (
+        {rec.status === 'downloading' && (
+          <ProgressBar status={rec.status} progress={rec.progress} />
+        )}
+        {rec.status === 'downloaded' && <DownloadedNote />}
+        {TRANSCRIBING.includes(rec.status) && (
           <>
             <ProgressSteps status={rec.status} />
             <ProgressBar status={rec.status} progress={rec.progress} />
           </>
         )}
         {rec.status === 'failed' && (
-          <p className="text-red-400">Transkripsi gagal. Coba unggah ulang.</p>
+          <p className="text-red-400">Gagal diproses. Cek pesan error, lalu coba lagi.</p>
         )}
         <Transcript rec={rec} activeIdx={activeIdx} onSeek={onSeek} />
       </div>
@@ -132,6 +138,17 @@ function ProgressBar({ status, progress }) {
           style={{ width: `${progress}%` }}
         />
       </div>
+    </div>
+  )
+}
+
+function DownloadedNote() {
+  return (
+    <div className="mb-5 rounded-xl border border-edge bg-panel2 p-4 text-sm">
+      <p className="font-medium text-fg">Video tersimpan dan siap ditonton.</p>
+      <p className="mt-1 text-xs leading-relaxed text-fg3">
+        Transkrip belum dijalankan — tombolnya menyusul di fase berikutnya.
+      </p>
     </div>
   )
 }
