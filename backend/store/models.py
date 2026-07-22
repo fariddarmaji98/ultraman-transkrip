@@ -44,6 +44,9 @@ class Recording(Base):
     summaries: Mapped[list["Summary"]] = relationship(
         back_populates="recording", cascade="all, delete-orphan"
     )
+    chat: Mapped[list["ChatMessage"]] = relationship(
+        back_populates="recording", cascade="all, delete-orphan"
+    )
 
 
 class Job(Base):
@@ -77,6 +80,27 @@ class Summary(Base):
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
     recording: Mapped["Recording"] = relationship(back_populates="summaries")
+
+
+class ChatMessage(Base):
+    """Satu pesan dalam percakapan tentang satu rekaman.
+
+    Disimpan supaya percakapan tidak hilang saat pindah rekaman atau reload —
+    ini bagian dari "second brain", bukan sesi sekali pakai. `provider`/`model`
+    hanya terisi pada balasan asisten (jejak mesin yang menjawab).
+    """
+
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    role: Mapped[str] = mapped_column(String(16))  # user | assistant
+    text: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str | None] = mapped_column(String(32), default=None)
+    model: Mapped[str | None] = mapped_column(String(64), default=None)
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+    recording: Mapped["Recording"] = relationship(back_populates="chat")
 
 
 class Segment(Base):

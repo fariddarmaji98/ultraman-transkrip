@@ -40,6 +40,20 @@ class SummaryOut(BaseModel):
     created_at: datetime
 
 
+class ChatMessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: str
+    text: str
+    model: str | None = None
+    created_at: datetime
+
+
+class ChatIn(BaseModel):
+    question: str
+
+
 class RecordingDetail(RecordingOut):
     source_available: bool
     media_available: bool

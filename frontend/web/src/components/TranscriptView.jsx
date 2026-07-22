@@ -91,7 +91,7 @@ function Detail({ rec, error, onTranscribe, onRefresh, onTitleChange, onClose })
         onClose={onClose}
       />
       <div className="flex min-h-0 flex-1">
-        <AiPanel rec={rec} onSummarized={onRefresh} />
+        <AiPanel rec={rec} onSummarized={onRefresh} onSeek={seek} />
         <SourcePanel
           rec={rec}
           error={error}

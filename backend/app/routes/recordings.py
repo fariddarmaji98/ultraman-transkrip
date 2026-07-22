@@ -12,6 +12,8 @@ from app.config import settings
 from app.deps import DbDep
 from app.naming import clean_title, download_name
 from app.schemas import (
+    ChatIn,
+    ChatMessageOut,
     FromUrlIn,
     RecordingDetail,
     RecordingOut,
@@ -21,6 +23,7 @@ from app.schemas import (
     UploadResponse,
 )
 import analysis
+from analysis.chat import ask
 from analysis.openai_compat import LLMError
 from analysis.summarize import summarize
 # alias: nama `get_source` sudah dipakai route penyaji file di bawah
@@ -29,6 +32,8 @@ from capture import CaptureError, MediaInfo, NeedsAuth, UnsupportedUrl
 from constants import (
     ACCEPTED_SUFFIXES,
     ACTIVE_STATUSES,
+    CHAT_HISTORY_TURNS,
+    CHAT_MAX_QUESTION,
     DOWNLOAD_MAX_DURATION_S,
     JOB_DOWNLOADING,
     JOB_KIND_FETCH,
@@ -102,6 +107,34 @@ async def summarize_recording(rid: int, db: DbDep) -> models.Summary:
     return await _save_summary(db, rid, text, cfg)
 
 
+@router.get("/recordings/{rid}/chat", response_model=list[ChatMessageOut])
+async def list_chat(rid: int, db: DbDep) -> list[models.ChatMessage]:
+    await _get_or_404(db, rid)
+    return await _chat_history(db, rid)
+
+
+@router.post("/recordings/{rid}/chat", response_model=ChatMessageOut)
+async def send_chat(rid: int, body: ChatIn, db: DbDep) -> models.ChatMessage:
+    """Tanya transkrip. Sinkron seperti ringkasan — belasan detik (ADR 0009)."""
+    await _get_or_404(db, rid)
+    question = _clean_question(body.question)
+    segments = await _segments_of(db, rid)
+    cfg = analysis.resolve()
+    _reject_if_llm_unset(cfg)
+    history = await _chat_history(db, rid)
+    answer = await _run_chat(question, segments, history[-CHAT_HISTORY_TURNS:], cfg)
+    return await _save_turn(db, rid, question, answer, cfg)
+
+
+@router.delete("/recordings/{rid}/chat", status_code=204)
+async def clear_chat(rid: int, db: DbDep) -> None:
+    await _get_or_404(db, rid)
+    await db.execute(
+        delete(models.ChatMessage).where(models.ChatMessage.recording_id == rid)
+    )
+    await db.commit()
+
+
 @router.post("/recordings/{rid}/transcribe", response_model=RecordingOut, status_code=202)
 async def start_transcribe(rid: int, db: DbDep) -> RecordingOut:
     """Jalankan transkrip untuk rekaman yang filenya sudah ada.
@@ -171,6 +204,44 @@ async def export_transcript(rid: int, db: DbDep, fmt: str = "txt") -> Response:
 def _reject_if_llm_unset(cfg: dict) -> None:
     if cfg["needs_key"] and not cfg["api_key"]:
         raise HTTPException(422, "mesin AI belum punya kunci API — atur di popup Setelan")
+
+
+def _clean_question(raw: str) -> str:
+    question = raw.strip()
+    if not question:
+        raise HTTPException(422, "pertanyaan kosong")
+    if len(question) > CHAT_MAX_QUESTION:
+        raise HTTPException(422, f"pertanyaan melebihi {CHAT_MAX_QUESTION} karakter")
+    return question
+
+
+async def _chat_history(db, rid: int) -> list[models.ChatMessage]:
+    result = await db.execute(
+        select(models.ChatMessage)
+        .where(models.ChatMessage.recording_id == rid)
+        .order_by(models.ChatMessage.id)
+    )
+    return list(result.scalars().all())
+
+
+async def _run_chat(question: str, segments, history, cfg: dict) -> str:
+    try:
+        return await ask(question, segments, history, analysis.get_llm())
+    except LLMError as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
+async def _save_turn(db, rid: int, question: str, answer: str, cfg: dict):
+    """Simpan pertanyaan dan jawaban sekaligus — riwayat tak boleh timpang."""
+    db.add(models.ChatMessage(recording_id=rid, role="user", text=question))
+    reply = models.ChatMessage(
+        recording_id=rid, role="assistant", text=answer,
+        provider=cfg["provider"], model=cfg["model"],
+    )
+    db.add(reply)
+    await db.commit()
+    await db.refresh(reply)
+    return reply
 
 
 async def _run_summary(segments, cfg: dict) -> str:

@@ -189,6 +189,26 @@
 
 `GET /api/recordings/{id}` kini menyertakan `summary` (objek seperti di atas) atau `null`.
 
+# chat dengan transkrip (M3)
+
+- api: `/api/recordings/{id}/chat`
+- method: **GET** → daftar pesan (lama→baru) · **POST** `{question}` → balasan asisten ·
+  **DELETE** → bersihkan percakapan (204)
+- efek POST: pertanyaan + jawaban disimpan ke `chat_messages`; `CHAT_HISTORY_TURNS` pesan terakhir
+  ikut dikirim sebagai konteks percakapan
+- **sinkron**, terukur 1–2 detik per pertanyaan
+- response POST 200:
+
+```json
+{ "id": 12, "role": "assistant", "text": "…145 miliar dolar [00:25].", "model": "deepseek-chat", "created_at": "…" }
+```
+
+- error: `404` · `422 pertanyaan kosong` · `422` melebihi `CHAT_MAX_QUESTION` ·
+  `422 mesin AI belum punya kunci API` · `502` provider gagal
+- konteks: transkrip diformat `[mm:ss] teks`. Bila melebihi `CHAT_CONTEXT_CHARS`, hanya blok
+  paling cocok dengan kata-kata pertanyaan yang dikirim — dan model diberi tahu bahwa konteksnya
+  sebagian ([ADR 0010](../../../../docs/adr/0010-chat-transkrip.md))
+
 # login
 
 - api: `/api/auth/login`

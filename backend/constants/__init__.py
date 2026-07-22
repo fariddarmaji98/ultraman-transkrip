@@ -81,6 +81,14 @@ LLM_TEST_TIMEOUT_S = 20  # tombol "tes koneksi" harus cepat gagal
 SUMMARY_CHUNK_CHARS = 12000
 SUMMARY_MAX_CHUNKS = 12  # >12 potongan: transkrip dipangkas, dan itu diberitahukan
 
+# Chat (M3). Transkrip yang tak muat dikirim sebagian: potongan paling relevan
+# dengan pertanyaan. Pemilihannya pakai pencocokan kata, bukan embedding —
+# pgvector menyusul saat library sudah besar.
+CHAT_CONTEXT_CHARS = 12000
+CHAT_BLOCK_LINES = 25    # ukuran potongan saat transkrip harus dipilih sebagian
+CHAT_HISTORY_TURNS = 6   # pesan lama yang ikut dikirim (3 tanya-jawab)
+CHAT_MAX_QUESTION = 2000
+
 # Target audio untuk Whisper (16 kHz mono)
 ASR_SAMPLE_RATE = 16000
 ASR_CHANNELS = 1

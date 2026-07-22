@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { summarizeRecording } from '../api'
 import { fmtDate } from '../utils'
+import ChatPanel from './ChatPanel'
 import SummaryText from './SummaryText'
 
-export default function AiPanel({ rec, onSummarized }) {
+export default function AiPanel({ rec, onSummarized, onSeek }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const ready = rec.status === 'done' && rec.segments?.length > 0
@@ -26,7 +27,7 @@ export default function AiPanel({ rec, onSummarized }) {
   return (
     <section className="flex min-w-0 flex-1 flex-col">
       <PanelHeader />
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
+      <div className="shrink-0 overflow-y-auto p-5 pb-0">
         <SummaryCard
           summary={rec.summary}
           ready={ready}
@@ -34,9 +35,8 @@ export default function AiPanel({ rec, onSummarized }) {
           error={error}
           onRun={run}
         />
-        <ChatEmpty />
       </div>
-      <ChatInput />
+      <ChatPanel rec={rec} ready={ready} onSeek={onSeek} />
     </section>
   )
 }
@@ -90,60 +90,5 @@ function RunButton({ summary, ready, busy, onRun }) {
     >
       {ready ? label : 'Menunggu transkrip selesai'}
     </button>
-  )
-}
-
-function ChatEmpty() {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-edge bg-panel2 text-fg3">
-        <ChatIcon />
-      </div>
-      <p className="text-sm font-medium text-fg2">Tanya apa saja soal rekaman ini</p>
-      <p className="max-w-xs text-xs leading-relaxed text-fg3">
-        Jawaban akan mengutip menit sumbernya di transkrip sebelah kanan.
-      </p>
-    </div>
-  )
-}
-
-function ChatInput() {
-  return (
-    <div className="border-t border-edge p-3">
-      <div className="flex items-center gap-2 rounded-xl border border-edge bg-panel2 px-3 py-2">
-        <input
-          disabled
-          placeholder="Chat dengan transkrip (segera)…"
-          className="min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-fg3 disabled:cursor-not-allowed"
-        />
-        <button
-          disabled
-          aria-label="Kirim"
-          className="cursor-not-allowed rounded-lg border border-edge p-1.5 text-fg3"
-        >
-          <SendIcon />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ChatIcon() {
-  return (
-    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8 10h8M8 14h5m7-2a8 8 0 0 1-8 8H8l-4 3v-5.5A8 8 0 1 1 20 12Z"
-      />
-    </svg>
-  )
-}
-
-function SendIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 5l7 7-7 7" />
-    </svg>
   )
 }

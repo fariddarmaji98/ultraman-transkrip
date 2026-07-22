@@ -62,6 +62,8 @@ hilang saat restart) — jadi job tidak nyangkut.
 - **summaries** — `id, recording_id, text, provider, model, created_at`. Satu baris per recording
   (dibuat ulang = baris lama diganti). `provider`/`model` disimpan sebagai jejak: hasil dari mesin
   berbeda tidak sebanding ([ADR 0009](../adr/0009-ringkasan-transkrip.md)).
+- **chat_messages** — `id, recording_id, role (user|assistant), text, provider, model, created_at`.
+  Percakapan disimpan agar tidak hilang saat pindah rekaman ([ADR 0010](../adr/0010-chat-transkrip.md)).
 
 ## 5. ASR provider
 
@@ -98,6 +100,7 @@ Tambah pos = 1 entri di `build_protections()`.
 | `POST /api/recordings/from-url` | unduh dari URL — probe sinkron, tolak 422 lebih awal ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)) |
 | `POST /api/recordings/{id}/transcribe` | jalankan transkrip untuk rekaman yang filenya sudah ada — 409 bila sedang diproses, 422 bila file hilang. Generik: dipakai video terunduh **dan** transkrip ulang rekaman upload |
 | `POST /api/recordings/{id}/summarize` | ringkasan AI (sinkron, belasan detik) — 422 bila belum ada transkrip / kunci AI belum diisi, 502 bila provider gagal ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
+| `GET/POST/DELETE /api/recordings/{id}/chat` | tanya-jawab dengan transkrip; jawaban menyertakan sitasi `[mm:ss]` ([ADR 0010](../adr/0010-chat-transkrip.md)) |
 | `GET /api/storage` | pemakaian disk folder unggahan (tab Unduh) |
 | `GET /api/cookies` | katalog platform + flag `stored` — **isi cookies tidak pernah dikirim** |
 | `POST /api/cookies/{platform}` | unggah `cookies.txt` (Netscape) — 422 bila formatnya salah, 413 bila >512 KB |

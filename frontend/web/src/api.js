@@ -32,6 +32,26 @@ export async function createFromUrl(url, language = 'auto') {
   return data
 }
 
+export async function getChat(id) {
+  const res = await fetch(`/api/recordings/${id}/chat`)
+  return res.json()
+}
+
+export async function sendChat(id, question) {
+  const res = await fetch(`/api/recordings/${id}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal mengirim pertanyaan')
+  return data
+}
+
+export async function clearChat(id) {
+  await fetch(`/api/recordings/${id}/chat`, { method: 'DELETE' })
+}
+
 export async function summarizeRecording(id) {
   const res = await fetch(`/api/recordings/${id}/summarize`, { method: 'POST' })
   const data = await res.json().catch(() => ({}))
