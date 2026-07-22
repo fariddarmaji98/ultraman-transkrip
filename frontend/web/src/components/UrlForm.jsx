@@ -3,6 +3,12 @@
 import { useState } from 'react'
 import { createFromUrl } from '../api'
 
+// Latar lebih gelap dari panel + tepi lebih terang. Dengan `border-edge` di atas
+// `bg-panel2`, kolomnya terbaca seperti baris keterangan, bukan tempat mengetik.
+const FIELD =
+  'rounded-lg border border-edge2 bg-canvas px-3 py-2 text-sm text-fg outline-none ' +
+  'transition placeholder:text-fg3 focus:border-mint'
+
 export default function UrlForm({ onCreated }) {
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
@@ -31,7 +37,7 @@ export default function UrlForm({ onCreated }) {
         placeholder="Tempel URL video…"
         spellCheck="false"
         aria-label="URL video"
-        className="rounded-lg border border-edge bg-panel2 px-3 py-2 text-sm text-fg outline-none focus:border-mint/60 placeholder:text-fg3"
+        className={FIELD}
       />
       <button
         type="submit"
