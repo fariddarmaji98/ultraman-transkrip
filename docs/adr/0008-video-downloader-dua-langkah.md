@@ -1,6 +1,6 @@
 # ADR 0008 — Video downloader: yt-dlp sebagai library, video-first, alur dua langkah
 
-- Status: accepted
+- Status: accepted · **diamandemen 2026-07-22** (lihat §Amandemen di bawah)
 - Tanggal: 2026-07-22
 - Terkait: [ADR 0003](0003-modular-monolith-not-microservices.md), [ADR 0005](0005-model-asr-runtime.md), [ADR 0006](0006-workspace-tiga-kolom.md), [planning](../planning/video-downloader.md), [spec Fase A](../../.agent/spec/active/video-downloader/rules.md)
 
@@ -81,3 +81,29 @@ status `downloaded`; transkrip adalah aksi terpisah.**
   `requirements.txt` dan ini bukan opsional.
 - Kolom kanan (ADR 0006) **tidak berubah sama sekali** — video hasil unduhan tampil di player yang
   sudah ada karena filenya diperlakukan persis seperti hasil upload.
+
+## Amandemen 2026-07-22 — simpan video ke komputer
+
+User minta tombol untuk menyimpan video hasil unduhan ke komputernya, bukan cuma menontonnya di
+aplikasi.
+
+**Keputusan:** pakai ulang `GET /api/recordings/{id}/source`, **tanpa endpoint baru**. Endpoint itu
+sudah mengirim `Content-Disposition: attachment`, dan `<video src>` mengabaikan header tersebut —
+jadi satu endpoint melayani pemutaran *dan* penyimpanan sekaligus.
+
+Yang perlu diperbaiki justru **namanya**: sebelumnya berkas yang tersimpan bernama UUID di disk
+(`56149ac2eef246a083285c55dd04b35e.mp4`). Nama itu tidak ada gunanya di folder Unduhan — sepuluh
+video jadi sepuluh nama acak. Sekarang `app.naming.download_name()` menyusunnya dari **judul
+rekaman**, membuang karakter yang dilarang sistem berkas (`< > : " / \ | ? *`), dan judul non-ASCII
+tetap utuh lewat encoding `filename*=utf-8''`.
+
+Konsekuensi:
+
+- **Nama berkas mengikuti judul saat diunduh**, bukan saat direkam. Ganti judul di UI lalu simpan
+  lagi = nama berkas ikut berubah. Ini disengaja: judul yang terlihat user adalah nama yang ia
+  harapkan.
+- **Tombol simpan hanya di tab Unduh**, tidak di Riwayat — supaya daftar transkrip tidak penuh aksi
+  yang jarang dipakai. Disembunyikan juga saat status `downloading`/`failed` karena berkasnya
+  memang belum ada.
+- Tidak ada endpoint baru berarti tidak ada permukaan tambahan yang perlu dijaga saat auth dipasang
+  nanti.

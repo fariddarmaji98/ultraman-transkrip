@@ -267,15 +267,14 @@ Transkrip → Selesai`. Rekaman upload tetap seperti sekarang.
 
 ## 14. Roadmap (urutan baru)
 
-1. **Fase A — Video downloader berdiri sendiri** ← mulai di sini
-   `capture/` + `YtDlpSource` (probe + fetch_video 720p), `POST /api/recordings/from-url`,
-   status `downloading`/`downloaded`, `source_url`/`source_kind`, form URL + notice ToS di FE,
-   progress unduhan, kebijakan disk (§10). Target uji: **TikTok & X** (paling mulus).
-   *Selesai = tempel URL, video masuk riwayat, bisa ditonton. Belum ada transkrip.*
-2. **Fase B — Tombol transkrip**
-   `POST /api/recordings/{id}/transcribe`, `Job.kind` dipakai sungguhan, tombol di FE untuk rekaman
-   `downloaded`. Sekalian membuka **transkrip ulang** untuk rekaman upload.
-3. **Fase C — Pengerasan YouTube**
+1. ~~**Fase A — Video downloader berdiri sendiri**~~ ✅ **selesai** (`4cec044`, `a849651`)
+   `capture/` + `YtDlpSource`, `POST /api/recordings/from-url`, status `downloading`/`downloaded`,
+   sidebar bertab, progress, angka disk. Ditambah kemudian: **simpan video ke komputer**
+   (ADR 0008 §Amandemen).
+2. ~~**Fase B — Tombol transkrip**~~ ✅ **selesai** (`659355e`)
+   `POST /api/recordings/{id}/transcribe`, `Job.kind` dipakai sungguhan, tombol di FE. Sekaligus
+   membuka **transkrip ulang** untuk rekaman upload — teruji 104 segmen → 104 segmen.
+3. **Fase C — Pengerasan YouTube** ← sedang dikerjakan
    Sidecar PO-token, cookies per-platform, rate-limit, auto-update nightly (§8, §9, §10).
 4. **Fase D — Meta & subtitle-first**
    Cookies Instagram/Facebook, penanganan gagal + retry yang rapi, opsi "pakai caption platform" (§7).

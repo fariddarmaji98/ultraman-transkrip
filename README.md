@@ -22,8 +22,9 @@ fitur AI (ringkasan, chat, "second brain").
   bisa digeser ([ADR 0006](docs/adr/0006-workspace-tiga-kolom.md)).
 - **Mesin AI dipilih dari popup Setelan**: Ollama lokal, Groq, DeepSeek, Claude, OpenAI — satu jalur
   OpenAI-compatible, lengkap dengan tes koneksi ([ADR 0007](docs/adr/0007-mesin-ai-dipilih-dari-ui.md)).
-- **Unduh video dari URL**: tempel link → video (maks 720p) masuk arsip dan bisa ditonton; transkrip
-  dijalankan terpisah. TikTok & X paling mulus, YouTube kadang minta login
+- **Unduh video dari URL**: tempel link → video (maks 720p) masuk arsip, bisa ditonton, dan bisa
+  **disimpan ke komputer** dengan nama sesuai judulnya; transkrip dijalankan terpisah lewat tombol.
+  TikTok & X paling mulus, YouTube kadang minta login
   ([ADR 0008](docs/adr/0008-video-downloader-dua-langkah.md)).
 - **Ringkasan AI**: ringkasan + poin utama + poin aksi dari transkrip, lewat mesin AI pilihanmu.
   Transkrip panjang dipotong dan digabung otomatis ([ADR 0009](docs/adr/0009-ringkasan-transkrip.md)).
