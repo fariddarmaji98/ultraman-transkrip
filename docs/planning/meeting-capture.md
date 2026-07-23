@@ -215,10 +215,20 @@ dirancang sebagai rumah semua metode capture.
      worker, offscreen document, halaman izin mikrofon. `lib/api.js` diuji **melawan backend
      sungguhan lewat Node**: sesi penuh 4 potongan → `queued`, durasi 7688 ms, dan pesan error
      backend diteruskan apa adanya ke UI.
-   - **Belum diuji di Chrome sungguhan**: `tabCapture`, offscreen document, mixing Web Audio, dan
-     `MediaRecorder` hanya jalan di ekstensi yang dimuat betulan (`chrome://extensions` → Load
-     unpacked). Itu langkah verifikasi berikutnya, dan harus dilakukan sebelum fase ini
-     dinyatakan tuntas.
+   - **Perbaikan dari uji di Chrome sungguhan** (rekaman pertama gagal, dan itu berharga):
+     `MediaRecorder` menulis WebM **mode live** — tanpa durasi di header dan tanpa indeks
+     pencarian. ffprobe mengembalikan format kosong, jadi seluruh sesi ditolak
+     *"tidak terbaca sebagai media"*. Perbaikannya **remux `-c copy`** saat menutup sesi:
+     memasang durasi **dan** indeks, tanpa encode ulang (+19 byte, milidetik).
+     Tanpa itu bug kedua sudah menunggu: player tak akan bisa melompat ke menit mana pun,
+     sehingga sitasi chat yang bisa diklik jadi percuma.
+   - **Pelajaran pengujiannya**: berkas uji sebelumnya ditulis ffmpeg (punya header lengkap),
+     jadi ia tidak pernah mewakili keluaran `MediaRecorder`. Uji sekarang memakai
+     `ffmpeg -f webm -live 1` yang meniru kondisi aslinya.
+   - **Sesi yang gagal disimpan kini punya jalan keluar** (`pending`): perekaman berhenti,
+     potongannya tetap aman di server, popup menawarkan "Coba simpan lagi". Sebelumnya state
+     tersangkut mengira masih merekam, dan klik berikutnya memunculkan
+     *"Receiving end does not exist"* yang menutupi error sebenarnya.
 2. **Fase B — lapis 0.** Label `saya`/`peserta` dari perbandingan energi kiri-kanan. Murah, tidak
    bergantung platform, tidak bisa rusak oleh update UI.
 3. **Fase C — lapis 1 (nama asli).** Content script Meet dulu (paling stabil & paling sering

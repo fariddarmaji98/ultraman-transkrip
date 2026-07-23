@@ -21,6 +21,17 @@ async def probe_duration_ms(path: Path) -> int:
         raise MediaError("durasi media tidak terbaca") from exc
 
 
+async def remux(src: Path, dst: Path) -> None:
+    """Tulis ulang container tanpa encode ulang (`-c copy`) — cepat, tanpa rugi mutu.
+
+    Wajib untuk hasil `MediaRecorder`: ia menulis WebM mode *live* yang **tidak
+    punya durasi di header** (ffprobe mengembalikan format kosong) dan tanpa
+    indeks pencarian, sehingga player pun tak bisa melompat ke menit tertentu.
+    Remux memasang keduanya.
+    """
+    await _run(["ffmpeg", "-y", "-i", str(src), "-c", "copy", str(dst)])
+
+
 async def extract_audio(src: Path, dst: Path) -> None:
     await _run([
         "ffmpeg", "-y", "-i", str(src), "-vn",

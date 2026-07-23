@@ -20,7 +20,9 @@ async function readState() {
 }
 
 async function start({ tabId, tabUrl, title }) {
-  if ((await readState()).active) throw new Error('sesi lain masih berjalan')
+  const state = await readState()
+  if (state.active) throw new Error('sesi lain masih berjalan')
+  if (state.pending) throw new Error('masih ada rekaman yang belum tersimpan — selesaikan dulu')
   const cfg = await getSettings()
   const platform = platformOf(tabUrl)
   // Sesi dibuat DULU: kalau backend mati, gagal sebelum menyentuh media,
@@ -47,25 +49,37 @@ async function beginCapture(tabId, cfg, session, platform) {
 
 async function stop() {
   const state = await readState()
-  if (!state.active) throw new Error('tidak ada sesi berjalan')
+  if (!state.recording_id) throw new Error('tidak ada sesi berjalan')
   const cfg = await getSettings()
-  await chrome.runtime.sendMessage({ type: 'OFFSCREEN_STOP' })
-  await closeOffscreen()
+  await haltCapture()
+  // Perekaman sudah berhenti; tandai `pending` SEBELUM menutup sesi ke backend.
+  // Kalau langkah itu gagal, potongannya tetap aman di server dan user bisa
+  // mencoba menyimpan lagi — bukan tersangkut mengira masih merekam.
+  await save({ ...state, active: false, pending: true })
   const rec = await finishSession(cfg.apiBase, state.recording_id, state.upload_token)
-  await save({ active: false, lastRecordingId: rec.id, lastTitle: rec.title })
+  await save({ active: false, pending: false, lastTitle: rec.title })
   return { stopped: true, recording: rec }
 }
 
 async function cancel() {
   const state = await readState()
   const cfg = await getSettings()
-  await chrome.runtime.sendMessage({ type: 'OFFSCREEN_STOP' }).catch(() => {})
-  await closeOffscreen()
-  if (state.active) {
+  await haltCapture()
+  if (state.recording_id) {
     await cancelSession(cfg.apiBase, state.recording_id, state.upload_token)
   }
-  await save({ active: false })
+  await save({ active: false, pending: false })
   return { cancelled: true }
+}
+
+// Hentikan perekaman, apa pun kondisinya. Offscreen bisa saja sudah tidak ada
+// (mis. percobaan simpan sebelumnya gagal setelah menutupnya) — mengirim pesan
+// ke situ akan melempar "Receiving end does not exist" dan menutupi error yang
+// sebenarnya. Karena itu keberadaannya diperiksa, dan kegagalannya diabaikan.
+async function haltCapture() {
+  if (!(await chrome.offscreen.hasDocument())) return
+  await chrome.runtime.sendMessage({ type: 'OFFSCREEN_STOP' }).catch(() => {})
+  await closeOffscreen()
 }
 
 async function save(state) {

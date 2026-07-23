@@ -27,7 +27,7 @@ from constants import (
     MEETING_TOKEN_BYTES,
     SOURCE_MEETING,
 )
-from media.ffmpeg import MediaError, probe_duration_ms
+from media.ffmpeg import MediaError, probe_duration_ms, remux
 from store import models
 from worker.queue import enqueue
 
@@ -62,9 +62,7 @@ async def finish_meeting(
 ) -> RecordingOut:
     """Tutup sesi: sambung potongan, ukur durasi, lalu antre transkrip."""
     rec = await _session_or_reject(db, rid, x_upload_token)
-    dst = settings.upload_dir / f"{uuid4().hex}{MEETING_CONTAINER_SUFFIX}"
-    if meeting.assemble(rec.id, dst) == 0:
-        raise HTTPException(422, "tidak ada audio yang diterima")
+    dst = await _assemble_and_repair(rec.id)
     await _finalize(db, rec, dst)
     await enqueue(rec.id, JOB_KIND_TRANSCRIBE)
     return RecordingOut.model_validate(rec)
@@ -138,6 +136,28 @@ def _reject_if_session_too_big(rid: int, incoming: int) -> None:
         raise HTTPException(413, f"sesi melebihi batas {gb} GB")
 
 
+async def _assemble_and_repair(rid: int) -> Path:
+    """Sambung potongan lalu **remux**, karena hasil mentahnya belum bisa dipakai.
+
+    `MediaRecorder` menulis WebM mode *live*: tanpa durasi di header dan tanpa
+    indeks pencarian. Tanpa remux, ffprobe gagal membaca durasinya (dan pernah
+    membuat seluruh sesi ditolak "tidak terbaca sebagai media"), sementara
+    player pun tak bisa melompat ke menit mana pun.
+    """
+    raw = settings.upload_dir / f"{uuid4().hex}.raw{MEETING_CONTAINER_SUFFIX}"
+    dst = settings.upload_dir / f"{uuid4().hex}{MEETING_CONTAINER_SUFFIX}"
+    if meeting.assemble(rid, raw) == 0:
+        raw.unlink(missing_ok=True)
+        raise HTTPException(422, "tidak ada audio yang diterima")
+    try:
+        await remux(raw, dst)
+    except MediaError as exc:
+        raise HTTPException(422, "hasil rekaman tidak terbaca sebagai media") from exc
+    finally:
+        raw.unlink(missing_ok=True)
+    return dst
+
+
 async def _finalize(db, rec: models.Recording, dst: Path) -> None:
     """Potongan sudah tersambung — barulah aman membuang yang mentah."""
     rec.duration_ms = await _probe_or_fail(dst, rec)
@@ -151,9 +171,9 @@ async def _finalize(db, rec: models.Recording, dst: Path) -> None:
 
 
 async def _probe_or_fail(dst: Path, rec: models.Recording) -> int:
-    """Rekaman gagal dibaca = potongannya jangan dibuang; masih bisa diselidiki."""
+    """Gagal di sini = potongan mentah JANGAN dibuang; sesi masih bisa ditutup ulang."""
     try:
         return await probe_duration_ms(dst)
     except MediaError as exc:
         dst.unlink(missing_ok=True)
-        raise HTTPException(422, "hasil rekaman tidak terbaca sebagai media") from exc
+        raise HTTPException(422, "durasi rekaman tidak terbaca") from exc

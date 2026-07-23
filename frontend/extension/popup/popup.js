@@ -10,17 +10,22 @@ document.addEventListener('DOMContentLoaded', render)
 el('start').addEventListener('click', () => guard(start))
 el('stop').addEventListener('click', () => guard(stop))
 el('cancel').addEventListener('click', () => guard(cancel))
+el('retry').addEventListener('click', () => guard(stop))
+el('discard').addEventListener('click', () => guard(cancel))
 el('askMic').addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('permission/permission.html') })
 })
 
+// Tiga keadaan, dan `pending` bukan hiasan: rekaman yang gagal disimpan harus
+// punya jalan keluar, bukan membuat popup mengaku masih merekam selamanya.
 async function render() {
   const state = await send({ type: 'STATE' })
-  el('dot').classList.toggle('on', !!state.active)
-  el('idle').hidden = !!state.active
-  el('live').hidden = !state.active
-  if (state.active) showLive(state)
-  else await showIdle()
+  const view = state.active ? 'live' : state.pending ? 'pending' : 'idle'
+  el('dot').classList.toggle('on', view === 'live')
+  for (const id of ['idle', 'live', 'pending']) el(id).hidden = id !== view
+  if (view === 'live') showLive(state)
+  else if (view === 'idle') await showIdle()
+  else clearInterval(ticking)
 }
 
 async function showIdle() {

@@ -41,6 +41,20 @@
       </p>
     </section>
 
+    <!-- Rekaman sudah berhenti tapi gagal disimpan. Potongannya masih aman di
+         server, jadi ini bisa dicoba lagi — bukan jalan buntu. -->
+    <section id="pending" hidden>
+      <div class="card">
+        <b class="warn">Belum tersimpan</b>
+        <p class="muted">
+          Rekaman sudah berhenti, tapi langkah penyimpanan gagal. Audionya masih
+          ada di server — coba simpan lagi.
+        </p>
+      </div>
+      <button class="primary" id="retry">Coba simpan lagi</button>
+      <button class="ghost danger" id="discard">Buang rekaman ini</button>
+    </section>
+
     <p class="muted error" id="error" hidden></p>
     <p class="muted" id="done" hidden></p>
 

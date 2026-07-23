@@ -236,10 +236,14 @@ Tiga langkah: mulai → kirim potongan berkali-kali → tutup. Rincian & alasan 
 
 - api: `POST /api/recordings/{id}/finish`
 - header: `X-Upload-Token`
-- efek: sambung semua potongan byte-per-byte → `upload_path`, ukur durasi (ffprobe), hapus
-  potongan mentah, kosongkan token, status → `queued`, buat job `transcribe` + enqueue
+- efek: sambung semua potongan byte-per-byte → **remux `-c copy`** → `upload_path`, ukur durasi
+  (ffprobe), hapus potongan mentah, kosongkan token, status → `queued`, buat job `transcribe`
+- **remux wajib, bukan optimasi**: `MediaRecorder` menulis WebM mode *live* — tanpa durasi di
+  header dan tanpa indeks pencarian. Tanpa remux, ffprobe gagal membaca durasi (seluruh sesi
+  ditolak) dan player tak bisa melompat ke menit mana pun
 - response 200: `RecordingOut`
-- error: 403 · 404 · 422 tidak ada audio yang diterima / hasil tidak terbaca sebagai media
+- error: 403 · 404 · 422 tidak ada audio yang diterima / hasil rekaman tidak terbaca sebagai
+  media / durasi rekaman tidak terbaca
 
 ---
 

@@ -47,6 +47,11 @@ Setelah mengubah kode: tombol **reload** di kartu ekstensi. Tidak ada langkah bu
   rekamannya baik-baik saja.
 - **`content script` tidak mendukung `import` ES module.** Service worker, offscreen, dan popup
   mendukung. Saat adapter platform ditambahkan (Fase C), tulis sebagai satu berkas mandiri.
+- **Keluaran `MediaRecorder` belum bisa langsung dipakai.** Ia WebM mode *live*: tanpa durasi di
+  header dan tanpa indeks pencarian. Backend me-remux-nya (`-c copy`) saat sesi ditutup —
+  jangan hapus langkah itu, tanpanya rekaman ditolak "tidak terbaca" dan player tak bisa seek.
+- **Jangan mengirim pesan ke offscreen tanpa memeriksa keberadaannya.** Bila sudah ditutup,
+  Chrome melempar *"Receiving end does not exist"* yang akan menutupi error yang sebenarnya.
 
 ## Batasan (nyatakan ke user, jangan digagalkan diam-diam)
 
