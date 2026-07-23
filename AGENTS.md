@@ -64,6 +64,11 @@ Default fitur baru = **clone modul terdekat**, bukan mulai dari nol.
 - Backend: clone route/handler terdekat di `app/routes/`, rename, daftarkan ke router, tambah schema,
   baru ubah logic. Provider ASR/LLM baru → adapter baru + entry factory, bukan if-else tersebar.
 - Frontend: clone komponen terdekat sebelum bikin pola baru.
+- **Clone = ganti namanya juga.** Dua fungsi bernama sama dalam satu modul membuat yang kedua
+  menimpa yang pertama tanpa error apa pun — pernah membuat upload mati total selama 3 commit.
+  Linter **tidak** menangkapnya untuk nama berawalan `_` (terbukti empiris), dan hampir semua
+  helper di sini berawalan `_`. Penjaganya: `backend/scripts/check_duplicate_defs.py`.
+  Detail: [pelajaran-definisi-ganda.md](docs/architecture/pelajaran-definisi-ganda.md).
 
 Jangan refactor abstraksi besar (ganti engine ASR, ganti framework, ubah struktur DB) tanpa ADR
 atau permintaan user.
@@ -105,3 +110,10 @@ atau permintaan user.
 Unit test belum jadi gate wajib (banyak logic bergantung audio/ASR live). Verifikasi default =
 **jalankan komponen nyata** (backend: call endpoint + baca log; frontend: `npm run dev` + coba alur)
 bukan unit test. Pahami `docs/` sebelum mengerjakan task relevan.
+
+- **Uji jalur lama, bukan cuma yang baru.** Fitur baru bisa merusak fitur lama tanpa menyentuh
+  barisnya (tabrakan nama, konstanta bersama, state modul). Setelah mengubah modul yang dipakai
+  bersama — mis. `app/routes/recordings.py`, `constants/` — jalankan **upload** dan **unduh URL**,
+  bukan hanya yang sedang dikerjakan. Ini pelajaran dari bug nyata, bukan formalitas.
+- Setelah menyentuh backend: `cd backend && .venv/Scripts/python scripts/check_duplicate_defs.py`
+  (cepat, tanpa dependency; keluar 1 bila ada definisi ganda).
