@@ -59,6 +59,39 @@ Dua hal yang tidak jelas kalau belum pernah membangunnya:
 - **Service worker bisa disuspend MV3.** Sejak Chrome 116 aktivitas WebSocket me-reset timer idle,
   dan media hidup di offscreen document — dua sebab kenapa pembagian di atas wajib.
 
+### 3.1 JavaScript polos, tanpa framework, tanpa build step
+
+Repo ini memakai React + Vite + Tailwind untuk `frontend/web/`, tapi **ekstensi tidak ikut** —
+bukan karena konsistensi tidak penting, melainkan karena **tiga dari empat bagian ekstensi bukan UI
+sama sekali**:
+
+| Bagian | Isinya | Framework menolong? |
+|---|---|---|
+| `background/` | orkestrasi, `getMediaStreamId()` | Tidak — tak ada DOM |
+| `offscreen/` | Web Audio, `MediaRecorder`, kirim chunk | Tidak — pipa media murni |
+| `content/` | baca DOM Meet/Zoom | **Merugikan** — disuntik ke halaman orang; makin kecil makin baik |
+| `popup/` | tombol Mulai/Stop + status | Bisa, tapi terlalu kecil |
+
+**Popup itu remote control, bukan UI produk.** UI sesungguhnya sudah ada di webapp — transkrip,
+ringkasan, chat semuanya di sana ([ADR 0006](../adr/0006-workspace-tiga-kolom.md)). Popup cuma
+perlu tombol mulai/stop, indikator merekam, durasi, dan tautan "buka di webapp".
+
+**Tanpa build step itu alasan praktis, bukan kemurnian.** Mengembangkan ekstensi berarti me-reload
+puluhan kali sehari; "Load unpacked" langsung dari folder = edit → reload → coba. Bundler menyisipkan
+langkah build di tiap putaran itu.
+
+**Jebakan yang harus disadari sejak awal:** content script yang dideklarasikan di manifest **tidak
+mendukung `import` ES module**. Service worker (`"type": "module"`), offscreen, dan popup semuanya
+mendukung — hanya content script yang tidak. Karena itu tiap adapter platform di §5 ditulis sebagai
+**satu file mandiri**, bukan dipecah lewat import. Di situlah bundler baru layak dibayar kalau nanti
+terasa sempit.
+
+Aturan repo tetap berlaku: 1 fungsi ≤ 20 baris, ikon SVG inline, warna memakai token yang sama
+dengan webapp supaya popup tidak terasa asing.
+
+**Kapan keputusan ini ditinjau ulang:** kalau popup tumbuh punya daftar sesi, setelan, atau riwayat.
+Jawabannya saat itu **bukan** menambah React ke popup, melainkan memindahkan layar itu ke webapp.
+
 ## 4. Jalur A — audio: keputusan yang harus diambil sekarang
 
 ### 4.1 Stereo, bukan mixdown (keputusan paling penting di dokumen ini)
