@@ -1,0 +1,65 @@
+/* Token warna sama persis dengan webapp (index.css @theme) supaya popup tidak
+   terasa seperti aplikasi lain. Ditulis tangan — untuk ~10 elemen, Tailwind
+   dan build step-nya lebih banyak mesin daripada gunanya. */
+:root {
+  --canvas: #080c0a;
+  --panel2: #111815;
+  --edge: #1b2621;
+  --edge2: #26332c;
+  --fg: #e7efe9;
+  --fg2: #9db0a6;
+  --fg3: #63756c;
+  --mint: #34d399;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  width: 320px;
+  margin: 0;
+  padding: 14px;
+  background: var(--canvas);
+  color: var(--fg);
+  font: 13px/1.5 system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+h1 { flex: 1; margin: 0; font-size: 13px; font-weight: 600; }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg3); flex: none; }
+.dot.on { background: #f87171; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+
+.card {
+  border: 1px solid var(--edge);
+  background: var(--panel2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.card b { display: block; font-size: 12px; margin-bottom: 2px; }
+.muted { color: var(--fg3); font-size: 11px; margin: 0; }
+.timer { font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 600; }
+
+label { display: block; font-size: 11px; color: var(--fg3); margin-bottom: 4px; }
+input {
+  width: 100%; padding: 7px 9px; margin-bottom: 10px;
+  border: 1px solid var(--edge2); border-radius: 8px;
+  background: var(--canvas); color: var(--fg); font: inherit;
+}
+input:focus { outline: none; border-color: var(--mint); }
+
+button {
+  width: 100%; padding: 9px; border: 0; border-radius: 8px;
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+button:disabled { opacity: .4; cursor: not-allowed; }
+.primary { background: var(--mint); color: var(--canvas); }
+.ghost { background: transparent; color: var(--fg2); border: 1px solid var(--edge); margin-top: 8px; }
+.ghost:hover:not(:disabled) { color: var(--fg); border-color: var(--edge2); }
+.danger:hover:not(:disabled) { color: #f87171; border-color: #f8717155; }
+
+.warn { color: #fbbf24; }
+.error { color: #f87171; }
+a { color: var(--mint); }

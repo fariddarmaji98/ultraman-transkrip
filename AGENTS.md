@@ -18,6 +18,8 @@ backend/            Python + FastAPI
   protection/       gerbang tol: middleware.py + rate_limit.py + queue_guard.py + base.py
   constants/        konstanta & default terpusat (tidak impor app/asr/analysis)
 frontend/web/       React 19 + Vite + Tailwind v4 (SPA, tema gelap) — src/components/
+frontend/extension/ Ekstensi Chrome MV3 perekam meeting — JS POLOS, tanpa framework & tanpa
+                    build step (alasan: docs/planning/meeting-capture.md §3.1). Load unpacked.
 samples/            klip validasi Indonesia (FLEURS) + fetch_fleurs_id.py (audio di-gitignore)
 docs/               ADR + planning + architecture
 .agent/             konfigurasi agent (skills, spec)

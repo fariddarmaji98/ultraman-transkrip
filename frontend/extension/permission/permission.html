@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Izin mikrofon — Ultraman Transkrip</title>
+    <link rel="stylesheet" href="../popup/popup.css" />
+    <style>
+      body { width: auto; max-width: 460px; margin: 48px auto; padding: 24px; }
+      h1 { font-size: 18px; margin-bottom: 4px; }
+      p { color: var(--fg2); }
+    </style>
+  </head>
+  <body>
+    <!-- Halaman ini ada karena offscreen document TIDAK BISA memunculkan prompt
+         izin — ia gagal diam-diam. Prompt hanya muncul di halaman ekstensi yang
+         terlihat, jadi izinnya diminta sekali di sini lalu berlaku untuk
+         seluruh ekstensi (asal sama). -->
+    <h1>Izinkan mikrofon</h1>
+    <p>
+      Suara peserta lain terekam dari audio tab, tapi <b>suaramu sendiri tidak</b> —
+      Meet dan Zoom sengaja membisukan playback suara sendiri untuk mencegah gema.
+      Tanpa izin ini, kamu tidak akan muncul di transkrip.
+    </p>
+    <button class="primary" id="ask">Minta izin mikrofon</button>
+    <p id="status" class="muted" style="margin-top:12px"></p>
+    <script type="module" src="permission.js"></script>
+  </body>
+</html>

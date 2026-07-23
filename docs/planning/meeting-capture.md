@@ -211,7 +211,14 @@ dirancang sebagai rumah semua metode capture.
      `meeting_platform`/`upload_token`, status `recording`. Teruji dengan berkas stereo sungguhan:
      potongan dikirim **tak berurutan + satu duplikat** tetap tersambung **identik byte-per-byte**;
      backend **di-restart di tengah sesi** dan sesinya tetap bisa dilanjutkan sampai transkrip jadi.
-   - Ekstensi: menyusul.
+   - **Ekstensi ✅ selesai** — `frontend/extension/` (JS polos, tanpa build step). Popup, service
+     worker, offscreen document, halaman izin mikrofon. `lib/api.js` diuji **melawan backend
+     sungguhan lewat Node**: sesi penuh 4 potongan → `queued`, durasi 7688 ms, dan pesan error
+     backend diteruskan apa adanya ke UI.
+   - **Belum diuji di Chrome sungguhan**: `tabCapture`, offscreen document, mixing Web Audio, dan
+     `MediaRecorder` hanya jalan di ekstensi yang dimuat betulan (`chrome://extensions` → Load
+     unpacked). Itu langkah verifikasi berikutnya, dan harus dilakukan sebelum fase ini
+     dinyatakan tuntas.
 2. **Fase B — lapis 0.** Label `saya`/`peserta` dari perbandingan energi kiri-kanan. Murah, tidak
    bergantung platform, tidak bisa rusak oleh update UI.
 3. **Fase C — lapis 1 (nama asli).** Content script Meet dulu (paling stabil & paling sering

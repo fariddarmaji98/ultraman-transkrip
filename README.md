@@ -34,6 +34,10 @@ fitur AI (ringkasan, chat, "second brain").
   **bisa diklik** untuk melompat ke titik itu ([ADR 0010](docs/adr/0010-chat-transkrip.md)).
   Ringkasan dan chat dipisah tab agar keduanya dapat tinggi penuh
   ([ADR 0006 §Amandemen](docs/adr/0006-workspace-tiga-kolom.md)).
+- **Rekam meeting lewat ekstensi Chrome**: tangkap audio tab (Meet / Zoom web / Teams) **+ mikrofon
+  terpisah** → potongan dikirim ke server → selesai meeting langsung masuk antrean transkrip.
+  Direkam **stereo** (kiri = peserta, kanan = saya) agar nanti bisa dibedakan siapa yang bicara
+  ([planning](docs/planning/meeting-capture.md) · [cara pasang](frontend/extension/README.md)).
 - **Bahasa Indonesia divalidasi**: `large-v3-turbo` ~5,4% WER pada FLEURS-id (lihat `samples/`).
 
 ## Arsitektur (saat ini)
@@ -80,6 +84,7 @@ backend/            Python + FastAPI
   protection/       gerbang tol: rate-limit, throttle upload, queue-guard
   constants/        konstanta terpusat (ADR 0001)
 frontend/web/       React + Vite + Tailwind SPA
+frontend/extension/ ekstensi Chrome MV3 perekam meeting (JS polos, tanpa build step)
 samples/            klip validasi Indonesia (FLEURS) + skrip regen (audio di-gitignore)
 docs/               ADR + planning + architecture (lihat index di bawah)
 .agent/             konfigurasi agent (skills, spec) — lihat AGENTS.md

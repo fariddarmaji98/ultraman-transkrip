@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Perekam meeting (offscreen)</title>
+  </head>
+  <body>
+    <!-- Halaman ini tidak pernah terlihat. Ia ada karena service worker MV3
+         tidak punya DOM dan bisa disuspend, sedangkan MediaRecorder butuh
+         konteks dokumen yang hidup selama meeting berlangsung. -->
+    <script type="module" src="offscreen.js"></script>
+  </body>
+</html>

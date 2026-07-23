@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rekam Meeting</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <span class="dot" id="dot"></span>
+      <h1>Rekam Meeting</h1>
+    </header>
+
+    <!-- Sebelum merekam -->
+    <section id="idle" hidden>
+      <div class="card">
+        <b id="platform">—</b>
+        <p class="muted" id="tabTitle">—</p>
+      </div>
+      <label for="title">Judul rekaman</label>
+      <input id="title" placeholder="kosongkan untuk judul otomatis" />
+      <button class="primary" id="start">Mulai rekam</button>
+      <button class="ghost" id="askMic" hidden>Izinkan mikrofon</button>
+      <p class="muted warn" id="micWarn" hidden>
+        Mikrofon belum diizinkan — suaramu sendiri tidak akan terekam.
+      </p>
+      <p class="muted" id="hint" style="margin-top:8px"></p>
+    </section>
+
+    <!-- Sedang merekam -->
+    <section id="live" hidden>
+      <div class="card">
+        <b>Sedang merekam</b>
+        <p class="timer" id="elapsed">00:00</p>
+        <p class="muted" id="liveTitle">—</p>
+      </div>
+      <button class="primary" id="stop">Selesai &amp; transkrip</button>
+      <button class="ghost danger" id="cancel">Batalkan &amp; buang</button>
+      <p class="muted" style="margin-top:8px">
+        Tab meeting harus tetap terbuka. Menutup atau me-refresh-nya memutus rekaman.
+      </p>
+    </section>
+
+    <p class="muted error" id="error" hidden></p>
+    <p class="muted" id="done" hidden></p>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
