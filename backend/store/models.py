@@ -28,6 +28,11 @@ class Recording(Base):
     source_filename: Mapped[str] = mapped_column(String(255))
     source_kind: Mapped[str] = mapped_column(String(8), default=SOURCE_UPLOAD)
     source_url: Mapped[str | None] = mapped_column(String(1024), default=None)
+    meeting_platform: Mapped[str | None] = mapped_column(String(16), default=None)
+    # Kapabilitas satu sesi rekaman, bukan auth: dipegang ekstensi supaya
+    # tidak sembarang pemanggil bisa menyuntik potongan ke sesi orang.
+    # Disimpan di DB (bukan memori) agar sesi selamat saat backend restart.
+    upload_token: Mapped[str | None] = mapped_column(String(64), default=None)
     upload_path: Mapped[str] = mapped_column(String(512))
     media_path: Mapped[str | None] = mapped_column(String(512), default=None)
     duration_ms: Mapped[int | None] = mapped_column(default=None)

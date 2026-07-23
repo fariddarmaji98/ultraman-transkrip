@@ -38,7 +38,7 @@ hilang saat restart) — jadi job tidak nyangkut.
 | `app/` | `main.py` (app factory + lifespan), `config.py` (settings env `TRANSKRIP_*`), `deps.py` (sesi DB), `schemas.py`, `naming.py` (bersihkan judul dari nama file), `routes/` | lifespan: init DB → start worker → requeue |
 | `asr/` | `base.py` (protocol `ASRProvider` + `Segment`), `local_whisper.py`, `groq.py`, `__init__.get_provider()` | interface tunggal; lokal lapor progres per-segmen |
 | `analysis/` | `base.py` (Protocol `LLMProvider` async), `openai_compat.py` (adapter httpx), `summarize.py` (map-reduce), `__init__.resolve()`/`get_llm()` | satu jalur OpenAI-compatible untuk Ollama/Groq/DeepSeek/Claude/OpenAI ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)); ringkasan = pemakai pertamanya ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
-| `capture/` | `base.py` (Protocol `MediaSource` + `MediaInfo`), `ytdlp.py` (`YtDlpSource`), `cookies.py` (kredensial per-platform), `__init__.get_source()` | unduh dari URL via yt-dlp ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)); probe dulu, unduh ke temp lalu pindah; cookies dipilih otomatis dari domain URL |
+| `capture/` | `base.py` (Protocol `MediaSource` + `MediaInfo`), `ytdlp.py` (`YtDlpSource`), `cookies.py` (kredensial per-platform), `meeting.py` (sesi rekaman meeting), `__init__.get_source()` | dua metode capture: unduh URL via yt-dlp ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)) dan tangkap audio meeting dari ekstensi ([planning](../planning/meeting-capture.md)); `meeting.py` menyimpan potongan per-`seq` lalu menyambungnya |
 | `media/` | `ffmpeg.py`: `probe_duration_ms`, `extract_audio` | subprocess asyncio |
 | `worker/` | `queue.py` (antrean `(id, kind)`, `enqueue`, `pending_count`, `requeue_pending`), `pipeline.py` (`run_fetch`, `run_transcribe`) | concurrency=1; pipeline dipilih dari `Job.kind`; poller progres via holder thread-safe |
 | `store/` | `models.py` (Recording, Job, Segment), `db.py` (engine async + `init_db`/create_all) | SQLite (`aiosqlite`) |
@@ -48,15 +48,18 @@ hilang saat restart) — jadi job tidak nyangkut.
 
 ## 4. Data model (SQLite)
 
-- **recordings** — `id, title, source_filename, source_kind (upload|url), source_url, upload_path,
-  media_path, duration_ms, language, status, created_at`.
+- **recordings** — `id, title, source_filename, source_kind (upload|url|meeting), source_url,
+  meeting_platform, upload_token, upload_path, media_path, duration_ms, language, status,
+  created_at`. `upload_token` = kapabilitas satu sesi meeting (bukan auth), dikosongkan saat sesi
+  ditutup; disimpan di DB agar sesi selamat saat backend restart.
 - **jobs** — `id, recording_id, kind (fetch|transcribe), status, progress (0–100), error,
   created_at`. Satu recording bisa punya **dua** job berurutan: `fetch` lalu `transcribe` — kode
   yang membaca job harus memilih per-`kind` atau mengambil yang terbaru.
-- **status recording** — `downloading → downloaded` (sumber URL) lalu
-  `queued → extracting → transcribing → done`; `failed` bisa dari mana saja. Rekaman upload mulai
-  langsung dari `queued`. `downloaded` = menunggu aksi user, bukan menunggu mesin: tidak di-requeue
-  dan tidak dihitung "Diproses".
+- **status recording** — `downloading → downloaded` (sumber URL) atau `recording` (sesi meeting)
+  lalu `queued → extracting → transcribing → done`; `failed` bisa dari mana saja. Rekaman upload
+  mulai langsung dari `queued`. `downloaded` = menunggu aksi user, bukan menunggu mesin: tidak
+  di-requeue dan tidak dihitung "Diproses". `recording` juga **tidak** di-requeue — sesinya
+  dilanjutkan oleh ekstensi, bukan worker (tiga himpunan status di `constants/`, sengaja terpisah).
 - **segments** — `id, recording_id, idx, start_ms, end_ms, text, speaker (nullable)`. `speaker`
   diisi saat diarization (M4). Ditulis bulk, idempoten.
 - **summaries** — `id, recording_id, text, provider, model, created_at`. Satu baris per recording
@@ -98,6 +101,10 @@ Tambah pos = 1 entri di `build_protections()`.
 | `PATCH /api/config` | ganti model lokal — 422 di luar katalog, 409 saat Groq/ada job jalan ([ADR 0005](../adr/0005-model-asr-runtime.md)) |
 | `POST /api/recordings` | upload (multipart streaming) → 201 `{recording, job_id}` |
 | `POST /api/recordings/from-url` | unduh dari URL — probe sinkron, tolak 422 lebih awal ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)) |
+| `POST /api/recordings/meeting` | mulai sesi rekaman meeting dari ekstensi → `{recording_id, upload_token}` |
+| `PUT /api/recordings/{id}/chunk?seq=N` | satu potongan audio (biner mentah), idempoten per `seq` |
+| `POST /api/recordings/{id}/finish` | tutup sesi: sambung potongan → ukur durasi → antre transkrip |
+| `DELETE /api/recordings/{id}/meeting` | batalkan sesi: buang potongan + baris recording |
 | `POST /api/recordings/{id}/transcribe` | jalankan transkrip untuk rekaman yang filenya sudah ada — 409 bila sedang diproses, 422 bila file hilang. Generik: dipakai video terunduh **dan** transkrip ulang rekaman upload |
 | `POST /api/recordings/{id}/summarize` | ringkasan AI (sinkron, belasan detik) — 422 bila belum ada transkrip / kunci AI belum diisi, 502 bila provider gagal ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
 | `GET/POST/DELETE /api/recordings/{id}/chat` | tanya-jawab dengan transkrip; jawaban menyertakan sitasi `[mm:ss]` ([ADR 0010](../adr/0010-chat-transkrip.md)) |

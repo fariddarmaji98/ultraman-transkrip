@@ -8,10 +8,18 @@ JOB_DONE = "done"
 JOB_FAILED = "failed"
 JOB_DOWNLOADING = "downloading"  # sedang diunduh dari URL
 JOB_DOWNLOADED = "downloaded"    # file siap, belum ditranskrip (terminal sampai user minta)
+JOB_RECORDING = "recording"      # sesi meeting berjalan; ekstensi masih mengirim potongan
 
-# Dua himpunan berbeda — jangan disatukan (spec video-downloader §Status):
-#   requeue butuh `downloading`; guard model ASR tidak (mengunduh tak memakai Whisper).
+# TIGA himpunan berbeda — jangan disatukan. Tiap pemakai butuh jawaban berbeda
+# untuk pertanyaan "sedang sibuk?", dan menyatukannya pernah jadi jebakan.
+#   requeue saat startup  : butuh `downloading` (unduhan terputus dilanjutkan worker),
+#                           TIDAK `recording` — sesi meeting dilanjutkan oleh ekstensinya
+#                           sendiri; seluruh state-nya di disk + DB, jadi restart backend
+#                           tidak memutusnya dan worker tak punya apa pun untuk dikerjakan.
+#   guard tombol transkrip: semua yang sedang berjalan, termasuk `recording`.
+#   guard ganti model ASR : hanya yang benar-benar memakai Whisper.
 ACTIVE_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING, JOB_DOWNLOADING)
+NOT_TRANSCRIBABLE_STATUSES = ACTIVE_STATUSES + (JOB_RECORDING,)
 TRANSCRIBE_BUSY_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING)
 
 # Jenis job & asal rekaman
@@ -19,6 +27,7 @@ JOB_KIND_FETCH = "fetch"
 JOB_KIND_TRANSCRIBE = "transcribe"
 SOURCE_UPLOAD = "upload"
 SOURCE_URL = "url"
+SOURCE_MEETING = "meeting"
 
 # Batas upload & streaming
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
@@ -104,6 +113,17 @@ DOWNLOAD_MAX_DURATION_S = 4 * 3600  # tolak saat probe, sebelum sebyte pun diund
 # platform; acak supaya polanya tidak seragam seperti bot.
 FETCH_GAP_MIN_S = 3
 FETCH_GAP_MAX_S = 10
+
+# Tangkap audio meeting lewat ekstensi Chrome (planning meeting-capture.md).
+# Potongan disimpan per-`seq` lalu disambung saat sesi ditutup — bukan di-append
+# ke satu file: potongan bisa datang tak berurutan atau terkirim dua kali
+# (retry), dan menyambung dari berkas ber-nomor membuat keduanya tidak merusak.
+MEETING_PLATFORMS = ("meet", "zoom", "teams", "lain")
+MEETING_CONTAINER_SUFFIX = ".webm"          # MediaRecorder Chrome: webm/opus
+MEETING_CHUNK_SUFFIX = ".part"
+MEETING_CHUNK_MAX_BYTES = 8 * 1024 * 1024   # satu potongan ~5 dtk — 8 MB sangat longgar
+MEETING_MAX_BYTES = MAX_UPLOAD_BYTES        # total sesi, samakan dengan cap upload
+MEETING_TOKEN_BYTES = 24                    # token sesi sekali pakai (bukan auth penuh)
 
 # Umur yt-dlp sebelum dianggap basi. Extractor rusak tiap situs berubah —
 # ini gotcha nomor satu di planning, jadi harus kelihatan di UI.

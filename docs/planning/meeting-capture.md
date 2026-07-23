@@ -207,6 +207,11 @@ dirancang sebagai rumah semua metode capture.
    masuk pipeline transkrip yang sudah ada. **Belum ada label pembicara, belum ada real-time.**
    Nilainya sudah nyata: selesai meeting, transkrip + ringkasan + chat langsung bekerja (semuanya
    sudah dibangun). Ini fase terpenting; jangan dicampur dengan yang lain.
+   - **Backend ✅ selesai** — `capture/meeting.py` + `app/routes/meetings.py`, kolom
+     `meeting_platform`/`upload_token`, status `recording`. Teruji dengan berkas stereo sungguhan:
+     potongan dikirim **tak berurutan + satu duplikat** tetap tersambung **identik byte-per-byte**;
+     backend **di-restart di tengah sesi** dan sesinya tetap bisa dilanjutkan sampai transkrip jadi.
+   - Ekstensi: menyusul.
 2. **Fase B — lapis 0.** Label `saya`/`peserta` dari perbandingan energi kiri-kanan. Murah, tidak
    bergantung platform, tidak bisa rusak oleh update UI.
 3. **Fase C — lapis 1 (nama asli).** Content script Meet dulu (paling stabil & paling sering

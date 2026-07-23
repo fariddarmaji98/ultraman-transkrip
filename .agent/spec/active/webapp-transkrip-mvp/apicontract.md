@@ -209,6 +209,55 @@
   paling cocok dengan kata-kata pertanyaan yang dikirim — dan model diberi tahu bahwa konteksnya
   sebagian ([ADR 0010](../../../../docs/adr/0010-chat-transkrip.md))
 
+# sesi rekaman meeting (ekstensi Chrome — Fase A)
+
+Tiga langkah: mulai → kirim potongan berkali-kali → tutup. Rincian & alasan di
+[planning meeting-capture](../../../../docs/planning/meeting-capture.md).
+
+- api: `POST /api/recordings/meeting`
+- body: `{ "platform": "meet|zoom|teams|lain", "title": "", "language": "id", "url": null }`
+- response 201: `{ "recording_id": 12, "upload_token": "…" }`
+- efek: `Recording(status='recording', source_kind='meeting')`. `title` kosong → diisi otomatis
+  (`"Meeting meet 23 Jul 2026 17:26"`)
+- error: 422 platform tidak dikenal
+
+---
+
+- api: `PUT /api/recordings/{id}/chunk?seq=N`
+- header: `X-Upload-Token` (dari respons mulai-sesi)
+- body: **biner mentah** (satu blob `MediaRecorder`), bukan multipart
+- **idempoten per `seq`** — potongan boleh datang tak berurutan dan boleh dikirim ulang;
+  tiap `seq` jadi satu berkas `NNNNNN.part`, urutan ditentukan saat menyambung
+- response: 204
+- error: 403 token tidak cocok · 404 sesi tidak ada / sudah ditutup · 413 potongan >8 MB
+  atau total sesi >2 GB · 422 potongan kosong
+
+---
+
+- api: `POST /api/recordings/{id}/finish`
+- header: `X-Upload-Token`
+- efek: sambung semua potongan byte-per-byte → `upload_path`, ukur durasi (ffprobe), hapus
+  potongan mentah, kosongkan token, status → `queued`, buat job `transcribe` + enqueue
+- response 200: `RecordingOut`
+- error: 403 · 404 · 422 tidak ada audio yang diterima / hasil tidak terbaca sebagai media
+
+---
+
+- api: `DELETE /api/recordings/{id}/meeting`
+- header: `X-Upload-Token`
+- efek: batalkan sesi — buang potongan **dan** baris recording-nya (tidak menyisakan sampah)
+- response: 204 · error: 403 · 404
+
+Catatan penting:
+
+- **Seluruh state sesi ada di disk + DB**, tidak ada yang di memori. Backend restart di tengah
+  sesi **tidak** memutusnya: ekstensi cukup melanjutkan `PUT` dengan token yang sama (teruji —
+  berkas hasilnya identik byte-per-byte dengan yang tanpa restart).
+- Status `recording` **tidak** ikut di-requeue saat startup (lihat `NOT_TRANSCRIBABLE_STATUSES`
+  vs `ACTIVE_STATUSES` di `constants/`): sesi dilanjutkan oleh ekstensinya, bukan oleh worker.
+- Router `meetings` **wajib** didaftarkan sebelum `recordings` di `app/main.py` — `/recordings/meeting`
+  berjalur statis dan akan tertelan pola `/recordings/{rid}` bila urutannya terbalik (gejalanya 405).
+
 # login
 
 - api: `/api/auth/login`

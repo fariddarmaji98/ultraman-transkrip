@@ -89,6 +89,20 @@ class FromUrlIn(BaseModel):
     language: str = DEFAULT_LANGUAGE
 
 
+class MeetingStartIn(BaseModel):
+    platform: str = "lain"          # meet | zoom | teams | lain
+    title: str = ""                 # kosong = diberi judul dari platform + tanggal
+    language: str = DEFAULT_LANGUAGE
+    url: str | None = None          # URL meeting, sekadar jejak
+
+
+class MeetingSessionOut(BaseModel):
+    """Balasan mulai-sesi. `upload_token` dipegang ekstensi untuk mengirim potongan."""
+
+    recording_id: int
+    upload_token: str
+
+
 class LlmIn(BaseModel):
     provider: str
     model: str = ""

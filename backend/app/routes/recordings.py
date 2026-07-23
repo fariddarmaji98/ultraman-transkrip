@@ -31,7 +31,6 @@ from capture import get_source as get_media_source
 from capture import CaptureError, MediaInfo, NeedsAuth, UnsupportedUrl
 from constants import (
     ACCEPTED_SUFFIXES,
-    ACTIVE_STATUSES,
     CHAT_HISTORY_TURNS,
     CHAT_MAX_QUESTION,
     DOWNLOAD_MAX_DURATION_S,
@@ -40,6 +39,7 @@ from constants import (
     JOB_KIND_TRANSCRIBE,
     JOB_QUEUED,
     MAX_UPLOAD_BYTES,
+    NOT_TRANSCRIBABLE_STATUSES,
     SOURCE_URL,
     UPLOAD_CHUNK_BYTES,
 )
@@ -266,7 +266,7 @@ async def _save_summary(db, rid: int, text: str, cfg: dict) -> models.Summary:
 
 
 def _reject_if_not_transcribable(rec) -> None:
-    if rec.status in ACTIVE_STATUSES:
+    if rec.status in NOT_TRANSCRIBABLE_STATUSES:
         raise HTTPException(409, "rekaman ini sedang diproses")
     if not rec.upload_path or not Path(rec.upload_path).exists():
         raise HTTPException(422, "file sumber tidak tersedia")
