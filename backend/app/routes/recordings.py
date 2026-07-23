@@ -70,7 +70,7 @@ async def upload_recording(
 @router.post("/recordings/from-url", response_model=UploadResponse, status_code=201)
 async def create_from_url(db: DbDep, body: FromUrlIn) -> UploadResponse:
     """Probe jalan sinkron (mirip ffprobe di jalur upload) — tolak sebelum sebyte diunduh."""
-    info = await _probe_or_reject(body.url)
+    info = await _probe_url_or_reject(body.url)
     rec = await _create_url_recording(db, body, info)
     job = await _create_job(db, rec.id, JOB_KIND_FETCH)
     await enqueue(rec.id, JOB_KIND_FETCH)
@@ -319,7 +319,11 @@ async def _create_recording(db, file, title, language, path, duration_ms):
     return rec
 
 
-async def _probe_or_reject(url: str) -> MediaInfo:
+async def _probe_url_or_reject(url: str) -> MediaInfo:
+    """Nama harus beda dari `_probe_or_reject` di atas — dulu keduanya sama, dan
+    definisi kedua diam-diam menimpa yang pertama sehingga upload memanggil
+    prober URL dengan sebuah Path (500). Import tetap sukses; hanya runtime yang
+    rusak, jadi tidak ada yang menangkapnya sampai upload benar-benar dicoba."""
     try:
         info = await asyncio.to_thread(get_media_source().probe, url)
     except (UnsupportedUrl, NeedsAuth) as exc:
