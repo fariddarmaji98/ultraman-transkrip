@@ -4,6 +4,35 @@
 > start / stop / restart. Riset & keputusan: Juli 2026.
 > Terkait: [overview arsitektur](../architecture/overview.md) · deploy nanti (auth + VPS).
 
+## 0. Status: DITUNDA, dan akan dibangun di repo terpisah
+
+Keputusan 23 Juli 2026. **Tidak dikerjakan di repo ini.**
+
+Alasannya keluar dari rencana ini sendiri: §2 menetapkan panel wajib **nol impor dari paket
+backend** supaya ia tetap menyala saat backend rusak. Karena koplingnya memang nol, tinggal di
+repo ini tidak memberi keuntungan apa pun — sementara memisahkannya membuat ia bisa mengawasi
+proyek lain juga.
+
+**Yang harus ikut pindah, jangan sampai hilang:** bagian paling berguna dari rencana ini justru
+yang tahu-repo. Di repo terpisah ia jadi **berkas konfigurasi per-proyek**, bukan kode:
+
+| Perlu tahu | Dipakai untuk | Cara dapat tanpa impor |
+|---|---|---|
+| Interpreter venv + cwd (path berisi spasi) | menyalakan backend | konfigurasi |
+| Port 8000 / 5173 + path health | tiga tingkat status (§3) | konfigurasi |
+| **Jumlah job aktif** | konfirmasi restart yang menyebut angka (§5) | `GET /api/recordings`, hitung status aktif |
+| **Path & bentuk `data/transkrip.db`** | statistik, cek integritas, backup, VACUUM (§6) | baca berkas langsung |
+
+Dua yang dicetak tebal adalah yang membedakan panel ini dari supervisor generik seperti PM2 (§11).
+Kalau saat dipisah keduanya ikut hilang, yang tersisa cuma "tombol start/stop" — dan untuk itu
+skrip `.bat` sudah cukup.
+
+Dokumen ini tetap disimpan di sini karena isinya **keputusan tentang service repo ini**: bentuk
+databasenya, perilaku requeue-nya, jebakan mematikan proses di Windows dengan path berspasi.
+Repo panel nanti membacanya sebagai spesifikasi, bukan mengarang ulang.
+
+Sisa dokumen di bawah tetap berlaku apa adanya.
+
 ## 1. Kenyataan: "tiga service" itu tidak simetris
 
 Permintaannya menyebut **database, BE, FE** seolah tiga hal sejenis. Di repo ini tidak begitu, dan
