@@ -1,205 +1,230 @@
 # Planning — Terjemahan (transkrip, ringkasan, chat)
 
-> Fitur: rekaman berbahasa A ditranskrip apa adanya, lalu **teksnya** bisa diterjemahkan ke bahasa
-> B/C/D. Ringkasan bisa diminta dalam bahasa lain, dan chat menjawab dalam bahasa pertanyaannya.
-> Memakai seam `analysis/` yang sudah ada ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)) —
-> terjemahan jadi pemakai ketiganya, setelah [ringkasan](../adr/0009-ringkasan-transkrip.md) dan
+> Fitur: transkrip dibuat dalam bahasa aslinya, lalu **teksnya** bisa dipindah-bahasakan lewat
+> pemilih di kolom kanan. Ringkasan dan chat mengikuti bahasa yang sedang aktif. **Semua hasil
+> disimpan**, jadi berpindah bahasa yang sudah pernah dibuat itu instan.
+> Memakai seam `analysis/` ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)) — pemakai
+> ketiganya setelah [ringkasan](../adr/0009-ringkasan-transkrip.md) dan
 > [chat](../adr/0010-chat-transkrip.md).
 
-## 1. Bentuk fiturnya
+## 1. Dua pemilih bahasa yang berbeda — jangan sampai tertukar
 
-**Transkrip asli lebih dulu, selalu.** Terjemahan bekerja di atas **teks yang sudah jadi**, bukan
-di atas audio, dan tidak pernah menggantikan aslinya. Tiga hal terpisah yang kebetulan senasib:
+Ini sumber kebingungan terbesar fitur ini, jadi ditegaskan lebih dulu:
+
+| | **Sidebar kiri** (sudah ada) | **Kolom kanan** (baru) |
+|---|---|---|
+| Label | "Deteksi otomatis / Indonesia / Inggris" | pemilih bahasa di atas transkrip |
+| Mengatur | **bahasa yang didengar mesin ASR** | **bahasa yang ditampilkan** |
+| Kapan berlaku | sebelum transkrip dibuat | setelah transkrip ada |
+| Mengubahnya berarti | transkrip harus dibuat ulang | terjemahkan teks yang sudah ada |
+| Menyentuh audio? | ya | **tidak pernah** |
+
+Kiri menjawab *"rekaman ini bahasanya apa?"*. Kanan menjawab *"aku mau membacanya dalam bahasa
+apa?"*. Keduanya tidak berhubungan, dan yang kanan **tidak pernah** menjalankan ulang Whisper.
+
+## 2. Alur
 
 ```
-audio bahasa A ──► transkrip bahasa A  (seperti sekarang, tak berubah)
-                          │
-                          ├──► TERJEMAHAN TRANSKRIP ke bahasa B   (disimpan, per segmen)
-                          ├──► RINGKASAN langsung dalam bahasa B  (tidak disimpan per bahasa)
-                          └──► CHAT: tanya bahasa Jepang → jawab bahasa Jepang
+1. Transkrip dibuat  →  bahasa asli (dari pemilih kiri / deteksi otomatis)
+                        ini SELALU tersimpan dan tak pernah tergantikan
+
+2. Pemilih di kolom kanan:  [ Asli (Indonesia) ▾ ]  →  pilih 日本語
+                            └─ belum ada?  jalankan job terjemahan (progres terlihat)
+                            └─ sudah ada?  tampil INSTAN dari simpanan
+
+3. Ringkasan & Chat mengikuti bahasa aktif
+   └─ belum ada versi bahasa itu? tombol muncul untuk membuatnya
+   └─ sudah ada? tampil instan
 ```
 
-Yang penting dari urutan ini: **rekaman aslinya tetap jadi sumber kebenaran.** Sitasi `[mm:ss]`
-tetap menunjuk audio yang sebenarnya, apa pun bahasa yang sedang ditampilkan.
+**Bahasa aktif adalah satu keadaan untuk seluruh halaman**, bukan tiga setelan terpisah. Memilih
+日本語 di kolom kanan berarti transkrip, ringkasan, dan chat semuanya berbicara Jepang.
 
-## 2. Ringkasan & chat **tidak diterjemahkan** — dihasilkan langsung
+## 3. Semua disimpan, per bahasa — termasuk ringkasan dan chat
 
-Keputusan terpenting di dokumen ini, dan yang paling mudah salah.
+**Ini mengoreksi keputusan di revisi pertama dokumen ini**, yang menolak menyimpan ringkasan per
+bahasa dengan alasan takut menumpuk ringkasan basi. Prioritasnya salah: menerjemahkan ulang
+transkrip 28 menit tiap kali berpindah bahasa itu **menit-menit dan uang**, sementara "ringkasan
+basi" hanya perlu tombol buat-ulang yang memang sudah ada.
 
-Godaannya: ringkas dulu lalu terjemahkan ringkasannya, atau terjemahkan transkrip lalu ringkas.
+Jadi tiap artefak menyimpan **penanda bahasa**:
+
+| Artefak | Kunci | Catatan |
+|---|---|---|
+| Transkrip asli | `segments` (seperti sekarang) | tidak berubah, tetap sumber kebenaran |
+| Transkrip terjemahan | `segment_translations(recording_id, lang, idx)` | mencerminkan `segments`; waktunya diambil dari aslinya |
+| Ringkasan | `summaries(recording_id, lang)` — **unik per pasangan** | satu ringkasan per bahasa |
+| Chat | `chat_messages.lang` | satu utas per bahasa |
+
+Berpindah ke bahasa yang sudah pernah dibuat = **membaca dari DB**, tanpa panggilan LLM sama
+sekali. Itu inti permintaannya.
+
+### Chat: satu utas per bahasa
+
+Konsekuensi yang harus disadari: memilih 日本語 menampilkan percakapan Jepang, yang **awalnya
+kosong** walau kamu punya percakapan panjang dalam bahasa Indonesia. Itu disengaja — percakapan
+yang separuh Indonesia separuh Jepang lebih membingungkan daripada dua utas terpisah, dan
+riwayat yang dikirim ke model jadi konsisten satu bahasa.
+
+Riwayat Indonesia-mu **tidak hilang**; ia muncul lagi begitu bahasa dikembalikan. UI harus
+menyatakan ini, bukan membiarkan orang mengira percakapannya terhapus.
+
+> **Perubahan dari revisi pertama:** dulu direncanakan chat otomatis mengikuti bahasa pertanyaan
+> ("tanya Jepang → dijawab Jepang", tanpa kontrol). Itu ditinggalkan karena bertabrakan dengan
+> penyimpanan: kalau bahasa jawaban ditentukan tiap pertanyaan, tidak ada penanda yang stabil
+> untuk menyimpan dan memanggilnya kembali. **Bahasa aktif yang menentukan.** Mengetik bahasa
+> Jepang saat bahasa aktif Indonesia tetap dijawab Indonesia — pindahkan pemilihnya untuk berganti.
+
+## 4. Ringkasan & chat: dihasilkan langsung, bukan diterjemahkan
+
+Keputusan ini bertahan dari revisi pertama, dan penting.
+
+Ringkasan bahasa Jepang **tidak** dibuat dengan menerjemahkan ringkasan Indonesia, dan **tidak**
+dengan meringkas transkrip yang sudah diterjemahkan. Model membaca **transkrip asli** dan menulis
+ringkasannya langsung dalam bahasa Jepang.
 
 | Cara | Panggilan LLM | Masalah |
 |---|---|---|
-| Ringkas → terjemahkan | 2× | Kesalahan menumpuk dua lapis; istilah teknis rusak di lapis kedua |
-| Terjemahkan → ringkas | 2×, yang pertama mahal | Membakar token untuk seluruh transkrip padahal hasilnya cuma beberapa paragraf |
-| **Ringkas langsung dalam bahasa tujuan** | **1×** | — |
+| Ringkas → terjemahkan | 2× | Kesalahan menumpuk dua lapis |
+| Terjemahkan → ringkas | 2×, yang pertama mahal | Membakar token untuk seluruh transkrip |
+| **Ringkas transkrip asli, tulis dalam bahasa tujuan** | **1×** | — |
 
-Model membaca transkrip Indonesia dan **menulis ringkasannya langsung dalam bahasa Jepang**. Bukan
-trik — LLM memang multibahasa, dan sumbernya tetap teks asli sehingga tak ada
-terjemahan-dari-terjemahan.
+Efek sampingnya bagus: **ringkasan Jepang tidak menunggu terjemahan transkrip selesai.** Keduanya
+berdiri sendiri. Kamu bisa minta ringkasan Jepang tanpa pernah menerjemahkan transkripnya.
 
-**Konsekuensinya besar untuk perencanaan:** ringkasan & chat multibahasa hanyalah **perubahan
-prompt**. Tidak ada tabel baru, tidak ada job, tidak ada penyimpanan. Terjemahan transkrip adalah
-pipeline tersendiri. Dua pekerjaan yang biayanya jauh berbeda — dan itu yang menentukan urutan
-pengerjaannya (§8).
+Hal yang sama untuk chat: konteks yang dikirim ke model **selalu transkrip asli**, hanya
+jawabannya yang berbahasa Jepang. Sitasi `[mm:ss]` karenanya tetap menunjuk rekaman sungguhan.
 
-## 3. Chat mengikuti bahasa pertanyaan — tanpa setelan apa pun
+## 5. Terjemahan transkrip — bagian yang sulit
 
-Tanya dalam bahasa Jepang → dijawab bahasa Jepang. Tanya bahasa Indonesia → dijawab Indonesia.
-**Tidak perlu pemilih bahasa**: pertanyaannya sendiri sudah menyatakan maunya.
-
-Hari ini `analysis/chat.py` mengunci itu:
-
-```
-"Jawab dalam bahasa Indonesia yang ringkas."
-```
-
-Diganti jadi instruksi untuk mengikuti bahasa pertanyaan. Itu satu baris, dan langsung memberi
-seluruh fitur chat multibahasa.
-
-Dua hal yang harus dijaga di prompt barunya:
-
-- **Format sitasi `[mm:ss]` tidak boleh ikut "diterjemahkan"** jadi format lain. Ia dipakai
-  `CitedText` di FE untuk melompatkan player; kalau modelnya berkreasi jadi `[5分25秒]`, tombolnya
-  mati. Regex-nya ada di `CitedText.jsx` dan sengaja ketat.
-- **Kutipan dari transkrip boleh diterjemahkan**, tapi waktunya tetap waktu asli. Yang dijamin
-  aplikasi hanya bahwa menitnya ada di dalam durasi ([ADR 0010](../adr/0010-chat-transkrip.md)) —
-  itu tidak berubah oleh bahasa.
-
-Ringkasan **tidak** bisa memakai trik yang sama: tak ada pertanyaan yang bisa dibaca bahasanya.
-Jadi ringkasan butuh pemilih bahasa; chat tidak.
-
-## 4. Terjemahan transkrip — bagian yang sulit
-
-Transkrip bukan teks biasa: tiap potongan **terikat timestamp**. Terjemahannya harus tetap bisa
-dipetakan balik ke segmen aslinya, kalau tidak player, sitasi, dan ekspor SRT ikut rusak.
+Tiap segmen terikat timestamp. Terjemahannya harus tetap terpetakan balik, kalau tidak player,
+sitasi, dan ekspor SRT ikut rusak.
 
 | Cara | Hasil |
 |---|---|
-| Satu panggilan per segmen | Pemetaan aman, **kualitas buruk** — tanpa konteks, kalimat terpenggal diterjemahkan sepotong-sepotong; ratusan panggilan, lambat dan mahal |
-| Seluruh transkrip sebagai satu teks | Kualitas terbaik, **pemetaan hilang** — tak ada cara tahu kalimat mana milik menit mana |
+| Satu panggilan per segmen | Pemetaan aman, **kualitas buruk** — tanpa konteks; ratusan panggilan, lambat dan mahal |
+| Seluruh transkrip sebagai satu teks | Kualitas terbaik, **pemetaan hilang** |
 | **Blok bernomor** | Konteks cukup + pemetaan terjaga ✅ |
 
-**Blok bernomor**: kirim ~40 segmen sekaligus, masing-masing berawalan indeksnya.
+Kirim ~40 segmen sekaligus, masing-masing berawalan indeksnya:
 
 ```
 12| Jadi target kita kuartal ini
 13| naik dua puluh persen.
 ```
 
-Model diminta mengembalikan penomoran yang sama persis, lalu hasilnya **diverifikasi**: indeks
-12..51 harus ada semua, tidak kurang, tidak lebih.
+Model diminta mengembalikan penomoran yang sama persis, lalu **diverifikasi**: indeks 12..51 harus
+ada semua, tidak kurang, tidak lebih.
 
-**Verifikasi itu wajib, bukan kehati-hatian berlebihan.** Model suka **menggabungkan** dua baris
-pendek jadi satu kalimat yang lebih enak dibaca. Terdengar sepele — sampai sadar akibatnya:
-seluruh sisa blok bergeser satu nomor, dan terjemahan menit 5 menempel di menit 6 sampai akhir
-blok. Rusaknya senyap, dan baru ketahuan saat ada yang mengklik sitasi.
+**Verifikasi itu wajib.** Model gemar **menggabungkan** dua baris pendek jadi satu kalimat yang
+lebih enak dibaca. Terdengar sepele — sampai sadar akibatnya: seluruh sisa blok bergeser satu
+nomor, dan terjemahan menit 5 menempel di menit 6 sampai akhir blok. Rusaknya senyap, baru
+ketahuan saat ada yang mengklik sitasi.
 
-Bila verifikasi gagal: ulangi blok itu dengan ukuran separuh; masih gagal → jatuhkan ke per-segmen
+Gagal verifikasi → ulangi blok itu dengan ukuran separuh → masih gagal → jatuhkan ke per-segmen
 **untuk blok itu saja**. Lambat tapi benar, dan tidak pernah diam-diam (pelajaran dari pemotongan
 senyap di [ADR 0009](../adr/0009-ringkasan-transkrip.md)).
 
-## 5. Bahasa sumber harus diketahui — dan sekarang dibuang
+## 6. Bahasa sumber harus diketahui — dan sekarang dibuang
 
-`faster_whisper` mengembalikan bahasa hasil deteksi di `info.language`, tapi
-`asr/local_whisper.py` **hanya memakai `info.duration`** dan membuang sisanya. Kolom
-`Recording.language` menyimpan yang **diminta user** (`auto`), bukan yang **terdeteksi**.
+`faster_whisper` mengembalikan bahasa terdeteksi di `info.language`, tapi
+`asr/local_whisper.py` **hanya memakai `info.duration`**. Kolom `Recording.language` menyimpan yang
+**diminta** (`auto`), bukan yang **terdeteksi**.
 
-Artinya untuk semua rekaman `auto` — dan itu default-nya — sistem tidak tahu bahasa aslinya apa.
-Padahal itu dibutuhkan untuk:
+Untuk rekaman `auto` — default-nya — sistem tak tahu bahasa aslinya apa. Padahal pemilih di kolom
+kanan harus bisa menuliskan **"Asli (Indonesia)"**, dan tidak menawarkan menerjemahkan ke bahasa
+yang sama dengan aslinya.
 
-- **menyembunyikan pilihan yang tak masuk akal** (jangan tawarkan "terjemahkan ke Indonesia" untuk
-  rekaman yang memang Indonesia),
-- **memberi tahu model bahasa asalnya** — penting untuk rekaman campur Indonesia-Inggris yang lazim
-  di rapat kerja,
-- menampilkan "Bahasa: Indonesia" di UI, yang berguna terlepas dari fitur ini.
+Perbaikannya kecil: kolom `Recording.detected_language`, diisi saat transkrip selesai. Groq juga
+mengembalikan `language` di `verbose_json`, jadi kedua provider bisa mengisinya.
 
-Perbaikannya kecil: kolom `Recording.detected_language`, diisi dari `info.language` saat transkrip
-selesai. Groq juga mengembalikan `language` di `verbose_json`, jadi kedua provider bisa mengisinya.
+Prompt ringkasan hari ini bahkan sudah salah tanpa fitur ini: *"Kamu meringkas transkrip rekaman
+berbahasa Indonesia"* — asumsi yang runtuh begitu ada rekaman berbahasa lain.
 
-Prompt ringkasan hari ini bahkan mengasumsikannya: *"Kamu meringkas transkrip rekaman berbahasa
-Indonesia"* — asumsi yang salah begitu ada rekaman berbahasa lain, terlepas dari fitur terjemahan.
+## 7. Job berlatar untuk terjemahan; ringkasan & chat tetap sinkron
 
-## 6. Model data
+Ringkasan sinkron karena keluarannya pendek — terukur 4,9 dtk (5 menit) dan 16 dtk (28 menit).
+Terjemahan **mengeluarkan sebanyak yang dimasukkan**: 25.000 karakter masuk, 25.000 keluar, dan
+token keluaran itu bagian yang lambat. Perkiraan ~7.000 token ÷ ~50 token/dtk ≈ **2–3 menit** di
+provider cloud cepat.
 
-- **`Recording.detected_language`** (§5) — kode ISO hasil deteksi ASR, nullable.
-- **`segment_translations`** — `id, recording_id, lang, idx, text`, unik per
-  `(recording_id, lang, idx)`. Bentuknya sengaja **mencerminkan `segments`**: waktunya diambil dari
-  segmen asli, jadi tidak ada timestamp yang perlu disinkronkan — dan karenanya tidak bisa melenceng.
-- **Tidak ada tabel job baru** — pakai `Job.kind = 'translate'`, mekanismenya sudah ada.
-- **Ringkasan tidak disimpan per bahasa.** Tabel `summaries` tetap satu baris per recording; minta
-  bahasa lain = buat ulang. Menyimpannya per bahasa akan melahirkan kebun ringkasan basi dalam lima
-  bahasa yang tak ada yang tahu mana yang terbaru.
+→ Terjemahan transkrip jadi **job** (`Job.kind='translate'`, progres per blok, memakai `ProgressBar`
+yang sudah ada). Ringkasan & chat multibahasa **tetap sinkron** — biayanya sama dengan sekarang.
 
-## 7. Job berlatar, bukan sinkron — beda dari ringkasan
+## 8. Model data
 
-Ringkasan sinkron karena terukur 4,9 dtk (5 menit) dan 16 dtk (28 menit): **keluarannya pendek**.
-Terjemahan mengeluarkan sebanyak yang dimasukkan — transkrip 28 menit ≈ 25.000 karakter masuk,
-25.000 karakter keluar, dan token keluaran itu bagian yang lambat.
+- **`Recording.detected_language`** — kode ISO hasil deteksi ASR, nullable (§6).
+- **`segment_translations`** — `id, recording_id, lang, idx, text`; unik `(recording_id, lang, idx)`.
+- **`summaries` + kolom `lang`** — unik `(recording_id, lang)`. Baris lama diisi
+  `detected_language` saat migrasi; "buat ulang" mengganti baris **untuk bahasa itu saja**.
+- **`chat_messages` + kolom `lang`** — utas dipilih dengan `WHERE recording_id=? AND lang=?`.
+- **`Job.kind = 'translate'`** — tanpa tabel job baru.
 
-Perkiraan kasar: ~7.000 token keluaran ÷ ~50 token/dtk ≈ **2–3 menit** di provider cloud cepat; di
-Ollama CPU berkali lipat.
+Migrasi: `create_all` tidak mengubah tabel lama, jadi butuh skrip ALTER seperti
+`migrate_add_meeting_columns.py`. Perhatikan: menambah kolom ke tabel yang **sudah punya baris**
+berarti nilai lama harus diisi, bukan dibiarkan NULL — kalau tidak, ringkasan lama akan hilang
+dari tampilan begitu difilter per bahasa.
 
-→ **Terjemahan transkrip jadi job** (`Job.kind='translate'`, progres per blok). Ini pemakai
-`analysis/` pertama yang butuh antrean; `summarize` dan `chat` cukup sinkron.
+## 9. Roadmap — dari yang termurah
 
-Ringkasan & chat dalam bahasa lain **tetap sinkron** — biayanya sama persis dengan sekarang.
-
-## 8. Roadmap — diurutkan dari yang termurah, bukan dari yang paling terlihat
-
-1. **Fase 0 — simpan bahasa terdeteksi.** Kolom `detected_language` + isi dari kedua provider ASR
-   (§5). Kecil, dan semua fase lain bergantung padanya. Berguna sendiri walau terjemahan batal.
-2. **Fase A — chat menjawab dalam bahasa pertanyaan.** Satu baris prompt (§3). Tanpa UI baru,
-   tanpa tabel, tanpa endpoint. Kemungkinan besar fitur dengan rasio nilai-per-baris tertinggi di
-   seluruh proyek ini.
-3. **Fase B — ringkasan dalam bahasa pilihan.** Pemilih bahasa di panel AI + parameter bahasa di
-   prompt ringkasan. Masih tanpa tabel dan tanpa job.
-4. **Fase C — terjemahan transkrip.** `analysis/translate.py` (blok bernomor + verifikasi §4),
+1. **Fase 0 — bahasa terdeteksi.** Kolom `detected_language` + isi dari kedua provider ASR (§6),
+   dan hapus asumsi "berbahasa Indonesia" di prompt ringkasan. Semua fase lain bergantung padanya,
+   dan ini memperbaiki kesalahan yang sudah ada hari ini.
+2. **Fase A — ringkasan & chat multibahasa.** Kolom `lang` di `summaries` + `chat_messages`,
+   parameter bahasa di prompt, pemilih bahasa di panel AI. **Belum ada terjemahan transkrip** —
+   dan memang tidak perlu, karena keduanya membaca transkrip asli (§4). Sudah langsung berguna.
+3. **Fase B — terjemahan transkrip.** `analysis/translate.py` (blok bernomor + verifikasi §5),
    tabel `segment_translations`, `Job.kind='translate'`, endpoint
-   `POST /api/recordings/{id}/translate {lang}`, pemilih Asli/Terjemahan di kolom transkrip.
-5. **Fase D — ekspor & tampilan berdampingan.** `?fmt=srt&lang=ja`, plus mode dua kolom
-   asli-vs-terjemahan (berguna untuk memeriksa hasil, dan untuk yang sedang belajar bahasa).
+   `POST /api/recordings/{id}/translate {lang}`, pemilih Asli/bahasa di kolom kanan + progres.
+4. **Fase C — satu bahasa aktif untuk seluruh halaman.** Menyatukan pemilih kolom kanan dan panel
+   AI jadi satu keadaan (§2), plus penanda "versi bahasa ini belum dibuat".
+5. **Fase D — ekspor & tampilan berdampingan.** `?fmt=srt&lang=ja`, dan mode dua kolom
+   asli-vs-terjemahan untuk memeriksa hasil.
 
-Fase A dan B bisa selesai dalam satu sesi. Fase C adalah pekerjaan yang sesungguhnya.
+Fase A berdiri sendiri dan bisa dipakai tanpa Fase B. Fase B adalah pekerjaan yang sesungguhnya.
 
-## 9. UI (garis besar)
+## 10. UI
 
-- **Chat: tidak ada kontrol baru.** Ketik bahasa Jepang, dijawab bahasa Jepang.
-- **Ringkasan: pemilih bahasa** di kartu Ringkasan, default = bahasa terdeteksi. Artinya perilaku
-  hari ini tidak berubah bagi yang tidak memakainya.
-- **Transkrip: pemilih `Asli` + bahasa yang sudah diterjemahkan**, plus "Terjemahkan ke…" untuk
-  yang belum. Yang belum ada **harus terlihat belum ada** — jangan memuat diam-diam saat dipilih.
-- **Progres terjemahan** memakai `ProgressBar` yang sudah ada, sepola unduhan.
-- **Sitasi tetap menunjuk waktu asli** apa pun bahasanya (§1, §3).
+- **Pemilih bahasa di kolom kanan**, tepat di atas daftar segmen (di bawah player):
+  `Asli (Indonesia)` + bahasa yang **sudah** diterjemahkan + "Terjemahkan ke…" untuk yang belum.
+- **Yang belum ada harus terlihat belum ada.** Memilih bahasa baru memulai job dengan progres,
+  bukan memuat diam-diam lalu membeku beberapa menit.
+- **Ringkasan & chat**: bila versi bahasa aktif belum ada, tampilkan tombol membuatnya — bukan
+  kosong tanpa penjelasan, dan bukan pula versi bahasa lain yang menyesatkan.
+- **Chat kosong setelah ganti bahasa** harus dijelaskan ("percakapan bahasa lain tersimpan
+  terpisah"), supaya tidak terbaca sebagai riwayat yang terhapus.
+- **Sitasi tetap menunjuk waktu asli** apa pun bahasanya.
 
-## 10. Alternatif yang ditimbang
+## 11. Alternatif yang ditimbang
 
-- **`task="translate"` bawaan Whisper** — ditolak sebagai jalur utama: ia **hanya bisa ke bahasa
-  Inggris**, itu batasan modelnya dan bukan sesuatu yang bisa diakali lewat parameter. Untuk
-  "bahasa B, C, D" ia tidak menjawab kebutuhan. Ia juga bekerja di atas audio, sehingga menuntut
-  ASR diulang — sementara arah fitur ini justru bekerja di atas teks yang sudah jadi.
-- **Model MT khusus (NLLB-200, M2M100)** — ditunda, bukan ditolak. Lebih murah dan bisa lokal,
-  tapi menambah dependency + unduhan model baru, sedangkan seam `analysis/` sudah ada dan sudah
-  terbukti dipakai dua fitur. Layak ditinjau bila biaya terjemahan jadi masalah nyata.
-- **Menerjemahkan otomatis begitu transkrip selesai** — ditolak: mahal, dan kebanyakan rekaman
-  tidak akan pernah dibaca dalam bahasa lain. Terjemahan harus diminta.
-- **Menyimpan ringkasan per bahasa** — ditolak (§6).
+- **`task="translate"` bawaan Whisper** — ditolak: **hanya bisa ke bahasa Inggris**, itu batasan
+  modelnya. Ia juga bekerja di atas audio dan menuntut ASR diulang, sedangkan seluruh arah fitur
+  ini adalah bekerja di atas teks yang sudah jadi.
+- **Chat mengikuti bahasa pertanyaan otomatis** — ditinggalkan (§3): tidak memberi penanda bahasa
+  yang stabil untuk disimpan dan dipanggil kembali.
+- **Tidak menyimpan ringkasan per bahasa** — dibatalkan (§3): menerjemahkan ulang itu mahal,
+  ringkasan basi cuma perlu tombol buat-ulang.
+- **Model MT khusus (NLLB-200, M2M100)** — ditunda. Lebih murah dan bisa lokal, tapi menambah
+  dependency + unduhan model, sedangkan seam `analysis/` sudah terbukti dipakai dua fitur.
+- **Menerjemahkan otomatis begitu transkrip selesai** — ditolak: mahal, dan kebanyakan rekaman tak
+  akan pernah dibaca dalam bahasa lain.
 
-## 11. Risiko & mitigasi
+## 12. Risiko & mitigasi
 
 | Risiko | Mitigasi |
 |---|---|
-| **Segmen bergeser senyap** karena model menggabungkan baris | Verifikasi indeks per blok; ulang dengan blok lebih kecil; fallback per-segmen (§4) |
-| Sitasi `[mm:ss]` diubah model jadi format lokal (`[5分25秒]`) | Prompt menegaskan format wajib apa adanya; regex `CitedText` sengaja ketat sehingga kegagalannya terlihat, bukan senyap |
-| Biaya membengkak (tiap bahasa = satu transkrip penuh) | Job berlatar + simpan hasilnya; jangan pernah menerjemahkan otomatis |
-| Kualitas buruk untuk bahasa yang jarang | Daftar bahasa dibatasi yang memang ditangani baik LLM umum — jangan tawarkan semua kode ISO |
+| **Segmen bergeser senyap** karena model menggabungkan baris | Verifikasi indeks per blok; ulang blok lebih kecil; fallback per-segmen (§5) |
+| Sitasi `[mm:ss]` diubah model jadi format lokal (`[5分25秒]`) | Prompt menegaskan format wajib; regex `CitedText` ketat sehingga gagalnya terlihat, bukan senyap |
+| Dua pemilih bahasa membingungkan | Label & penempatan berbeda tegas (§1); yang kiri di panel Engine, yang kanan menempel pada transkrip |
+| Chat terlihat "hilang" setelah ganti bahasa | Penjelasan di UI (§10); riwayat lama utuh dan kembali saat bahasa dikembalikan |
+| Migrasi menghapus ringkasan lama dari tampilan | Isi `lang` baris lama dengan `detected_language` saat ALTER, jangan biarkan NULL (§8) |
+| Biaya membengkak (tiap bahasa = satu transkrip penuh) | Semuanya disimpan — bayar sekali per bahasa; jangan pernah menerjemahkan otomatis |
 | Nama orang & istilah teknis ikut diterjemahkan | Instruksi prompt: pertahankan nama diri dan istilah teknis apa adanya |
-| Rekaman campur dua bahasa (Indonesia-Inggris) | Lazim di rapat nyata; sebutkan bahasa sumber ke model, jangan andalkan tebakannya |
-| Rekaman `auto` tak diketahui bahasanya | Fase 0 lebih dulu — itu sebabnya ia nomor satu |
+| Rekaman campur Indonesia-Inggris | Lazim di rapat nyata; sebutkan bahasa sumber ke model, jangan andalkan tebakannya |
 
-## 12. Sumber
+## 13. Sumber
 
 Seam AI internal: [ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md) ·
-pola map-reduce & anti-pemotongan-senyap: [ADR 0009](../adr/0009-ringkasan-transkrip.md) ·
+map-reduce & anti-pemotongan-senyap: [ADR 0009](../adr/0009-ringkasan-transkrip.md) ·
 sitasi menit yang bisa diklik: [ADR 0010](../adr/0010-chat-transkrip.md) ·
 batasan `task=translate`: [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
