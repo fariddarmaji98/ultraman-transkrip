@@ -197,8 +197,17 @@ dari tampilan begitu difilter per bahasa.
 3. **Fase B — terjemahan transkrip.** `analysis/translate.py` (blok bernomor + verifikasi §5),
    tabel `segment_translations`, `Job.kind='translate'`, endpoint
    `POST /api/recordings/{id}/translate {lang}`, pemilih Asli/bahasa di kolom kanan + progres.
-4. **Fase C — satu bahasa aktif untuk seluruh halaman.** Menyatukan pemilih kolom kanan dan panel
-   AI jadi satu keadaan (§2), plus penanda "versi bahasa ini belum dibuat".
+4. **✅ Fase C — satu bahasa aktif untuk seluruh halaman.** Pemilih panel AI dicabut; yang tersisa
+   satu, di atas transkrip, tempat terjemahan benar-benar dikerjakan. Panel AI hanya menampilkan
+   penanda bahasa aktif yang tidak bisa diklik — dua pemilih untuk satu keadaan cuma membuat orang
+   menebak mana yang menang.
+   - `ASLI` bukan bahasa, melainkan "bahasa rekaman ini sendiri". Ia diterjemahkan ke kode bahasa
+     nyata untuk ringkasan & chat, dengan `DEFAULT_AI_LANGUAGE` sebagai cadangan bila rekaman lama
+     belum punya `detected_language`.
+   - Pilihan lengket dari Fase A yang kebetulan sama dengan bahasa asli dibaca sebagai `ASLI`,
+     bukan sebagai "terjemahkan ke bahasa yang sama".
+   - Chat yang kosong sesudah ganti bahasa kini menjelaskan dirinya: percakapan bahasa lain
+     tersimpan terpisah, bukan terhapus.
 5. **Fase D — ekspor & tampilan berdampingan.** `?fmt=srt&lang=ja`, dan mode dua kolom
    asli-vs-terjemahan untuk memeriksa hasil.
 

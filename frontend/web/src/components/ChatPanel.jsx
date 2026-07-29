@@ -109,6 +109,8 @@ function Header({ messages, onClear }) {
   )
 }
 
+// Kosong sesudah ganti bahasa TIDAK boleh terbaca sebagai riwayat yang terhapus:
+// percakapan bahasa lain masih utuh, cuma tersimpan di utas yang berbeda.
 function Empty({ ready }) {
   return (
     <div className="flex flex-col items-center gap-2 px-4 py-6 text-center">
@@ -118,6 +120,12 @@ function Empty({ ready }) {
           ? 'Jawaban menyertakan menit sumbernya — klik untuk memutar dari titik itu.'
           : 'Menunggu transkrip selesai.'}
       </p>
+      {ready && (
+        <p className="max-w-xs text-[11px] leading-relaxed text-fg3">
+          Tiap bahasa punya percakapannya sendiri — yang di bahasa lain tidak hilang,
+          hanya tersimpan terpisah.
+        </p>
+      )}
     </div>
   )
 }

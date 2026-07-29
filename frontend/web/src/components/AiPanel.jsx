@@ -8,11 +8,10 @@ import { summarizeRecording } from '../api'
 import { fmtDate, langLabel } from '../utils'
 import useLocalState from '../hooks/useLocalState'
 import ChatPanel from './ChatPanel'
-import LangPicker from './LangPicker'
 import SummaryText from './SummaryText'
 import TabBar from './TabBar'
 
-export default function AiPanel({ rec, languages, lang, onLang, onSummarized, onSeek }) {
+export default function AiPanel({ rec, languages, lang, onSummarized, onSeek }) {
   const [tab, setTab] = useLocalState('ai-tab', 'ringkasan')
   const [chatCount, setChatCount] = useState(0)
   const ready = rec.status === 'done' && rec.segments?.length > 0
@@ -27,7 +26,7 @@ export default function AiPanel({ rec, languages, lang, onLang, onSummarized, on
         tabs={tabs}
         active={tab}
         onChange={setTab}
-        right={<LangPicker languages={languages} value={lang} onChange={onLang} />}
+        right={<LangAktif name={langLabel(lang, languages)} />}
       />
       <SummaryPane
         rec={rec}
@@ -46,6 +45,21 @@ export default function AiPanel({ rec, languages, lang, onLang, onSummarized, on
         onCount={setChatCount}
       />
     </section>
+  )
+}
+
+// Penanda, bukan pemilih. Bahasanya satu untuk seluruh halaman (Fase C), jadi
+// ia diubah di satu tempat saja — di atas transkrip, tempat terjemahan benar-benar
+// dikerjakan. Dua pemilih untuk satu keadaan hanya membuat orang menebak mana
+// yang menang.
+function LangAktif({ name }) {
+  return (
+    <span
+      title="Bahasa aktif — diubah lewat pemilih di atas transkrip"
+      className="rounded-md border border-edge px-2 py-1 text-[11px] text-fg3"
+    >
+      {name}
+    </span>
   )
 }
 

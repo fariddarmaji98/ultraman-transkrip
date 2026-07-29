@@ -30,25 +30,30 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
   const [rec, setRec] = useState(null)
   const [round, setRound] = useState(0)  // dinaikkan untuk memulai ulang polling
   const [error, setError] = useState(null)
-  // Bahasa keluaran AI. Hidup DI SINI, bukan di AiPanel, karena `rec.summary`
-  // datang dari getRecording — pemilihnya boleh di anak, tapi yang mengambil
-  // datanya ada di sini, dan `lang` wajib masuk dep array agar ganti bahasa
-  // langsung menarik ringkasan bahasa itu.
-  const [lang, setLang] = useLocalState('ai-lang', DEFAULT_AI_LANG)
-  // Bahasa transkrip TIDAK lengket: ia milik rekaman ini, bukan preferensi
-  // global — rekaman berikutnya belum tentu punya terjemahan yang sama.
-  // Komponen ini di-remount per rekaman (`key` di App), jadi ia reset sendiri.
-  const [tlang, setTlang] = useState(ASLI)
+  // SATU bahasa aktif untuk seluruh halaman — transkrip, ringkasan, dan chat.
+  // Sebelumnya dua keadaan terpisah, dan itu membuat halaman bisa menampilkan
+  // transkrip Jepang di sebelah ringkasan Indonesia tanpa ada yang salah.
+  // ASLI = bahasa rekaman itu sendiri; selain itu = kode bahasa terjemahan.
+  const [pilihan, setLang] = useLocalState('ai-lang', ASLI)
   const [trans, setTrans] = useState(null)
   const [tRound, setTRound] = useState(0)
   const [tError, setTError] = useState(null)
   const onDoneRef = useRef(onDone)
   onDoneRef.current = onDone
 
+  // Bahasa asli baru diketahui setelah `rec` datang, jadi turunannya dihitung
+  // ulang begitu itu terjadi — satu fetch tambahan, dan hanya untuk rekaman
+  // yang bahasanya bukan default.
+  const source = rec ? sourceLang(rec) : null
+  // Pilihan lama dari Fase A bisa kebetulan sama dengan bahasa asli; itu berarti
+  // "asli", bukan "terjemahkan ke bahasa yang sama".
+  const tlang = pilihan === source ? ASLI : pilihan
+  const aiLang = tlang === ASLI ? source ?? DEFAULT_AI_LANG : tlang
+
   useEffect(() => {
     let active = true
     const tick = async () => {
-      const data = await getRecording(id, lang)
+      const data = await getRecording(id, aiLang)
       if (!active) return
       setRec(data)
       if (PENDING.includes(data.status)) setTimeout(tick, 2000)
@@ -58,7 +63,7 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
     return () => {
       active = false
     }
-  }, [id, round, lang])
+  }, [id, round, aiLang])
 
   useEffect(() => {
     setTError(null)
@@ -112,12 +117,11 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
     <Detail
       rec={rec}
       languages={languages}
-      lang={lang}
-      onLang={setLang}
+      lang={aiLang}
       tlang={tlang}
       trans={trans}
       tError={tError}
-      onTlang={setTlang}
+      onTlang={setLang}
       onTranslate={translate}
       error={error}
       onTranscribe={transcribe}
@@ -129,7 +133,7 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
 }
 
 function Detail({
-  rec, languages, lang, onLang, tlang, trans, tError, onTlang, onTranslate,
+  rec, languages, lang, tlang, trans, tError, onTlang, onTranslate,
   error, onTranscribe, onRefresh, onTitleChange, onClose,
 }) {
   const mediaRef = useRef(null)
@@ -171,7 +175,6 @@ function Detail({
           rec={rec}
           languages={languages}
           lang={lang}
-          onLang={onLang}
           onSummarized={onRefresh}
           onSeek={seek}
         />
