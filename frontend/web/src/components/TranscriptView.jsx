@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getRecording, sourceUrl, startTranscribe } from '../api'
+import { getRecording, getTranslation, sourceUrl, startTranscribe, startTranslate } from '../api'
 import { currentSegment, isVideo, nearestSegment } from '../utils'
 import TranscriptHeader from './TranscriptHeader'
 import SegmentList from './SegmentList'
@@ -8,12 +8,14 @@ import AiPanel from './AiPanel'
 import ResizeHandle from './ResizeHandle'
 import usePanelWidth from '../hooks/usePanelWidth'
 import useLocalState from '../hooks/useLocalState'
+import TranscriptLangBar, { ASLI } from './TranscriptLangBar'
 
 // Sama dengan DEFAULT_AI_LANGUAGE di backend/constants: membuka rekaman lama
 // tanpa menyentuh pemilih harus memberi hasil yang sama seperti sebelum fitur
 // ini ada, karena ringkasan & chat lama memang berbahasa Indonesia.
 const DEFAULT_AI_LANG = 'id'
 const TRANSCRIBING = ['queued', 'extracting', 'transcribing']
+const RUNNING = ['queued', 'translating']   // job terjemahan yang masih jalan
 const PENDING = [...TRANSCRIBING, 'downloading']  // masih berjalan -> terus di-poll
 const SOURCE_W = { key: 'source-width', min: 360, max: 900, initial: 560, handleSide: 'left' }
 const SCROLL_MS = 420  // durasi animasi gulir ke segmen tujuan
@@ -33,6 +35,13 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
   // datanya ada di sini, dan `lang` wajib masuk dep array agar ganti bahasa
   // langsung menarik ringkasan bahasa itu.
   const [lang, setLang] = useLocalState('ai-lang', DEFAULT_AI_LANG)
+  // Bahasa transkrip TIDAK lengket: ia milik rekaman ini, bukan preferensi
+  // global — rekaman berikutnya belum tentu punya terjemahan yang sama.
+  // Komponen ini di-remount per rekaman (`key` di App), jadi ia reset sendiri.
+  const [tlang, setTlang] = useState(ASLI)
+  const [trans, setTrans] = useState(null)
+  const [tRound, setTRound] = useState(0)
+  const [tError, setTError] = useState(null)
   const onDoneRef = useRef(onDone)
   onDoneRef.current = onDone
 
@@ -50,6 +59,35 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
       active = false
     }
   }, [id, round, lang])
+
+  useEffect(() => {
+    setTError(null)
+    if (tlang === ASLI) {
+      setTrans(null)
+      return
+    }
+    let active = true
+    const tick = async () => {
+      const data = await getTranslation(id, tlang).catch(() => null)
+      if (!active || !data) return
+      setTrans(data)
+      if (RUNNING.includes(data.status)) setTimeout(tick, 2000)
+    }
+    tick()
+    return () => {
+      active = false
+    }
+  }, [id, tlang, tRound])
+
+  async function translate() {
+    setTError(null)
+    try {
+      await startTranslate(id, tlang)
+      setTRound((n) => n + 1)
+    } catch (err) {
+      setTError(err.message)
+    }
+  }
 
   const applyTitle = (title) => {
     setRec((r) => ({ ...r, title }))
@@ -76,6 +114,11 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
       languages={languages}
       lang={lang}
       onLang={setLang}
+      tlang={tlang}
+      trans={trans}
+      tError={tError}
+      onTlang={setTlang}
+      onTranslate={translate}
       error={error}
       onTranscribe={transcribe}
       onRefresh={() => setRound((n) => n + 1)}
@@ -86,7 +129,8 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
 }
 
 function Detail({
-  rec, languages, lang, onLang, error, onTranscribe, onRefresh, onTitleChange, onClose,
+  rec, languages, lang, onLang, tlang, trans, tError, onTlang, onTranslate,
+  error, onTranscribe, onRefresh, onTitleChange, onClose,
 }) {
   const mediaRef = useRef(null)
   const scrollRef = useRef(null)
@@ -133,6 +177,12 @@ function Detail({
         />
         <SourcePanel
           rec={rec}
+          languages={languages}
+          tlang={tlang}
+          trans={trans}
+          tError={tError}
+          onTlang={onTlang}
+          onTranslate={onTranslate}
           error={error}
           onTranscribe={onTranscribe}
           mediaRef={mediaRef}
@@ -185,7 +235,10 @@ function glideTo(el, jauh) {
   }, SCROLL_MS + 80)
 }
 
-function SourcePanel({ rec, error, onTranscribe, mediaRef, scrollRef, activeIdx, onTime, onSeek }) {
+function SourcePanel({
+  rec, languages, tlang, trans, tError, onTlang, onTranslate,
+  error, onTranscribe, mediaRef, scrollRef, activeIdx, onTime, onSeek,
+}) {
   const { width, dragging, handlers } = usePanelWidth(SOURCE_W)
   return (
     <section
@@ -220,7 +273,23 @@ function SourcePanel({ rec, error, onTranscribe, mediaRef, scrollRef, activeIdx,
         {rec.status === 'failed' && (
           <p className="text-red-400">Gagal diproses. Cek pesan error, lalu coba lagi.</p>
         )}
-        <Transcript rec={rec} activeIdx={activeIdx} onSeek={onSeek} />
+        {rec.status === 'done' && rec.segments?.length > 0 && (
+          <TranscriptLangBar
+            languages={languages}
+            source={sourceLang(rec)}
+            value={tlang}
+            trans={trans}
+            error={tError}
+            onChange={onTlang}
+            onTranslate={onTranslate}
+          />
+        )}
+        <Transcript
+          rec={rec}
+          segments={shownSegments(rec, tlang, trans)}
+          activeIdx={activeIdx}
+          onSeek={onSeek}
+        />
       </div>
     </section>
   )
@@ -286,13 +355,27 @@ function DownloadedCard({ onTranscribe, error }) {
   )
 }
 
-function Transcript({ rec, activeIdx, onSeek }) {
+function Transcript({ rec, segments, activeIdx, onSeek }) {
   // `?.` sengaja: satu field hilang tak boleh merobohkan seluruh halaman.
-  if (rec.segments?.length > 0)
-    return (
-      <SegmentList segments={rec.segments} activeIdx={activeIdx} onSeek={onSeek} />
-    )
+  if (segments?.length > 0)
+    return <SegmentList segments={segments} activeIdx={activeIdx} onSeek={onSeek} />
   if (rec.status === 'done')
     return <p className="text-fg3">Tidak ada ucapan terdeteksi.</p>
   return null
+}
+
+// Bahasa asli rekaman: yang diminta bila dipilih manual, kalau tidak yang
+// terdeteksi. Dipakai untuk menulis "Asli (Indonesia)" dan untuk TIDAK
+// menawarkan menerjemahkan ke bahasa yang sama dengan aslinya.
+function sourceLang(rec) {
+  return rec.language !== 'auto' ? rec.language : rec.detected_language
+}
+
+// Teks diganti, WAKTU TIDAK — timestamp tetap milik segmen asli, supaya
+// player, sorotan, dan sitasi chat tetap menunjuk titik yang sama.
+function shownSegments(rec, tlang, trans) {
+  const asli = rec.segments ?? []
+  if (tlang === ASLI || !trans?.segments?.length) return asli
+  const teks = new Map(trans.segments.map((t) => [t.idx, t.text]))
+  return asli.map((s) => ({ ...s, text: teks.get(s.idx) ?? s.text }))
 }

@@ -165,3 +165,19 @@ function parseError(text) {
 export const mediaUrl = (id) => `/api/recordings/${id}/media`
 export const sourceUrl = (id) => `/api/recordings/${id}/source`
 export const exportUrl = (id, fmt) => `/api/recordings/${id}/export?fmt=${fmt}`
+
+// --- Terjemahan transkrip ---------------------------------------------------
+// Terpisah dari `getRecording`: terjemahan berjalan di latar dan punya
+// status/progresnya sendiri, sedangkan detail rekaman tidak boleh ikut menunggu.
+export async function getTranslation(id, lang) {
+  const res = await fetch(`/api/recordings/${id}/translation?lang=${lang}`)
+  if (!res.ok) throw new Error('gagal memuat terjemahan')
+  return res.json()
+}
+
+export async function startTranslate(id, lang) {
+  const res = await fetch(`/api/recordings/${id}/translate?lang=${lang}`, { method: 'POST' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal memulai terjemahan')
+  return data
+}
