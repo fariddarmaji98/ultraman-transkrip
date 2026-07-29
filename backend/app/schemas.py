@@ -35,6 +35,7 @@ class RecordingOut(BaseModel):
 class SummaryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    lang: str          # bahasa TULISAN ringkasan, bukan bahasa rekamannya
     text: str
     provider: str
     model: str

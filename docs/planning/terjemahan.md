@@ -155,8 +155,13 @@ yang sudah ada). Ringkasan & chat multibahasa **tetap sinkron** — biayanya sam
 
 - **`Recording.detected_language`** — kode ISO hasil deteksi ASR, nullable (§6).
 - **`segment_translations`** — `id, recording_id, lang, idx, text`; unik `(recording_id, lang, idx)`.
-- **`summaries` + kolom `lang`** — unik `(recording_id, lang)`. Baris lama diisi
-  `detected_language` saat migrasi; "buat ulang" mengganti baris **untuk bahasa itu saja**.
+- **`summaries` + kolom `lang`** — unik `(recording_id, lang)`; "buat ulang" mengganti baris
+  **untuk bahasa itu saja**. ⚠️ **Koreksi:** rencana ini semula menulis "baris lama diisi
+  `detected_language` saat migrasi" — itu **mustahil**. `detected_language` baru lahir di Fase 0
+  dan NULL untuk semua rekaman lama (kelimanya diminta `auto` dan belum ditranskrip ulang), jadi
+  mengisi dari kolom itu sama dengan mengisi NULL. Yang benar justru lebih sederhana: isi dengan
+  `DEFAULT_AI_LANGUAGE` (`id`), karena prompt lama memaksa bahasa Indonesia sehingga ringkasan
+  dan chat yang tersimpan **memang** berbahasa itu.
 - **`chat_messages` + kolom `lang`** — utas dipilih dengan `WHERE recording_id=? AND lang=?`.
 - **`Job.kind = 'translate'`** — tanpa tabel job baru.
 
@@ -167,12 +172,28 @@ dari tampilan begitu difilter per bahasa.
 
 ## 9. Roadmap — dari yang termurah
 
-1. **Fase 0 — bahasa terdeteksi.** Kolom `detected_language` + isi dari kedua provider ASR (§6),
-   dan hapus asumsi "berbahasa Indonesia" di prompt ringkasan. Semua fase lain bergantung padanya,
-   dan ini memperbaiki kesalahan yang sudah ada hari ini.
-2. **Fase A — ringkasan & chat multibahasa.** Kolom `lang` di `summaries` + `chat_messages`,
+1. **✅ Fase 0 — bahasa terdeteksi.** Kolom `detected_language` + isi dari kedua provider ASR (§6),
+   dan hapus asumsi "berbahasa Indonesia" di prompt ringkasan.
+   - Bahasa dibawa lewat tipe balikan baru `TranscriptResult`, bukan atribut samping.
+   - **Hanya diisi bila permintaannya `auto`.** Pada permintaan eksplisit, faster-whisper
+     memantulkan kode yang diminta dengan probabilitas 1 dan Groq bahkan diberi tahu lebih dulu
+     lewat form-nya — menyimpan gema itu sebagai "terdeteksi" menghapus jejak bahwa ia bukan deteksi.
+   - Katalog bahasa pindah ke `constants` dan disajikan lewat `GET /api/config`; balasan Groq
+     dinormalkan karena ia memberi NAMA bahasa, bukan kode.
+2. **✅ Fase A — ringkasan & chat multibahasa.** Kolom `lang` di `summaries` + `chat_messages`,
    parameter bahasa di prompt, pemilih bahasa di panel AI. **Belum ada terjemahan transkrip** —
-   dan memang tidak perlu, karena keduanya membaca transkrip asli (§4). Sudah langsung berguna.
+   dan memang tidak perlu, karena keduanya membaca transkrip asli (§4).
+   - Seluruh prompt ditulis ulang jadi **bahasa Inggris**, bukan sekadar mencabut kalimat pemaksa:
+     ketika heading, label, dan instruksi semuanya berbahasa Indonesia, model tetap condong
+     menjawab Indonesia betapa pun bahasa lain yang diminta. Perintah bahasa ditaruh paling akhir.
+   - Chat menyebutkan bila potongan yang dikirim ternyata **awal transkrip**, bukan bagian
+     terelevan. Pada bahasa tanpa spasi (Jepang, Mandarin, Thai) pencocokan kata tidak pernah
+     menghasilkan irisan, jadi tanpa ini jawabannya percaya diri atas bagian yang salah.
+   - Terverifikasi dengan LLM sungguhan: ringkasan Jepang lengkap dengan heading Jepang
+     (`## 要約`), dan sitasi `[mm:ss]` tetap utuh serta bisa diklik.
+   - Batasan yang diterima sadar: catatan "transkrip terlalu panjang" ditempel di Python dan
+     tidak pernah lewat LLM, jadi ia tetap berbahasa Indonesia. Jalurnya baru aktif pada
+     transkrip belasan jam.
 3. **Fase B — terjemahan transkrip.** `analysis/translate.py` (blok bernomor + verifikasi §5),
    tabel `segment_translations`, `Job.kind='translate'`, endpoint
    `POST /api/recordings/{id}/translate {lang}`, pemilih Asli/bahasa di kolom kanan + progres.

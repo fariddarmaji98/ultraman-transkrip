@@ -1,18 +1,23 @@
 // Baris tab generik. Dipakai sidebar (Transkrip/Unduh) dan kolom AI
 // (Ringkasan/Chat) — satu komponen supaya keduanya tidak pelan-pelan
 // berbeda rupa seperti sepasang komponen kembar.
-export default function TabBar({ tabs, active, onChange }) {
+// `right` = isi opsional di ujung kanan baris (mis. pemilih bahasa), supaya ia
+// berbagi garis bawah yang sama alih-alih memotongnya jadi dua.
+export default function TabBar({ tabs, active, onChange, right }) {
   return (
-    <div className="flex shrink-0 gap-1 border-b border-edge px-3" role="tablist">
-      {tabs.map((t) => (
-        <Tab
-          key={t.id}
-          label={t.label}
-          count={t.count ?? 0}
-          selected={t.id === active}
-          onClick={() => onChange(t.id)}
-        />
-      ))}
+    <div className="flex shrink-0 items-center gap-1 border-b border-edge px-3">
+      <div className="flex gap-1" role="tablist">
+        {tabs.map((t) => (
+          <Tab
+            key={t.id}
+            label={t.label}
+            count={t.count ?? 0}
+            selected={t.id === active}
+            onClick={() => onChange(t.id)}
+          />
+        ))}
+      </div>
+      {right && <div className="ml-auto py-1.5">{right}</div>}
     </div>
   )
 }

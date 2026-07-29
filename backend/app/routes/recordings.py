@@ -1,12 +1,14 @@
 """Endpoint recordings: upload (streaming), unduh dari URL, list, detail, delete, export."""
 import asyncio
 from pathlib import Path
+from typing import Annotated
 from uuid import uuid4
 
 import aiofiles
-from fastapi import APIRouter, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.deps import DbDep
@@ -33,7 +35,9 @@ from constants import (
     ACCEPTED_SUFFIXES,
     CHAT_HISTORY_TURNS,
     CHAT_MAX_QUESTION,
+    DEFAULT_AI_LANGUAGE,
     DOWNLOAD_MAX_DURATION_S,
+    LANGUAGE_BY_ID,
     JOB_DOWNLOADING,
     JOB_KIND_FETCH,
     JOB_KIND_TRANSCRIBE,
@@ -49,6 +53,11 @@ from store import models
 from worker.queue import enqueue
 
 router = APIRouter()
+
+# Bahasa keluaran AI ikut sebagai query param di semua endpoint ringkasan & chat,
+# termasuk yang POST: GET dan DELETE tidak bisa membawa body, dan satu konvensi
+# lebih mudah diingat daripada dua.
+LangQ = Annotated[str, Query(description="Bahasa keluaran AI (kode ISO dari /api/config)")]
 
 
 @router.post("/recordings", response_model=UploadResponse, status_code=201)
@@ -87,15 +96,18 @@ async def list_recordings(db: DbDep) -> list[RecordingOut]:
 
 
 @router.get("/recordings/{rid}", response_model=RecordingDetail)
-async def get_recording(rid: int, db: DbDep) -> RecordingDetail:
+async def get_recording(rid: int, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE) -> RecordingDetail:
     rec = await _get_or_404(db, rid)
     segments = await _segments_of(db, rid)
     progress = await _progress_of(db, rid)
-    return _to_detail(rec, segments, progress, await _summary_of(db, rid))
+    summary = await _summary_of(db, rid, _checked(lang))
+    return _to_detail(rec, segments, progress, summary)
 
 
 @router.post("/recordings/{rid}/summarize", response_model=SummaryOut)
-async def summarize_recording(rid: int, db: DbDep) -> models.Summary:
+async def summarize_recording(
+    rid: int, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE
+) -> models.Summary:
     """Ringkas transkrip pakai mesin AI aktif (ADR 0007). Sinkron: bisa puluhan detik."""
     await _get_or_404(db, rid)
     segments = await _segments_of(db, rid)
@@ -103,34 +115,42 @@ async def summarize_recording(rid: int, db: DbDep) -> models.Summary:
         raise HTTPException(422, "belum ada transkrip untuk diringkas")
     cfg = analysis.resolve()
     _reject_if_llm_unset(cfg)
-    text = await _run_summary(segments, cfg)
-    return await _save_summary(db, rid, text, cfg)
+    text = await _run_summary(segments, cfg, _checked(lang))
+    return await _save_summary(db, rid, text, cfg, lang)
 
 
 @router.get("/recordings/{rid}/chat", response_model=list[ChatMessageOut])
-async def list_chat(rid: int, db: DbDep) -> list[models.ChatMessage]:
+async def list_chat(
+    rid: int, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE
+) -> list[models.ChatMessage]:
     await _get_or_404(db, rid)
-    return await _chat_history(db, rid)
+    return await _chat_history(db, rid, _checked(lang))
 
 
 @router.post("/recordings/{rid}/chat", response_model=ChatMessageOut)
-async def send_chat(rid: int, body: ChatIn, db: DbDep) -> models.ChatMessage:
+async def send_chat(
+    rid: int, body: ChatIn, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE
+) -> models.ChatMessage:
     """Tanya transkrip. Sinkron seperti ringkasan — belasan detik (ADR 0009)."""
     await _get_or_404(db, rid)
     question = _clean_question(body.question)
     segments = await _segments_of(db, rid)
     cfg = analysis.resolve()
     _reject_if_llm_unset(cfg)
-    history = await _chat_history(db, rid)
-    answer = await _run_chat(question, segments, history[-CHAT_HISTORY_TURNS:], cfg)
-    return await _save_turn(db, rid, question, answer, cfg)
+    history = await _chat_history(db, rid, _checked(lang))
+    answer = await _run_chat(question, segments, history[-CHAT_HISTORY_TURNS:], cfg, lang)
+    return await _save_turn(db, rid, question, answer, cfg, lang)
 
 
 @router.delete("/recordings/{rid}/chat", status_code=204)
-async def clear_chat(rid: int, db: DbDep) -> None:
+async def clear_chat(rid: int, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE) -> None:
+    """Hanya utas bahasa ini — percakapan bahasa lain punya isi sendiri."""
     await _get_or_404(db, rid)
     await db.execute(
-        delete(models.ChatMessage).where(models.ChatMessage.recording_id == rid)
+        delete(models.ChatMessage).where(
+            models.ChatMessage.recording_id == rid,
+            models.ChatMessage.lang == _checked(lang),
+        )
     )
     await db.commit()
 
@@ -215,27 +235,27 @@ def _clean_question(raw: str) -> str:
     return question
 
 
-async def _chat_history(db, rid: int) -> list[models.ChatMessage]:
+async def _chat_history(db, rid: int, lang: str) -> list[models.ChatMessage]:
     result = await db.execute(
         select(models.ChatMessage)
-        .where(models.ChatMessage.recording_id == rid)
+        .where(models.ChatMessage.recording_id == rid, models.ChatMessage.lang == lang)
         .order_by(models.ChatMessage.id)
     )
     return list(result.scalars().all())
 
 
-async def _run_chat(question: str, segments, history, cfg: dict) -> str:
+async def _run_chat(question: str, segments, history, cfg: dict, lang: str) -> str:
     try:
-        return await ask(question, segments, history, analysis.get_llm())
+        return await ask(question, segments, history, analysis.get_llm(), lang)
     except LLMError as exc:
         raise HTTPException(502, str(exc)) from exc
 
 
-async def _save_turn(db, rid: int, question: str, answer: str, cfg: dict):
+async def _save_turn(db, rid: int, question: str, answer: str, cfg: dict, lang: str):
     """Simpan pertanyaan dan jawaban sekaligus — riwayat tak boleh timpang."""
-    db.add(models.ChatMessage(recording_id=rid, role="user", text=question))
+    db.add(models.ChatMessage(recording_id=rid, role="user", text=question, lang=lang))
     reply = models.ChatMessage(
-        recording_id=rid, role="assistant", text=answer,
+        recording_id=rid, role="assistant", text=answer, lang=lang,
         provider=cfg["provider"], model=cfg["model"],
     )
     db.add(reply)
@@ -244,25 +264,46 @@ async def _save_turn(db, rid: int, question: str, answer: str, cfg: dict):
     return reply
 
 
-async def _run_summary(segments, cfg: dict) -> str:
+async def _run_summary(segments, cfg: dict, lang: str) -> str:
     try:
-        return await summarize(segments, analysis.get_llm())
+        return await summarize(segments, analysis.get_llm(), lang)
     except LLMError as exc:
         raise HTTPException(502, str(exc)) from exc
 
 
-async def _save_summary(db, rid: int, text: str, cfg: dict) -> models.Summary:
-    """Satu ringkasan per recording — yang lama diganti, bukan ditumpuk."""
+async def _save_summary(db, rid: int, text: str, cfg: dict, lang: str) -> models.Summary:
+    """Satu ringkasan per recording PER BAHASA — yang lama diganti, bukan ditumpuk."""
     await db.execute(
-        delete(models.Summary).where(models.Summary.recording_id == rid)
+        delete(models.Summary).where(
+            models.Summary.recording_id == rid, models.Summary.lang == lang
+        )
     )
     row = models.Summary(
-        recording_id=rid, text=text, provider=cfg["provider"], model=cfg["model"]
+        recording_id=rid, lang=lang, text=text,
+        provider=cfg["provider"], model=cfg["model"],
     )
     db.add(row)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        # Dua permintaan bareng (dua tab, atau klik kedua karena dikira tak
+        # bereaksi — endpointnya sinkron puluhan detik). Tanpa ini, pemakai
+        # menerima 500 berisi pesan SQLAlchemy mentah.
+        await db.rollback()
+        raise HTTPException(409, "ringkasan bahasa ini sedang dibuat — coba lagi") from exc
     await db.refresh(row)
     return row
+
+
+def _checked(lang: str) -> str:
+    """Tolak kode bahasa asing sebelum ia sempat jadi baris di DB.
+
+    Tanpa ini, `?lang=xx` melahirkan utas chat dan ringkasan yang tidak akan
+    pernah bisa dibuka lagi dari UI — pemilihnya cuma menawarkan isi katalog.
+    """
+    if lang not in LANGUAGE_BY_ID:
+        raise HTTPException(422, f"bahasa tidak dikenal: {lang}")
+    return lang
 
 
 def _reject_if_not_transcribable(rec) -> None:
@@ -412,9 +453,14 @@ def _with_progress(rec, progress: int) -> RecordingOut:
     return out
 
 
-async def _summary_of(db, rid: int) -> models.Summary | None:
+async def _summary_of(db, rid: int, lang: str) -> models.Summary | None:
     result = await db.execute(
-        select(models.Summary).where(models.Summary.recording_id == rid)
+        select(models.Summary)
+        .where(models.Summary.recording_id == rid, models.Summary.lang == lang)
+        # Terbaru menang. Tanpa order_by, SQLite lazimnya memberi rowid terkecil,
+        # sehingga duplikat lawas (dari sebelum indeks unik ada) membuat "buat
+        # ulang" tampak tidak mengubah apa pun.
+        .order_by(models.Summary.id.desc())
     )
     return result.scalars().first()
 

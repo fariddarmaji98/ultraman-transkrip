@@ -5,7 +5,7 @@ import { clearChat, getChat, sendChat } from '../api'
 import CitedText from './CitedText'
 import ConfirmModal from './ConfirmModal'
 
-export default function ChatPanel({ rec, ready, active, onSeek, onCount }) {
+export default function ChatPanel({ rec, ready, active, lang, onSeek, onCount }) {
   const [messages, setMessages] = useState([])
   const [question, setQuestion] = useState('')
   const [busy, setBusy] = useState(false)
@@ -14,8 +14,11 @@ export default function ChatPanel({ rec, ready, active, onSeek, onCount }) {
   const endRef = useRef(null)
 
   useEffect(() => {
-    getChat(rec.id).then(setMessages).catch(() => {})
-  }, [rec.id])
+    // `lang` ikut jadi dependensi: tiap bahasa punya utasnya sendiri, jadi
+    // tanpa ini percakapan bahasa lama bertahan di layar sambil pertanyaan
+    // berikutnya masuk ke utas yang berbeda.
+    getChat(rec.id, lang).then(setMessages).catch(() => {})
+  }, [rec.id, lang])
 
   useEffect(() => {
     onCount?.(messages.length)
@@ -36,11 +39,11 @@ export default function ChatPanel({ rec, ready, active, onSeek, onCount }) {
     setQuestion('')
     setMessages((prev) => [...prev, { id: 'sementara', role: 'user', text }])
     try {
-      await sendChat(rec.id, text)
-      setMessages(await getChat(rec.id))
+      await sendChat(rec.id, text, lang)
+      setMessages(await getChat(rec.id, lang))
     } catch (err) {
       setError(err.message)
-      setMessages(await getChat(rec.id))  // buang pesan sementara
+      setMessages(await getChat(rec.id, lang))  // buang pesan sementara
     } finally {
       setBusy(false)
     }
@@ -48,7 +51,7 @@ export default function ChatPanel({ rec, ready, active, onSeek, onCount }) {
 
   async function wipe() {
     setConfirming(false)
-    await clearChat(rec.id)
+    await clearChat(rec.id, lang)
     setMessages([])
     setError(null)
   }
@@ -77,7 +80,7 @@ export default function ChatPanel({ rec, ready, active, onSeek, onCount }) {
       {confirming && (
         <ConfirmModal
           title="Bersihkan percakapan?"
-          message="Seluruh tanya-jawab pada rekaman ini akan dihapus permanen. Transkrip dan ringkasan tidak terpengaruh."
+          message="Tanya-jawab pada BAHASA INI akan dihapus permanen. Percakapan bahasa lain, transkrip, dan ringkasan tidak terpengaruh."
           confirmLabel="Bersihkan"
           onConfirm={wipe}
           onCancel={() => setConfirming(false)}

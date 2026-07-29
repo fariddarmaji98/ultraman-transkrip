@@ -30,6 +30,11 @@ fitur AI (ringkasan, chat, "second brain").
   ([ADR 0008](docs/adr/0008-video-downloader-dua-langkah.md)).
 - **Ringkasan AI**: ringkasan + poin utama + poin aksi dari transkrip, lewat mesin AI pilihanmu.
   Transkrip panjang dipotong dan digabung otomatis ([ADR 0009](docs/adr/0009-ringkasan-transkrip.md)).
+- **Ringkasan & chat multibahasa**: pilih bahasa keluaran AI (9 bahasa) di panel asisten — model
+  membaca transkrip **asli** dan menulis langsung dalam bahasa itu, bukan menerjemahkan hasil.
+  Tiap bahasa punya ringkasan dan utas chatnya sendiri, tersimpan, jadi berpindah bahasa yang
+  sudah pernah dibuat tidak memanggil AI lagi. Bahasa rekaman ikut terdeteksi dan ditampilkan
+  ([planning](docs/planning/terjemahan.md)).
 - **Chat dengan transkrip**: tanya isi rekaman, jawabannya menyertakan menit sumber `[mm:ss]` yang
   **bisa diklik** untuk melompat ke titik itu ([ADR 0010](docs/adr/0010-chat-transkrip.md)).
   Ringkasan dan chat dipisah tab agar keduanya dapat tinggi penuh

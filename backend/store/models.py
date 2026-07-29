@@ -1,7 +1,7 @@
 """Skema data: recordings, jobs, segments. `speaker` nullable (diisi saat diarization M4)."""
 from datetime import datetime, timezone
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -9,7 +9,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from constants import JOB_QUEUED, LANGUAGE_AUTO, SOURCE_UPLOAD
+from constants import DEFAULT_AI_LANGUAGE, JOB_QUEUED, LANGUAGE_AUTO, SOURCE_UPLOAD
 
 
 def _now() -> datetime:
@@ -74,16 +74,27 @@ class Job(Base):
 
 
 class Summary(Base):
-    """Ringkasan AI. Satu per recording — dibuat ulang = baris lama diganti.
+    """Ringkasan AI. Satu per recording PER BAHASA — dibuat ulang = baris lama diganti.
 
     Provider & model ikut dicatat: hasil dari mesin berbeda tidak sebanding,
     dan tanpa jejak ini tidak ada cara tahu ringkasan lama dibuat oleh apa.
+
+    `lang` = bahasa TULISAN ringkasannya, bukan bahasa rekamannya. Ringkasan
+    berbahasa Jepang atas rekaman Indonesia lahir langsung dari transkrip asli
+    dalam satu panggilan, jadi kolom ini tidak pernah berarti "hasil terjemahan".
     """
 
     __tablename__ = "summaries"
+    # Unik supaya "buat ulang" punya satu baris jelas untuk diganti. Tanpa ini,
+    # dua klik beruntun menumpuk dua ringkasan untuk bahasa yang sama dan yang
+    # tampil jadi bergantung urutan baris.
+    __table_args__ = (
+        UniqueConstraint("recording_id", "lang", name="uq_summary_recording_lang"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    lang: Mapped[str] = mapped_column(String(16), default=DEFAULT_AI_LANGUAGE)
     text: Mapped[str] = mapped_column(Text)
     provider: Mapped[str] = mapped_column(String(32))
     model: Mapped[str] = mapped_column(String(64))
@@ -104,6 +115,10 @@ class ChatMessage(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    # Utas percakapan dipisah per bahasa: pertanyaan Jepang dan jawabannya tidak
+    # bermakna sebagai riwayat bagi percakapan berbahasa Indonesia. Ikut terisi
+    # pada baris `user` supaya satu utas bisa diambil dengan satu WHERE.
+    lang: Mapped[str] = mapped_column(String(16), default=DEFAULT_AI_LANGUAGE)
     role: Mapped[str] = mapped_column(String(16))  # user | assistant
     text: Mapped[str] = mapped_column(Text)
     provider: Mapped[str | None] = mapped_column(String(32), default=None)

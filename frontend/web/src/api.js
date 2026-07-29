@@ -32,13 +32,13 @@ export async function createFromUrl(url, language = 'auto') {
   return data
 }
 
-export async function getChat(id) {
-  const res = await fetch(`/api/recordings/${id}/chat`)
+export async function getChat(id, lang) {
+  const res = await fetch(`/api/recordings/${id}/chat?lang=${lang}`)
   return res.json()
 }
 
-export async function sendChat(id, question) {
-  const res = await fetch(`/api/recordings/${id}/chat`, {
+export async function sendChat(id, question, lang) {
+  const res = await fetch(`/api/recordings/${id}/chat?lang=${lang}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }),
@@ -48,12 +48,12 @@ export async function sendChat(id, question) {
   return data
 }
 
-export async function clearChat(id) {
-  await fetch(`/api/recordings/${id}/chat`, { method: 'DELETE' })
+export async function clearChat(id, lang) {
+  await fetch(`/api/recordings/${id}/chat?lang=${lang}`, { method: 'DELETE' })
 }
 
-export async function summarizeRecording(id) {
-  const res = await fetch(`/api/recordings/${id}/summarize`, { method: 'POST' })
+export async function summarizeRecording(id, lang) {
+  const res = await fetch(`/api/recordings/${id}/summarize?lang=${lang}`, { method: 'POST' })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.detail ?? 'gagal membuat ringkasan')
   return data
@@ -112,8 +112,8 @@ async function sendLlm(url, method, body) {
   return data
 }
 
-export async function getRecording(id) {
-  const res = await fetch(`/api/recordings/${id}`)
+export async function getRecording(id, lang) {
+  const res = await fetch(`/api/recordings/${id}?lang=${lang}`)
   if (!res.ok) throw new Error('gagal memuat rekaman')
   return res.json()
 }

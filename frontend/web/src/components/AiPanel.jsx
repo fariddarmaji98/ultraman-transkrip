@@ -5,13 +5,14 @@
 // Mesin AI-nya dipilih di popup Setelan — lihat ADR 0007.
 import { useState } from 'react'
 import { summarizeRecording } from '../api'
-import { fmtDate } from '../utils'
+import { fmtDate, langLabel } from '../utils'
 import useLocalState from '../hooks/useLocalState'
 import ChatPanel from './ChatPanel'
+import LangPicker from './LangPicker'
 import SummaryText from './SummaryText'
 import TabBar from './TabBar'
 
-export default function AiPanel({ rec, onSummarized, onSeek }) {
+export default function AiPanel({ rec, languages, lang, onLang, onSummarized, onSeek }) {
   const [tab, setTab] = useLocalState('ai-tab', 'ringkasan')
   const [chatCount, setChatCount] = useState(0)
   const ready = rec.status === 'done' && rec.segments?.length > 0
@@ -22,17 +23,25 @@ export default function AiPanel({ rec, onSummarized, onSeek }) {
 
   return (
     <section className="flex min-w-0 flex-1 flex-col">
-      <TabBar tabs={tabs} active={tab} onChange={setTab} />
+      <TabBar
+        tabs={tabs}
+        active={tab}
+        onChange={setTab}
+        right={<LangPicker languages={languages} value={lang} onChange={onLang} />}
+      />
       <SummaryPane
         rec={rec}
         ready={ready}
         active={tab === 'ringkasan'}
+        lang={lang}
+        languages={languages}
         onSummarized={onSummarized}
       />
       <ChatPanel
         rec={rec}
         ready={ready}
         active={tab === 'chat'}
+        lang={lang}
         onSeek={onSeek}
         onCount={setChatCount}
       />
@@ -40,7 +49,7 @@ export default function AiPanel({ rec, onSummarized, onSeek }) {
   )
 }
 
-function SummaryPane({ rec, ready, active, onSummarized }) {
+function SummaryPane({ rec, ready, active, lang, languages, onSummarized }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
@@ -48,7 +57,7 @@ function SummaryPane({ rec, ready, active, onSummarized }) {
     setBusy(true)
     setError(null)
     try {
-      await summarizeRecording(rec.id)
+      await summarizeRecording(rec.id, lang)
       onSummarized?.()
     } catch (err) {
       setError(err.message)
@@ -64,13 +73,14 @@ function SummaryPane({ rec, ready, active, onSummarized }) {
         ready={ready}
         busy={busy}
         error={error}
+        langName={langLabel(lang, languages)}
         onRun={run}
       />
     </div>
   )
 }
 
-function SummaryCard({ summary, ready, busy, error, onRun }) {
+function SummaryCard({ summary, ready, busy, error, langName, onRun }) {
   return (
     <div className="rounded-xl border border-edge bg-panel2 p-4">
       <div className="flex items-baseline justify-between gap-2">
@@ -85,8 +95,10 @@ function SummaryCard({ summary, ready, busy, error, onRun }) {
           <p className="mt-3 text-[10px] text-fg3">Dibuat {fmtDate(summary.created_at)}</p>
         </div>
       ) : (
+        // Menyebut bahasanya: kartu kosong sesudah ganti bahasa harus terbaca
+        // "belum dibuat untuk bahasa ini", bukan "ringkasannya hilang".
         <p className="mt-1 text-xs leading-relaxed text-fg3">
-          Ringkasan otomatis dan poin aksi dari transkrip ini.
+          Belum ada ringkasan berbahasa {langName} untuk rekaman ini.
         </p>
       )}
       <RunButton summary={summary} ready={ready} busy={busy} onRun={onRun} />

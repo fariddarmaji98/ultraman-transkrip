@@ -7,7 +7,12 @@ import ProgressSteps from './ProgressSteps'
 import AiPanel from './AiPanel'
 import ResizeHandle from './ResizeHandle'
 import usePanelWidth from '../hooks/usePanelWidth'
+import useLocalState from '../hooks/useLocalState'
 
+// Sama dengan DEFAULT_AI_LANGUAGE di backend/constants: membuka rekaman lama
+// tanpa menyentuh pemilih harus memberi hasil yang sama seperti sebelum fitur
+// ini ada, karena ringkasan & chat lama memang berbahasa Indonesia.
+const DEFAULT_AI_LANG = 'id'
 const TRANSCRIBING = ['queued', 'extracting', 'transcribing']
 const PENDING = [...TRANSCRIBING, 'downloading']  // masih berjalan -> terus di-poll
 const SOURCE_W = { key: 'source-width', min: 360, max: 900, initial: 560, handleSide: 'left' }
@@ -23,13 +28,18 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
   const [rec, setRec] = useState(null)
   const [round, setRound] = useState(0)  // dinaikkan untuk memulai ulang polling
   const [error, setError] = useState(null)
+  // Bahasa keluaran AI. Hidup DI SINI, bukan di AiPanel, karena `rec.summary`
+  // datang dari getRecording — pemilihnya boleh di anak, tapi yang mengambil
+  // datanya ada di sini, dan `lang` wajib masuk dep array agar ganti bahasa
+  // langsung menarik ringkasan bahasa itu.
+  const [lang, setLang] = useLocalState('ai-lang', DEFAULT_AI_LANG)
   const onDoneRef = useRef(onDone)
   onDoneRef.current = onDone
 
   useEffect(() => {
     let active = true
     const tick = async () => {
-      const data = await getRecording(id)
+      const data = await getRecording(id, lang)
       if (!active) return
       setRec(data)
       if (PENDING.includes(data.status)) setTimeout(tick, 2000)
@@ -39,7 +49,7 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
     return () => {
       active = false
     }
-  }, [id, round])
+  }, [id, round, lang])
 
   const applyTitle = (title) => {
     setRec((r) => ({ ...r, title }))
@@ -64,6 +74,8 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
     <Detail
       rec={rec}
       languages={languages}
+      lang={lang}
+      onLang={setLang}
       error={error}
       onTranscribe={transcribe}
       onRefresh={() => setRound((n) => n + 1)}
@@ -73,7 +85,9 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
   )
 }
 
-function Detail({ rec, languages, error, onTranscribe, onRefresh, onTitleChange, onClose }) {
+function Detail({
+  rec, languages, lang, onLang, error, onTranscribe, onRefresh, onTitleChange, onClose,
+}) {
   const mediaRef = useRef(null)
   const scrollRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
@@ -109,7 +123,14 @@ function Detail({ rec, languages, error, onTranscribe, onRefresh, onTitleChange,
         onClose={onClose}
       />
       <div className="flex min-h-0 flex-1">
-        <AiPanel rec={rec} onSummarized={onRefresh} onSeek={seek} />
+        <AiPanel
+          rec={rec}
+          languages={languages}
+          lang={lang}
+          onLang={onLang}
+          onSummarized={onRefresh}
+          onSeek={seek}
+        />
         <SourcePanel
           rec={rec}
           error={error}

@@ -60,6 +60,13 @@ LANGUAGES = (
 LANGUAGE_BY_ID = {lang["id"]: lang for lang in LANGUAGES}
 LANGUAGE_CODE_BY_NAME = {lang["en_name"].lower(): lang["id"] for lang in LANGUAGES}
 
+# Bahasa keluaran AI bila pemanggil tidak menyebutkannya. Sengaja SAMA dengan
+# nilai backfill migrasi: prompt lama memaksa bahasa Indonesia, jadi ringkasan
+# dan chat yang sudah tersimpan memang berbahasa Indonesia. Dengan begini,
+# membuka rekaman lama tanpa menyentuh pemilih memberi hasil yang persis sama
+# seperti sebelum fitur ini ada.
+DEFAULT_AI_LANGUAGE = "id"
+
 # Model lokal yang boleh dipilih dari UI. Ukuran = perkiraan unduhan int8 (sekali saja).
 LOCAL_MODEL_CHOICES = (
     {"id": "base", "label": "Base", "size": "~145 MB", "note": "tercepat, akurasi rendah"},
