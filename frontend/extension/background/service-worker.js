@@ -6,9 +6,14 @@ import { cancelSession, finishSession, startSession } from '../lib/api.js'
 
 const OFFSCREEN = 'offscreen/offscreen.html'
 const STATE = 'session'
+// Kunci terpisah dari STATE supaya tidak ada satu pun `save()` yang bisa
+// menimpanya: peringatan lahir kapan saja, termasuk di sela penutupan sesi.
+const WARNINGS = 'warnings'
 
 chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
-  const handlers = { START: start, STOP: stop, CANCEL: cancel, STATE: readState }
+  const handlers = {
+    START: start, STOP: stop, CANCEL: cancel, STATE: readState, OFFSCREEN_ERROR: note,
+  }
   const fn = handlers[msg?.type]
   if (!fn) return false
   fn(msg).then(respond).catch((err) => respond({ error: String(err.message ?? err) }))
@@ -16,7 +21,25 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
 })
 
 async function readState() {
-  return (await chrome.storage.local.get(STATE))[STATE] ?? { active: false }
+  const state = (await chrome.storage.local.get(STATE))[STATE] ?? { active: false }
+  return { ...state, warnings: await readWarnings() }
+}
+
+async function readWarnings() {
+  return (await chrome.storage.local.get(WARNINGS))[WARNINGS] ?? []
+}
+
+async function clearWarnings() {
+  await chrome.storage.local.set({ [WARNINGS]: [] })
+}
+
+// Potongan yang gagal terkirim sampai habis percobaan berarti ada LUBANG di
+// audionya. Pesan ini dulu dikirim ke ruang hampa — tidak ada satu pun
+// pendengarnya — sehingga user melihat transkrip yang tampak utuh padahal
+// beberapa detiknya tidak pernah sampai.
+async function note({ message }) {
+  await chrome.storage.local.set({ [WARNINGS]: [...(await readWarnings()), message] })
+  return { noted: true }
 }
 
 async function start({ tabId, tabUrl, title }) {
@@ -29,6 +52,10 @@ async function start({ tabId, tabUrl, title }) {
   // sehingga tab tidak sempat kehilangan audionya untuk apa pun.
   const session = await startSession(cfg.apiBase, { platform, title, url: tabUrl })
   await beginCapture(tabId, cfg, session, platform)
+  // Baru DI SINI, bukan di awal: kalau START gagal, peringatan sesi sebelumnya
+  // adalah satu-satunya bukti bahwa audionya berlubang — backend tidak pernah
+  // diberi tahu, dan potongan mentahnya sudah dibuang saat sesi ditutup.
+  await clearWarnings()
   return { active: true, ...session, platform, startedAt: Date.now() }
 }
 
@@ -58,7 +85,12 @@ async function stop() {
   await save({ ...state, active: false, pending: true })
   const rec = await finishSession(cfg.apiBase, state.recording_id, state.upload_token)
   await save({ active: false, pending: false, lastTitle: rec.title })
-  return { stopped: true, recording: rec }
+  // Diserahkan ke pemanggil lalu dibersihkan: peringatan ini milik rekaman yang
+  // baru saja ditutup. Dibiarkan tersimpan, ia akan muncul lagi berhari-hari
+  // kemudian di popup yang sedang kosong, seolah rekaman hari itu yang berlubang.
+  const warnings = await readWarnings()
+  await clearWarnings()
+  return { stopped: true, recording: rec, warnings }
 }
 
 async function cancel() {
@@ -69,6 +101,7 @@ async function cancel() {
     await cancelSession(cfg.apiBase, state.recording_id, state.upload_token)
   }
   await save({ active: false, pending: false })
+  await clearWarnings()   // rekamannya dibuang, peringatannya ikut
   return { cancelled: true }
 }
 

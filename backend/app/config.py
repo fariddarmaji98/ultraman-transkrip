@@ -1,6 +1,7 @@
 """Konfigurasi runtime — override lewat env (prefix TRANSKRIP_) atau .env."""
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from constants import (
@@ -29,6 +30,18 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_base_url: str = ""   # override, mis. Ollama di host lain
     llm_api_key: str = ""    # bila diset, mengunci kunci provider aktif
+
+    # Path media disimpan APA ADANYA ke DB (`Recording.upload_path`), jadi bentuk
+    # `data_dir` ikut permanen ke sana. DB yang ada sudah berisi baris absolut dan
+    # baris relatif sekaligus, dan CAMPURAN itulah bahayanya: satu-satunya pembaca
+    # baru (label pembicara lapis 0) harus bisa membuka berkas tanpa peduli baris
+    # mana yang dibacanya. Diseragamkan ke absolut karena mayoritas sudah absolut.
+    # HARGANYA: memindahkan atau mengganti nama folder proyek mematikan baris lama
+    # — jalan keluarnya `scripts/repair_media_paths.py`, bukan mengedit DB manual.
+    @field_validator("data_dir")
+    @classmethod
+    def _absolutkan(cls, v: Path) -> Path:
+        return v.resolve()
 
     @property
     def database_url(self) -> str:

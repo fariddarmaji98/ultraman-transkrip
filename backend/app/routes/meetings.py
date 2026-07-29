@@ -4,6 +4,7 @@ Tiga langkah: mulai sesi → kirim potongan berkali-kali → tutup sesi. Setelah
 ditutup, berkasnya masuk pipeline transkrip yang sudah ada tanpa perubahan —
 asal audionya saja yang berbeda.
 """
+import logging
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,15 +23,17 @@ from constants import (
     JOB_RECORDING,
     MEETING_CHUNK_MAX_BYTES,
     MEETING_CONTAINER_SUFFIX,
+    MEETING_EXPECTED_CHANNELS,
     MEETING_MAX_BYTES,
     MEETING_PLATFORMS,
     MEETING_TOKEN_BYTES,
     SOURCE_MEETING,
 )
-from media.ffmpeg import MediaError, probe_duration_ms, remux
+from media.ffmpeg import MediaError, probe_channels, probe_duration_ms, remux
 from store import models
 from worker.queue import enqueue
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -158,9 +161,26 @@ async def _assemble_and_repair(rid: int) -> Path:
     return dst
 
 
+async def _warn_if_mono(dst: Path, rid: int) -> None:
+    """Mono lolos SEMUA jalur tanpa satu pun error, jadi harus dikatakan di sini.
+
+    `remux -c copy` meloloskannya, `probe_duration_ms` hanya membaca durasi, dan
+    `extract_audio` memaksa `-ac 1` sehingga jejaknya hilang sama sekali. Yang
+    tersisa cuma label pembicara yang salah, berbulan-bulan kemudian. Bukan alasan
+    menolak rekamannya: audionya tetap bisa ditranskrip, hanya tanpa lapis 0.
+    """
+    n = await probe_channels(dst)
+    if n != MEETING_EXPECTED_CHANNELS:
+        logger.warning(
+            "rekaman meeting %s punya %s kanal (harusnya %s) — label saya/peserta "
+            "tidak bisa dibuat untuk rekaman ini", rid, n, MEETING_EXPECTED_CHANNELS,
+        )
+
+
 async def _finalize(db, rec: models.Recording, dst: Path) -> None:
     """Potongan sudah tersambung — barulah aman membuang yang mentah."""
     rec.duration_ms = await _probe_or_fail(dst, rec)
+    await _warn_if_mono(dst, rec.id)
     rec.upload_path = str(dst)
     rec.upload_token = None  # sesi selesai: token tidak boleh dipakai lagi
     rec.status = JOB_QUEUED

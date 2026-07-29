@@ -1,10 +1,14 @@
 // Remote control, bukan UI produk: mulai/stop + status. Transkrip, ringkasan,
 // dan chat semuanya hidup di webapp (planning meeting-capture §3.1).
-import { platformOf } from '../lib/config.js'
+import { getSettings, platformOf } from '../lib/config.js'
 
 const el = (id) => document.getElementById(id)
 const LABELS = { meet: 'Google Meet', zoom: 'Zoom (web)', teams: 'Microsoft Teams', lain: 'Tab ini' }
 let ticking = null
+// Peringatan sesi yang baru saja ditutup. Disimpan di sini, bukan di storage,
+// karena penyimpanannya sudah dibersihkan supaya tidak muncul lagi besok lusa —
+// tapi popup yang SEDANG terbuka tetap harus menampilkannya sesudah render ulang.
+let lostBaruSaja = []
 
 document.addEventListener('DOMContentLoaded', render)
 el('start').addEventListener('click', () => guard(start))
@@ -26,6 +30,7 @@ async function render() {
   if (view === 'live') showLive(state)
   else if (view === 'idle') await showIdle()
   else clearInterval(ticking)
+  await showLost(view === 'idle' ? lostBaruSaja : state.warnings ?? [])
 }
 
 async function showIdle() {
@@ -75,13 +80,27 @@ function hhmm(ms) {
 async function start() {
   const tab = await activeTab()
   if (!tab) throw new Error('tidak ada tab aktif')
+  lostBaruSaja = []
   await send({ type: 'START', tabId: tab.id, tabUrl: tab.url, title: el('title').value })
 }
 
 async function stop() {
   const res = await send({ type: 'STOP' })
+  lostBaruSaja = res.warnings ?? []
   el('done').hidden = false
   el('done').textContent = `Tersimpan: "${res.recording.title}" — sedang ditranskrip di webapp.`
+}
+
+// Potongan yang hilang = beberapa detik audio yang tidak pernah sampai. Itu tidak
+// boleh disembunyikan di balik kata "Tersimpan": transkripnya akan tampak utuh.
+async function showLost(warnings) {
+  el('lost').hidden = warnings.length === 0
+  if (!warnings.length) return
+  const { timesliceMs } = await getSettings()
+  const detik = Math.round((warnings.length * timesliceMs) / 1000)
+  el('lost').textContent =
+    `${warnings.length} potongan gagal terkirim (±${detik} detik audio hilang). ` +
+    'Transkripnya akan berlubang di bagian itu.'
 }
 
 async function cancel() {

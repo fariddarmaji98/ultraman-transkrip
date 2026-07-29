@@ -229,8 +229,34 @@ dirancang sebagai rumah semua metode capture.
      potongannya tetap aman di server, popup menawarkan "Coba simpan lagi". Sebelumnya state
      tersangkut mengira masih merekam, dan klik berikutnya memunculkan
      *"Receiving end does not exist"* yang menutupi error sebenarnya.
+   - **✅ Fase A ditutup**: rekaman meeting sungguhan lewat ekstensi di Chrome berjalan
+     ujung-ke-ujung — rekam → potongan terkirim → sesi ditutup → transkrip jadi.
 2. **Fase B — lapis 0.** Label `saya`/`peserta` dari perbandingan energi kiri-kanan. Murah, tidak
    bergantung platform, tidak bisa rusak oleh update UI.
+   - **⛔ Terhalang satu uji.** Rekaman meeting sungguhan yang ada (rec 5) punya kanal KIRI pada
+     RMS **−300 dB — nol digital**, sementara kanan sehat di −25,9 dB. Dua penjelasan menghasilkan
+     angka yang identik: ruang Meet-nya memang kosong (rekaman uji sendirian), **atau** leg
+     `tab.connect(merger, 0, 0)` tidak pernah mengalirkan sampel. Berkas itu karena itu **tidak
+     bisa dipakai sebagai bukti** jalur tab hidup. Uji pembaliknya: rekam tab yang jelas berbunyi
+     sambil mulut diam — lulus bila kiri berenergi dan kanan mendekati senyap.
+   - **Gerbangnya `source_kind == 'meeting'`, bukan "berkas ini stereo".** Keempat berkas
+     non-meeting di arsip juga stereo (unduhan YouTube praktis selalu stereo), jadi menyalakan
+     lapis 0 berdasarkan jumlah kanal akan melabeli podcast dan video kuliah berdasarkan
+     *image stereo musik* — salah total, tanpa satu pun error.
+   - **Baca `upload_path`, bukan `media_path`.** `extract_audio` memaksa `-ac 1`
+     (`ASR_CHANNELS = 1`), jadi berkas yang dipakai ASR sudah mono. Pemisahan L/R **hanya** hidup
+     di `.webm` aslinya. Menulis lapis 0 terhadap `media_path` — yang jauh lebih naluriah karena
+     itulah "berkas audio"-nya — menghasilkan kiri = kanan untuk semua segmen dan gagal senyap.
+     Konsekuensi lanjutan: `upload_path` rekaman meeting **tidak boleh** masuk retensi media nanti.
+   - **AGC mikrofon dimatikan** (`autoGainControl: false`). AGC menaikkan gain justru saat ruangan
+     sunyi, sehingga sisi "saya" paling keras tepat ketika orang lain bicara — membalik arah
+     perbandingan di kasus yang paling ingin dibedakan.
+   - **Crosstalk Opus terukur bukan masalah**, jadi jangan dimitigasi: nada di kiri saja bocor ke
+     kanan pada −180 dB, pink noise pada −169 dB. Anggaran kehati-hatian dihabiskan di AGC dan
+     gerbang `source_kind`, bukan di sini.
+   - **Satu pass ffmpeg yang di-pipe**, bukan satu spawn per segmen (0,06–0,10 dtk × ribuan segmen)
+     dan bukan pula dekode penuh ke memori (~460 MB untuk meeting 2 jam, di dalam proses uvicorn
+     yang sama). Kegagalan pelabelan **tidak boleh menjatuhkan job** — transkripnya sudah ter-commit.
 3. **Fase C — lapis 1 (nama asli).** Content script Meet dulu (paling stabil & paling sering
    dipakai), lalu Zoom web. Termasuk deteksi mati-diam (§5).
 4. **Fase D — real-time.** `StreamingASRProvider` + AudioWorklet PCM + WebSocket; transkrip berjalan

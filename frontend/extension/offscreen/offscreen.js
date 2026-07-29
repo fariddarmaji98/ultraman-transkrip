@@ -40,12 +40,19 @@ function captureTab(streamId) {
   })
 }
 
+// AGC dimatikan dengan sengaja. Ia menormalkan level mic naik-turun sendiri, dan
+// justru MENAIKKAN gain saat ruangan sunyi — sehingga sisi "saya" terdengar paling
+// keras tepat ketika orang lain yang bicara. Perbandingan energi kiri-kanan
+// (planning §6 lapis 0) jadi terbalik. AEC tetap hidup: tanpa itu suara peserta
+// yang keluar dari speaker masuk balik lewat mic dan menyalakan kanal kanan.
+const MIC = { autoGainControl: false, echoCancellation: true, noiseSuppression: true }
+
 async function captureMic() {
   // Mic WAJIB terpisah: Meet/Zoom membisukan playback suara kita sendiri
   // (anti-echo), jadi audio tab tidak berisi suara kita sama sekali.
   // Bila izinnya belum ada, rekaman tetap jalan — hanya tanpa sisi "saya".
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: true })
+    return await navigator.mediaDevices.getUserMedia({ audio: MIC })
   } catch {
     return null
   }
@@ -63,6 +70,10 @@ function toStereo(tabStream, micStream) {
   // sunyi sepanjang meeting sementara rekamannya baik-baik saja.
   tab.connect(context.destination)
   if (micStream) context.createMediaStreamSource(micStream).connect(merger, 0, 1)
+  // Lebar kanal track di sini TIDAK bisa dipaksa dari JS: menyetel
+  // `out.channelCount` (atau mengopernya ke konstruktor) mengubah laporan node
+  // tapi track-nya tetap 2 kanal. Karena itu jaminan stereo diperiksa di server
+  // saat sesi ditutup, bukan di sini.
   const out = context.createMediaStreamDestination()
   merger.connect(out)
   return out.stream

@@ -20,6 +20,9 @@ dist/
 .idea/
 .vscode/
 
+# Claude Code: setelan mesin ini + salinan worktree agen (ephemeral, besar)
+.claude/
+
 # Local config overrides
 backend/config/local.yaml
 

@@ -124,6 +124,10 @@ MEETING_CHUNK_SUFFIX = ".part"
 MEETING_CHUNK_MAX_BYTES = 8 * 1024 * 1024   # satu potongan ~5 dtk — 8 MB sangat longgar
 MEETING_MAX_BYTES = MAX_UPLOAD_BYTES        # total sesi, samakan dengan cap upload
 MEETING_TOKEN_BYTES = 24                    # token sesi sekali pakai (bukan auth penuh)
+# Kiri = tab (peserta), kanan = mikrofon (saya). Ini SATU-SATUNYA sumber
+# pemisahan pembicara lapis 0, dan sisi ekstensi tidak bisa menjaminnya: lebar
+# kanal track `MediaRecorder` tidak bisa disetir dari JS. Jadi diperiksa di sini.
+MEETING_EXPECTED_CHANNELS = 2
 
 # Umur yt-dlp sebelum dianggap basi. Extractor rusak tiap situs berubah —
 # ini gotcha nomor satu di planning, jadi harus kelihatan di UI.

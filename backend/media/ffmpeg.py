@@ -21,6 +21,22 @@ async def probe_duration_ms(path: Path) -> int:
         raise MediaError("durasi media tidak terbaca") from exc
 
 
+async def probe_channels(path: Path) -> int:
+    """Jumlah kanal audio; 0 bila tidak ada aliran audio sama sekali.
+
+    Sengaja tidak melempar: pemanggilnya memakai ini untuk memutuskan apakah
+    sebuah fitur bisa dijalankan, bukan untuk menolak berkasnya.
+    """
+    out = await _run([
+        "ffprobe", "-v", "error", "-select_streams", "a:0",
+        "-show_entries", "stream=channels", "-of", "json", str(path),
+    ])
+    try:
+        return int(json.loads(out)["streams"][0]["channels"])
+    except (KeyError, IndexError, ValueError, TypeError):
+        return 0
+
+
 async def remux(src: Path, dst: Path) -> None:
     """Tulis ulang container tanpa encode ulang (`-c copy`) — cepat, tanpa rugi mutu.
 
