@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { exportUrl, renameRecording } from '../api'
-import { fmtTime } from '../utils'
+import { fmtTime, recLang } from '../utils'
 
 const FORMATS = ['txt', 'srt', 'json']
 
 const REDO_OK = ['done', 'failed']
 
-export default function TranscriptHeader({ rec, onTitleChange, onRetranscribe, onClose }) {
+export default function TranscriptHeader({
+  rec, languages, onTitleChange, onRetranscribe, onClose,
+}) {
+  const lang = recLang(rec, languages)
   return (
     <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-edge bg-panel/80 px-6 py-4 backdrop-blur">
       <div className="min-w-0">
@@ -14,7 +17,7 @@ export default function TranscriptHeader({ rec, onTitleChange, onRetranscribe, o
         <p className="mt-0.5 truncate text-xs text-fg3">
           {rec.source_filename}
           {rec.duration_ms ? ` · ${fmtTime(rec.duration_ms)}` : ''}
-          {rec.language !== 'auto' ? ` · ${rec.language}` : ''}
+          {lang ? ` · ${lang}` : ''}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">

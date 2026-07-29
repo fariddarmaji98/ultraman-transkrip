@@ -70,7 +70,9 @@ hilang saat restart) — jadi job tidak nyangkut.
 
 ## 5. ASR provider
 
-Interface `ASRProvider.transcribe(audio_path, language, on_progress=None) -> list[Segment]`:
+Interface `ASRProvider.transcribe(audio_path, language, on_progress=None) -> TranscriptResult`
+(segmen + bahasa yang terdengar; bahasanya **`None` bila bahasanya diminta eksplisit**, karena
+yang dikembalikan provider saat itu cuma gema permintaan, bukan hasil deteksi):
 - **`LocalWhisperProvider`** — faster-whisper (CTranslate2, `compute_type=int8`, CPU), model dari
   config (default `large-v3-turbo`; opsi `cahya/faster-whisper-medium-id`, `base`). Lazy-load
   (dimuat saat job lokal pertama), lapor progres per-segmen (fase transkripsi → 30–90%).

@@ -19,7 +19,7 @@ const PHASE = {
   downloading: 'Mengunduh video…',
 }
 
-export default function TranscriptView({ id, onDone, onClose }) {
+export default function TranscriptView({ id, languages, onDone, onClose }) {
   const [rec, setRec] = useState(null)
   const [round, setRound] = useState(0)  // dinaikkan untuk memulai ulang polling
   const [error, setError] = useState(null)
@@ -63,6 +63,7 @@ export default function TranscriptView({ id, onDone, onClose }) {
   return (
     <Detail
       rec={rec}
+      languages={languages}
       error={error}
       onTranscribe={transcribe}
       onRefresh={() => setRound((n) => n + 1)}
@@ -72,7 +73,7 @@ export default function TranscriptView({ id, onDone, onClose }) {
   )
 }
 
-function Detail({ rec, error, onTranscribe, onRefresh, onTitleChange, onClose }) {
+function Detail({ rec, languages, error, onTranscribe, onRefresh, onTitleChange, onClose }) {
   const mediaRef = useRef(null)
   const scrollRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
@@ -102,6 +103,7 @@ function Detail({ rec, error, onTranscribe, onRefresh, onTitleChange, onClose })
     <div className="flex min-w-0 flex-1 flex-col">
       <TranscriptHeader
         rec={rec}
+        languages={languages}
         onTitleChange={onTitleChange}
         onRetranscribe={onTranscribe}
         onClose={onClose}

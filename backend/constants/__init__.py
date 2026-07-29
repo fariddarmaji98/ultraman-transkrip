@@ -36,8 +36,29 @@ UPLOAD_CHUNK_BYTES = 1024 * 1024           # 1 MB per chunk (stream ke disk)
 # Default ASR
 DEFAULT_ASR_PROVIDER = "local"   # "local" (faster-whisper) | "groq"
 DEFAULT_LOCAL_MODEL = "large-v3-turbo"  # validasi FLEURS-id (5 klip): turbo 5.4% < medium-id 9.5% < base 23% WER
-DEFAULT_LANGUAGE = "auto"
+LANGUAGE_AUTO = "auto"
+DEFAULT_LANGUAGE = LANGUAGE_AUTO
 GROQ_MODEL = "whisper-large-v3-turbo"  # model tetap di sisi Groq (tidak bisa dipilih)
+
+# Bahasa yang boleh DIPILIH user — untuk mesin ASR maupun keluaran AI. Ini bukan
+# daftar bahasa yang bisa DIDETEKSI: Whisper mengenal ~100, katalog ini sengaja
+# pendek karena tiap entri berarti satu dropdown yang harus dibaca orang.
+# `en_name` dipakai dua arah: menormalkan balasan Groq (yang mengembalikan NAMA,
+# bukan kode) dan menyebut bahasa tujuan ke LLM. Kode mengikuti ISO 639-1 yang
+# sama dengan `faster_whisper.tokenizer._LANGUAGE_CODES`.
+LANGUAGES = (
+    {"id": "id", "label": "Indonesia", "en_name": "Indonesian"},
+    {"id": "en", "label": "English", "en_name": "English"},
+    {"id": "ja", "label": "日本語", "en_name": "Japanese"},
+    {"id": "ko", "label": "한국어", "en_name": "Korean"},
+    {"id": "zh", "label": "中文", "en_name": "Chinese"},
+    {"id": "ar", "label": "العربية", "en_name": "Arabic"},
+    {"id": "es", "label": "Español", "en_name": "Spanish"},
+    {"id": "fr", "label": "Français", "en_name": "French"},
+    {"id": "de", "label": "Deutsch", "en_name": "German"},
+)
+LANGUAGE_BY_ID = {lang["id"]: lang for lang in LANGUAGES}
+LANGUAGE_CODE_BY_NAME = {lang["en_name"].lower(): lang["id"] for lang in LANGUAGES}
 
 # Model lokal yang boleh dipilih dari UI. Ukuran = perkiraan unduhan int8 (sekali saja).
 LOCAL_MODEL_CHOICES = (

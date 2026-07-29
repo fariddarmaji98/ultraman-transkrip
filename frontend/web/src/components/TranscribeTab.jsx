@@ -21,7 +21,7 @@ export default function TranscribeTab({
   const busy = items.some(isActive)  // unduhan tidak mengunci model — ia tak pakai Whisper
   return (
     <>
-      <UploadPanel onUploaded={onUploaded} />
+      <UploadPanel languages={config?.languages} onUploaded={onUploaded} />
       <EnginePanel config={config} busy={busy} onConfigChange={onConfigChange} />
       <StatsGrid items={items} />
       <div>

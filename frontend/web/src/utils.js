@@ -48,6 +48,21 @@ export const isActive = (rec) => ACTIVE.includes(rec.status)
 export const isDownload = (rec) => rec.source_kind === 'url'
 export const inTranscriptPhase = (rec) => !DOWNLOAD_ONLY.includes(rec.status)
 
+// Nama bahasa dari kode ISO. Katalognya datang dari GET /api/config — jangan
+// pernah menyalinnya ke sini, karena daftar kedua yang ikut basi persis itu yang
+// baru saja dibereskan. Kode di luar katalog ditampilkan apa adanya (Whisper
+// mengenal ~100 bahasa, katalognya cuma 9), bukan dikosongkan.
+export function langLabel(code, languages) {
+  if (!code) return ''
+  return (languages ?? []).find((l) => l.id === code)?.label ?? code
+}
+
+// Bahasa rekaman: yang diminta bila dipilih manual, kalau tidak yang terdeteksi.
+export function recLang(rec, languages) {
+  const code = rec.language !== 'auto' ? rec.language : rec.detected_language
+  return langLabel(code, languages)
+}
+
 const VIDEO_EXT = ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v']
 
 // True bila nama file berekstensi video (untuk pilih <video> vs <audio>).

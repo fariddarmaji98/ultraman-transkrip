@@ -12,6 +12,7 @@ from app.deps import DbDep
 from app.schemas import ConfigIn
 from constants import (
     GROQ_MODEL,
+    LANGUAGES,
     LOCAL_MODEL_CHOICES,
     LOCAL_MODEL_IDS,
     MAX_UPLOAD_BYTES,
@@ -64,6 +65,10 @@ def _payload() -> dict:
         "asr_provider": settings.asr_provider,
         "model": GROQ_MODEL if is_groq else settings.local_whisper_model,
         "max_upload_mb": MAX_UPLOAD_BYTES // (1024 * 1024),
+        # Katalog bahasa dikirim dari sini supaya frontend tidak menyalinnya.
+        # Sebelumnya daftarnya hidup hardcoded di UploadPanel.jsx — satu-satunya
+        # tempatnya di seluruh repo, dan di sisi yang salah.
+        "languages": list(LANGUAGES),
         "models": [] if is_groq else list(LOCAL_MODEL_CHOICES),
         "downloader": _downloader(),
     }

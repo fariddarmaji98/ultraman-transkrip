@@ -7,9 +7,14 @@ transkrip 28 menit tidak muat di context provider yang kecil.
 from analysis.openai_compat import LLMError
 from constants import SUMMARY_CHUNK_CHARS, SUMMARY_MAX_CHUNKS
 
+# Dua asumsi berbeda dulu tercampur di sini dan sering dikira satu: bahasa
+# SUMBER dan bahasa KELUARAN. Yang pertama sudah salah hari ini — tidak semua
+# rekaman berbahasa Indonesia, dan mengatakannya ke model adalah klaim palsu
+# tentang bahan yang sedang dibacanya. Yang kedua masih benar sampai pemilih
+# bahasa keluaran ada (Fase A), jadi dibiarkan sampai saat itu.
 _SYSTEM = (
-    "Kamu meringkas transkrip rekaman berbahasa Indonesia. Tulis dalam bahasa "
-    "Indonesia yang lugas. Jangan menambahkan informasi yang tidak ada di transkrip; "
+    "Kamu meringkas transkrip rekaman. Tulis dalam bahasa Indonesia yang lugas. "
+    "Jangan menambahkan informasi yang tidak ada di transkrip; "
     "bila sesuatu tidak disebutkan, katakan tidak ada."
 )
 

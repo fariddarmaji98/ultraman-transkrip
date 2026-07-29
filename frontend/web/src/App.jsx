@@ -52,6 +52,7 @@ export default function App() {
           <TranscriptView
             key={selectedId}
             id={selectedId}
+            languages={config?.languages}
             onDone={refresh}
             onClose={() => setSelectedId(null)}
           />

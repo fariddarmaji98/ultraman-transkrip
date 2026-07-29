@@ -126,14 +126,19 @@ async def _transcribe(db, rec, job) -> None:
     holder = {"pct": 30}
     poller = asyncio.create_task(_poll(db, rec, job, holder, JOB_TRANSCRIBING))
     try:
-        segments = await asyncio.to_thread(
+        result = await asyncio.to_thread(
             provider.transcribe, Path(rec.media_path), rec.language,
             lambda p: holder.__setitem__("pct", p),
         )
     finally:
         poller.cancel()
         await _await_cancel(poller)
-    await _save_segments(db, rec.id, segments)
+    # Jangan menimpa nilai lama dengan None: transkrip ulang dengan bahasa yang
+    # dipilih manual tidak melaporkan deteksi, dan itu bukan alasan menghapus
+    # fakta yang sudah pernah diketahui.
+    if result.language:
+        rec.detected_language = result.language
+    await _save_segments(db, rec.id, result.segments)
 
 
 async def _poll(db, rec, job, holder, status: str) -> None:

@@ -26,7 +26,8 @@ class RecordingOut(BaseModel):
     source_url: str | None
     status: str
     duration_ms: int | None
-    language: str
+    language: str                        # yang DIMINTA ("auto" bila dideteksi)
+    detected_language: str | None = None  # yang TERDENGAR; None bila belum pernah dideteksi
     created_at: datetime
     progress: int = 0  # diisi route dari job terbaru; 0 saat baru dibuat
 

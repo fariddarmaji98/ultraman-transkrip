@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { uploadRecording } from '../api'
 
-const LANGS = [
-  ['auto', 'Deteksi otomatis'],
-  ['id', 'Indonesia'],
-  ['en', 'English'],
-]
+// "Deteksi otomatis" bukan bahasa, jadi ia tidak ada di katalog server — ia
+// pilihan untuk TIDAK memilih. Sisa daftarnya datang dari GET /api/config;
+// jangan menambah bahasa di sini, tambahkan di backend/constants.
+const AUTO = { id: 'auto', label: 'Deteksi otomatis' }
 
-export default function UploadPanel({ onUploaded }) {
+export default function UploadPanel({ languages, onUploaded }) {
+  const options = [AUTO, ...(languages ?? [])]
   const [file, setFile] = useState(null)
   const [language, setLanguage] = useState('auto')
   const [progress, setProgress] = useState(null)
@@ -45,8 +45,8 @@ export default function UploadPanel({ onUploaded }) {
         onChange={(e) => setLanguage(e.target.value)}
         className="rounded-lg border border-edge bg-panel2 px-3 py-2 text-sm text-fg"
       >
-        {LANGS.map(([v, label]) => (
-          <option key={v} value={v}>{label}</option>
+        {options.map((l) => (
+          <option key={l.id} value={l.id}>{l.label}</option>
         ))}
       </select>
       <button

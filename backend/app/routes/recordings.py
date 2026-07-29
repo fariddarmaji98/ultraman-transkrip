@@ -424,6 +424,7 @@ def _to_detail(rec, segments, progress: int, summary) -> RecordingDetail:
         id=rec.id, title=rec.title, source_filename=rec.source_filename,
         source_kind=rec.source_kind, source_url=rec.source_url,
         status=rec.status, duration_ms=rec.duration_ms, language=rec.language,
+        detected_language=rec.detected_language,
         created_at=rec.created_at, progress=progress,
         source_available=bool(rec.upload_path and Path(rec.upload_path).exists()),
         media_available=bool(rec.media_path and Path(rec.media_path).exists()),

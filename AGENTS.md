@@ -30,7 +30,7 @@ docs/               ADR + planning + architecture
 - `app/`: FastAPI app factory + lifespan (init DB, start worker, requeue job pending). Route +
   pydantic schema. Endpoint: `GET /api/health`, `GET /api/config`, `POST/GET/PATCH/DELETE
   /api/recordings` (+ `/{id}/media`, `/{id}/source`, `/{id}/export`), `GET /api/jobs/{id}`.
-- `asr/`: **satu interface `ASRProvider`** (`transcribe(path, language, on_progress) -> [Segment]`),
+- `asr/`: **satu interface `ASRProvider`** (`transcribe(path, language, on_progress) -> TranscriptResult`),
   adapter `local_whisper` (faster-whisper int8, lazy-load) & `groq`. Provider dipilih via config —
   bukan if-else provider tersebar. Provider baru → tambah adapter + entry di `get_provider()`.
 - `media/`: ffmpeg via subprocess. ffprobe validasi+durasi (sinkron saat upload), ekstraksi 16 kHz mono.

@@ -9,7 +9,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from constants import JOB_QUEUED, SOURCE_UPLOAD
+from constants import JOB_QUEUED, LANGUAGE_AUTO, SOURCE_UPLOAD
 
 
 def _now() -> datetime:
@@ -36,7 +36,12 @@ class Recording(Base):
     upload_path: Mapped[str] = mapped_column(String(512))
     media_path: Mapped[str | None] = mapped_column(String(512), default=None)
     duration_ms: Mapped[int | None] = mapped_column(default=None)
-    language: Mapped[str] = mapped_column(String(16), default="auto")
+    language: Mapped[str] = mapped_column(String(16), default=LANGUAGE_AUTO)
+    # `language` = yang DIMINTA; ini yang benar-benar TERDENGAR, diisi saat
+    # transkrip selesai dan hanya pada permintaan "auto". Nullable karena
+    # rekaman lama, yang belum ditranskrip, dan yang bahasanya dipilih manual
+    # memang tidak punya hasil deteksi — jangan ditebak.
+    detected_language: Mapped[str | None] = mapped_column(String(16), default=None)
     status: Mapped[str] = mapped_column(String(16), default=JOB_QUEUED)
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
