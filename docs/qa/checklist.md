@@ -17,6 +17,18 @@ cd frontend/web && npm run dev
 > spawn dengan selector event loop, dan `create_subprocess_exec` melempar `NotImplementedError` di
 > sana — seluruh pemanggilan ffmpeg gagal. Kalau mengubah kode backend, **restart manual**.
 
+### Bila Chrome ada di mesin lain
+
+Backend dan browser tidak harus satu mesin. Yang perlu diubah:
+
+- [ ] Backend dijalankan dengan `--host 0.0.0.0` (kalau tidak, ia hanya mendengarkan localhost)
+- [ ] Vite juga, bila webapp-nya mau dibuka dari sana: `npm run dev -- --host`
+- [ ] Popup ekstensi → **⚙ Server** → isi alamat backend → **Simpan alamat** → setujui prompt izin
+
+Detailnya di [README ekstensi](../../frontend/extension/README.md). Ingat: **belum ada auth** —
+siapa pun yang bisa menjangkau alamat itu bisa mengunggah dan menghapus rekaman. Untuk tunnel
+publik, matikan lagi setelah selesai.
+
 ---
 
 ## A. Pemblokir — harus dijalankan lebih dulu

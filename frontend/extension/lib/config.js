@@ -33,3 +33,17 @@ export async function saveSettings(patch) {
   const current = await getSettings()
   await chrome.storage.local.set({ settings: { ...current, ...patch } })
 }
+
+// Alamat server bisa berbeda mesin: backend jalan di PC yang di-remote, Chrome
+// ada di laptop yang dipegang. MV3 melarang fetch ke host yang tidak dideklarasi,
+// dan `host_permissions` tidak bisa diubah saat jalan — jadi host selain
+// localhost diminta lewat `optional_host_permissions` saat alamatnya disimpan.
+export async function setApiBase(raw) {
+  const url = new URL(/^https?:\/\//.test(raw) ? raw : `http://${raw}`)
+  if (!url.pathname.replace(/\/+$/, '')) url.pathname = '/api'
+  const apiBase = url.toString().replace(/\/+$/, '')
+  const granted = await chrome.permissions.request({ origins: [`${url.origin}/*`] })
+  if (!granted) throw new Error('izin ke server itu ditolak — alamat tidak disimpan')
+  await saveSettings({ apiBase })
+  return apiBase
+}

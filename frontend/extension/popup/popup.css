@@ -63,3 +63,15 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .warn { color: #fbbf24; }
 .error { color: #f87171; }
 a { color: var(--mint); }
+
+/* Setelan server — jarang disentuh, jadi dilipat supaya tidak menambah beban
+   baca pada alur utama (pilih tab → rekam). */
+.server { margin-top: 10px; border-top: 1px solid var(--edge); padding-top: 8px; }
+.server summary {
+  cursor: pointer; font-size: 11px; color: var(--fg3); list-style: none;
+}
+.server summary::-webkit-details-marker { display: none; }
+.server summary::before { content: '⚙ '; }
+.server summary:hover { color: var(--fg2); }
+.server[open] summary { margin-bottom: 8px; }
+.server code { color: var(--fg2); }

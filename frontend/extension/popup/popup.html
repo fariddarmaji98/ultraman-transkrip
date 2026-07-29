@@ -25,6 +25,20 @@
         Mikrofon belum diizinkan — suaramu sendiri tidak akan terekam.
       </p>
       <p class="muted" id="hint" style="margin-top:8px"></p>
+
+      <!-- Backend bisa ada di mesin lain (mis. PC yang di-remote). Alamatnya
+           disembunyikan di balik <details> karena mayoritas pemakaian tetap
+           localhost — tapi tanpa ini, ekstensi hanya bisa dipakai satu mesin. -->
+      <details class="server">
+        <summary>Server: <span id="apiNow">—</span></summary>
+        <label for="apiBase">Alamat backend</label>
+        <input id="apiBase" placeholder="http://192.168.1.5:8000/api" />
+        <button class="ghost" id="saveApi">Simpan alamat</button>
+        <p class="muted" style="margin-top:6px">
+          Chrome akan meminta izin ke host itu. Backend harus mendengarkan di
+          jaringan (<code>--host 0.0.0.0</code>), bukan hanya localhost.
+        </p>
+      </details>
     </section>
 
     <!-- Sedang merekam -->

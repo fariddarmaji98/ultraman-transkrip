@@ -1,6 +1,6 @@
 // Remote control, bukan UI produk: mulai/stop + status. Transkrip, ringkasan,
 // dan chat semuanya hidup di webapp (planning meeting-capture §3.1).
-import { getSettings, platformOf } from '../lib/config.js'
+import { getSettings, platformOf, setApiBase } from '../lib/config.js'
 
 const el = (id) => document.getElementById(id)
 const LABELS = { meet: 'Google Meet', zoom: 'Zoom (web)', teams: 'Microsoft Teams', lain: 'Tab ini' }
@@ -16,6 +16,7 @@ el('stop').addEventListener('click', () => guard(stop))
 el('cancel').addEventListener('click', () => guard(cancel))
 el('retry').addEventListener('click', () => guard(stop))
 el('discard').addEventListener('click', () => guard(cancel))
+el('saveApi').addEventListener('click', () => guard(simpanServer))
 el('askMic').addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('permission/permission.html') })
 })
@@ -42,7 +43,27 @@ async function showIdle() {
     ? 'Tab ini bukan Meet/Zoom/Teams — audionya tetap bisa direkam.'
     : 'Aplikasi Zoom desktop tidak bisa direkam; pakai Zoom di browser.'
   await showMicState()
+  await showServer()
   clearInterval(ticking)
+}
+
+async function showServer() {
+  const { apiBase } = await getSettings()
+  el('apiNow').textContent = apiBase.replace(/^https?:\/\//, '')
+  // Diisi sekali saja: `guard()` memanggil render() lagi setiap aksi, termasuk
+  // saat izin ditolak — menimpanya berarti alamat yang baru diketik hilang.
+  if (!el('apiBase').value) el('apiBase').value = apiBase
+}
+
+// Backend bisa ada di mesin lain. Chrome menolak fetch ke host yang belum
+// diizinkan, jadi izinnya diminta saat alamatnya disimpan — bukan saat merekam,
+// karena permintaan izin butuh gestur user dan tidak boleh muncul di tengah rapat.
+async function simpanServer() {
+  const raw = el('apiBase').value.trim()
+  if (!raw) throw new Error('alamat masih kosong')
+  const saved = await setApiBase(raw)
+  el('done').hidden = false
+  el('done').textContent = `Server disimpan: ${saved}`
 }
 
 // Peringatan ditampilkan SEBELUM merekam, bukan sesudah: tahu suaramu hilang

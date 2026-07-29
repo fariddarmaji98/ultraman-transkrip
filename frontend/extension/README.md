@@ -15,6 +15,29 @@ Folder ini bisa langsung dimuat Chrome apa adanya.
 
 Setelah mengubah kode: tombol **reload** di kartu ekstensi. Tidak ada langkah build.
 
+## Backend di mesin lain (mis. PC yang di-remote)
+
+Chrome harus jalan di mesin tempat kamu duduk, sementara backend bisa ada di tempat lain.
+Popup punya bagian **⚙ Server** untuk itu.
+
+1. **Backend mendengarkan jaringan**, bukan cuma localhost:
+   ```
+   cd backend && .venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
+2. Popup ekstensi → **⚙ Server** → isi alamatnya (`http://192.168.1.5:8000/api`, atau URL
+   tunnel bila lintas jaringan) → **Simpan alamat**.
+3. Chrome memunculkan prompt izin ke host itu — **harus disetujui**, kalau tidak alamatnya tidak
+   disimpan. MV3 melarang fetch ke host yang belum diizinkan, dan `host_permissions` tidak bisa
+   diubah saat ekstensi berjalan; karena itu host non-localhost diminta lewat
+   `optional_host_permissions`.
+
+> ⚠️ **Backend ini belum punya auth sama sekali.** Membukanya ke jaringan berarti siapa pun yang
+> bisa menjangkau alamat itu dapat mengunggah, membaca, dan menghapus rekaman. Di LAN tepercaya
+> masih wajar untuk pengujian; lewat tunnel publik, matikan lagi begitu selesai.
+
+Mikrofon tetap bekerja walau alamatnya HTTP biasa: halaman offscreen ber-skema
+`chrome-extension://`, dan itu sudah dihitung *secure context* oleh Chrome.
+
 ## Cara pakai
 
 1. Buka meeting di tab (Google Meet, Zoom **web**, Teams).
