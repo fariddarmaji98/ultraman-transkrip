@@ -233,12 +233,23 @@ dirancang sebagai rumah semua metode capture.
      ujung-ke-ujung — rekam → potongan terkirim → sesi ditutup → transkrip jadi.
 2. **Fase B — lapis 0.** Label `saya`/`peserta` dari perbandingan energi kiri-kanan. Murah, tidak
    bergantung platform, tidak bisa rusak oleh update UI.
-   - **⛔ Terhalang satu uji.** Rekaman meeting sungguhan yang ada (rec 5) punya kanal KIRI pada
-     RMS **−300 dB — nol digital**, sementara kanan sehat di −25,9 dB. Dua penjelasan menghasilkan
-     angka yang identik: ruang Meet-nya memang kosong (rekaman uji sendirian), **atau** leg
-     `tab.connect(merger, 0, 0)` tidak pernah mengalirkan sampel. Berkas itu karena itu **tidak
-     bisa dipakai sebagai bukti** jalur tab hidup. Uji pembaliknya: rekam tab yang jelas berbunyi
-     sambil mulut diam — lulus bila kiri berenergi dan kanan mendekati senyap.
+   - **⛔ DIPARKIR — terhalang satu uji yang butuh Chrome.** Rekaman meeting sungguhan yang ada
+     (rec 5) punya kanal KIRI pada RMS **−300 dB — nol digital**, sementara kanan sehat di
+     −25,9 dB. Dua penjelasan menghasilkan angka yang identik: ruang Meet-nya memang kosong
+     (rekaman uji sendirian), **atau** leg `tab.connect(merger, 0, 0)` tidak pernah mengalirkan
+     sampel. Berkas itu karena itu **tidak bisa dipakai sebagai bukti** jalur tab hidup, dan
+     menulis lapis 0 di atasnya berisiko melabeli 100% segmen sebagai `saya`.
+
+     **Cara melanjutkan:** reload ekstensi di `chrome://extensions`, buka tab yang jelas
+     berbunyi (video apa pun), rekam ~20 detik **sambil diam total**, lalu stop. Ukur:
+
+     ```
+     ffmpeg -hide_banner -i <upload_path> -af astats -f null - 2>&1 | grep -E "Channel:|RMS level dB"
+     ```
+
+     Lulus bila **Channel 1 (kiri/tab)** berenergi (kira-kira −45..−10 dB) dan **Channel 2
+     (kanan/mic)** mendekati senyap — kebalikan persis dari rec 5. Gagal berarti bug ada di
+     `offscreen.js`, dan Fase B belum boleh dimulai.
    - **Gerbangnya `source_kind == 'meeting'`, bukan "berkas ini stereo".** Keempat berkas
      non-meeting di arsip juga stereo (unduhan YouTube praktis selalu stereo), jadi menyalakan
      lapis 0 berdasarkan jumlah kanal akan melabeli podcast dan video kuliah berdasarkan
