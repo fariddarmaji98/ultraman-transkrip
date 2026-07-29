@@ -9,13 +9,24 @@ import asyncio
 from loguru import logger
 from sqlalchemy import select
 
-from constants import ACTIVE_STATUSES, JOB_DOWNLOADING, JOB_KIND_FETCH, JOB_KIND_TRANSCRIBE
+from constants import (
+    ACTIVE_STATUSES,
+    JOB_DOWNLOADING,
+    JOB_KIND_FETCH,
+    JOB_KIND_TRANSCRIBE,
+    JOB_KIND_TRANSLATE,
+    TRANSLATE_UNFINISHED,
+)
 from store import models
 from store.db import SessionLocal
-from worker.pipeline import run_fetch, run_transcribe
+from worker.pipeline import run_fetch, run_transcribe, run_translate
 
 _queue: "asyncio.Queue[tuple[int, str]]" = asyncio.Queue()
-_RUNNERS = {JOB_KIND_FETCH: run_fetch, JOB_KIND_TRANSCRIBE: run_transcribe}
+_RUNNERS = {
+    JOB_KIND_FETCH: run_fetch,
+    JOB_KIND_TRANSCRIBE: run_transcribe,
+    JOB_KIND_TRANSLATE: run_translate,
+}
 
 
 async def enqueue(recording_id: int, kind: str = JOB_KIND_TRANSCRIBE) -> None:
@@ -37,6 +48,22 @@ async def requeue_pending() -> None:
         )
         for rid, status in result.all():
             await _queue.put((rid, _kind_for(status)))
+        await _requeue_translations(db)
+
+
+async def _requeue_translations(db) -> None:
+    """Job terjemahan tidak terlihat dari `Recording.status` — ia sengaja tidak
+    menyentuhnya (lihat `run_translate`). Jadi yang belum selesai harus dicari
+    dari tabel `jobs` sendiri, kalau tidak ia menggantung selamanya di `queued`
+    sementara transkripnya tampak sehat."""
+    result = await db.execute(
+        select(models.Job.recording_id).where(
+            models.Job.kind == JOB_KIND_TRANSLATE,
+            models.Job.status.in_(TRANSLATE_UNFINISHED),
+        )
+    )
+    for (rid,) in result.all():
+        await _queue.put((rid, JOB_KIND_TRANSLATE))
 
 
 def _kind_for(status: str) -> str:

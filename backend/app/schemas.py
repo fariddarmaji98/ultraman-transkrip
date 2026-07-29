@@ -16,6 +16,27 @@ class SegmentOut(BaseModel):
     speaker: str | None = None
 
 
+class TranslatedSegmentOut(BaseModel):
+    """Hanya `idx` + teks: waktunya tetap milik `SegmentOut`, jangan disalin.
+
+    Dua sumber kebenaran untuk waktu yang sama adalah cara termudah membuat
+    terjemahan dan aslinya diam-diam menunjuk menit yang berbeda.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    idx: int
+    text: str
+
+
+class TranslationOut(BaseModel):
+    lang: str
+    status: str | None = None      # None = belum pernah diminta
+    progress: int = 0
+    error: str | None = None
+    segments: list[TranslatedSegmentOut] = []
+
+
 class RecordingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

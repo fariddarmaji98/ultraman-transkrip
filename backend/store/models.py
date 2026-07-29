@@ -57,6 +57,9 @@ class Recording(Base):
     chat: Mapped[list["ChatMessage"]] = relationship(
         back_populates="recording", cascade="all, delete-orphan"
     )
+    translations: Mapped[list["SegmentTranslation"]] = relationship(
+        back_populates="recording", cascade="all, delete-orphan"
+    )
 
 
 class Job(Base):
@@ -65,6 +68,10 @@ class Job(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
     kind: Mapped[str] = mapped_column(String(16), default="transcribe")
+    # Bahasa tujuan, hanya terisi pada job `translate`. Disimpan di DB, bukan
+    # dititipkan ke antrean, supaya job yang di-requeue setelah restart tahu
+    # bahasa mana yang sedang dikerjakannya.
+    lang: Mapped[str | None] = mapped_column(String(16), default=None)
     status: Mapped[str] = mapped_column(String(16), default=JOB_QUEUED)
     progress: Mapped[int] = mapped_column(default=0)
     error: Mapped[str | None] = mapped_column(Text, default=None)
@@ -126,6 +133,31 @@ class ChatMessage(Base):
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
     recording: Mapped["Recording"] = relationship(back_populates="chat")
+
+
+class SegmentTranslation(Base):
+    """Terjemahan satu segmen. Tabel terpisah, bukan kolom di `segments`.
+
+    Alasannya: jumlah bahasanya terbuka, dan `segments` dihapus-lalu-ditulis-ulang
+    setiap transkrip ulang. Menaruh terjemahan di sana berarti kehilangan
+    semuanya tiap kali model ASR diganti.
+
+    `idx` menunjuk `Segment.idx` pada rekaman yang sama — timestamp tidak
+    disalin, supaya tidak ada dua sumber kebenaran untuk waktu yang sama.
+    """
+
+    __tablename__ = "segment_translations"
+    __table_args__ = (
+        UniqueConstraint("recording_id", "lang", "idx", name="uq_segtrans_rec_lang_idx"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    lang: Mapped[str] = mapped_column(String(16))
+    idx: Mapped[int] = mapped_column()
+    text: Mapped[str] = mapped_column(Text)
+
+    recording: Mapped["Recording"] = relationship(back_populates="translations")
 
 
 class Segment(Base):

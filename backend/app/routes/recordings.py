@@ -22,6 +22,7 @@ from app.schemas import (
     RenameIn,
     SegmentOut,
     SummaryOut,
+    TranslationOut,
     UploadResponse,
 )
 import analysis
@@ -37,10 +38,12 @@ from constants import (
     CHAT_MAX_QUESTION,
     DEFAULT_AI_LANGUAGE,
     DOWNLOAD_MAX_DURATION_S,
+    LANGUAGE_AUTO,
     LANGUAGE_BY_ID,
     JOB_DOWNLOADING,
     JOB_KIND_FETCH,
     JOB_KIND_TRANSCRIBE,
+    JOB_KIND_TRANSLATE,
     JOB_QUEUED,
     MAX_UPLOAD_BYTES,
     NOT_TRANSCRIBABLE_STATUSES,
@@ -153,6 +156,39 @@ async def clear_chat(rid: int, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE) -> 
         )
     )
     await db.commit()
+
+
+@router.post("/recordings/{rid}/translate", status_code=202)
+async def start_translate(rid: int, db: DbDep, lang: LangQ) -> dict:
+    """Terjemahkan transkrip ke `lang` di latar — 945 segmen tidak bisa sinkron.
+
+    Berbeda dari ringkasan & chat yang membaca transkrip asli, ini menghasilkan
+    salinan transkrip per bahasa. Status rekaman tidak berubah: transkripnya
+    sudah selesai, dan ini pekerjaan sampingan.
+    """
+    rec = await _get_or_404(db, rid)
+    _reject_if_same_language(rec, _checked(lang))
+    if not await _segments_of(db, rid):
+        raise HTTPException(422, "belum ada transkrip untuk diterjemahkan")
+    _reject_if_llm_unset(analysis.resolve())
+    job = await _create_job(db, rid, JOB_KIND_TRANSLATE, lang)
+    await enqueue(rid, JOB_KIND_TRANSLATE)
+    return {"job_id": job.id, "lang": lang}
+
+
+@router.get("/recordings/{rid}/translation", response_model=TranslationOut)
+async def get_translation(rid: int, db: DbDep, lang: LangQ) -> TranslationOut:
+    """Status + progres + segmen terjemahan. `status=None` = belum pernah diminta."""
+    await _get_or_404(db, rid)
+    job = await _translate_job(db, rid, _checked(lang))
+    rows = await _translation_rows(db, rid, lang)
+    return TranslationOut(
+        lang=lang,
+        status=job.status if job else None,
+        progress=job.progress if job else 0,
+        error=job.error if job else None,
+        segments=rows,
+    )
 
 
 @router.post("/recordings/{rid}/transcribe", response_model=RecordingOut, status_code=202)
@@ -399,12 +435,48 @@ async def _create_url_recording(db, body: FromUrlIn, info: MediaInfo):
     return rec
 
 
-async def _create_job(db, recording_id: int, kind: str):
-    job = models.Job(recording_id=recording_id, kind=kind, status=JOB_QUEUED)
+async def _create_job(db, recording_id: int, kind: str, lang: str | None = None):
+    job = models.Job(recording_id=recording_id, kind=kind, status=JOB_QUEUED, lang=lang)
     db.add(job)
     await db.commit()
     await db.refresh(job)
     return job
+
+
+def _reject_if_same_language(rec, lang: str) -> None:
+    """Bahasa sumber tidak selalu diketahui — hanya tolak bila benar-benar sama.
+
+    Rekaman `auto` yang belum pernah dideteksi tidak punya bahasa sumber, dan
+    menebaknya hanya akan menolak permintaan yang sah.
+    """
+    source = rec.detected_language if rec.language == LANGUAGE_AUTO else rec.language
+    if source and source == lang:
+        raise HTTPException(422, "transkripnya memang sudah berbahasa itu")
+
+
+async def _translate_job(db, rid: int, lang: str):
+    result = await db.execute(
+        select(models.Job)
+        .where(
+            models.Job.recording_id == rid,
+            models.Job.kind == JOB_KIND_TRANSLATE,
+            models.Job.lang == lang,
+        )
+        .order_by(models.Job.id.desc())
+    )
+    return result.scalars().first()
+
+
+async def _translation_rows(db, rid: int, lang: str):
+    result = await db.execute(
+        select(models.SegmentTranslation)
+        .where(
+            models.SegmentTranslation.recording_id == rid,
+            models.SegmentTranslation.lang == lang,
+        )
+        .order_by(models.SegmentTranslation.idx)
+    )
+    return list(result.scalars().all())
 
 
 async def _get_or_404(db, rid: int) -> models.Recording:
@@ -424,10 +496,17 @@ async def _segments_of(db, rid: int) -> list[models.Segment]:
 
 
 async def _progress_of(db, rid: int) -> int:
-    """Job terbaru: satu recording bisa punya `fetch` lalu `transcribe`."""
+    """Job terbaru: satu recording bisa punya `fetch` lalu `transcribe`.
+
+    Job `translate` sengaja DIKECUALIKAN. Angka ini menggambarkan seberapa jauh
+    rekaman ini diproses jadi transkrip; terjemahan berjalan setelah transkrip
+    selesai dan punya endpoint progresnya sendiri. Tanpa filter ini, rekaman
+    yang sudah `done` akan melaporkan progres 40% hanya karena sedang
+    diterjemahkan ke bahasa lain.
+    """
     result = await db.execute(
         select(models.Job.progress)
-        .where(models.Job.recording_id == rid)
+        .where(models.Job.recording_id == rid, models.Job.kind != JOB_KIND_TRANSLATE)
         .order_by(models.Job.id.desc())
     )
     return result.scalars().first() or 0
@@ -437,6 +516,7 @@ async def _latest_progress(db) -> dict[int, int]:
     """Progress job terbaru per recording — sekali query untuk seluruh daftar."""
     newest = (
         select(func.max(models.Job.id))
+        .where(models.Job.kind != JOB_KIND_TRANSLATE)   # alasannya di `_progress_of`
         .group_by(models.Job.recording_id)
         .scalar_subquery()
     )

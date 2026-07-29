@@ -25,6 +25,7 @@ TRANSCRIBE_BUSY_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING)
 # Jenis job & asal rekaman
 JOB_KIND_FETCH = "fetch"
 JOB_KIND_TRANSCRIBE = "transcribe"
+JOB_KIND_TRANSLATE = "translate"
 SOURCE_UPLOAD = "upload"
 SOURCE_URL = "url"
 SOURCE_MEETING = "meeting"
@@ -66,6 +67,22 @@ LANGUAGE_CODE_BY_NAME = {lang["en_name"].lower(): lang["id"] for lang in LANGUAG
 # membuka rekaman lama tanpa menyentuh pemilih memberi hasil yang persis sama
 # seperti sebelum fitur ini ada.
 DEFAULT_AI_LANGUAGE = "id"
+
+# --- Terjemahan transkrip ----------------------------------------------------
+# Segmen diterjemahkan per BLOK bernomor, bukan satu per satu (tanpa konteks,
+# hasilnya buruk) dan bukan sekaligus (pemetaan ke timestamp hilang). 40 segmen
+# ≈ 2-3 menit bicara: cukup konteks, masih jauh dari batas context provider.
+TRANSLATE_BLOCK_SEGMENTS = 40
+# Model gemar MENGGABUNGKAN dua baris pendek jadi satu kalimat yang lebih enak
+# dibaca. Akibatnya seluruh sisa blok bergeser satu nomor dan terjemahan menit 5
+# menempel di menit 6 — rusak tanpa satu pun error. Karena itu tiap blok
+# diverifikasi, dan yang gagal diulang dengan blok separuh sampai sekecil ini.
+TRANSLATE_MIN_BLOCK = 1
+# Status khusus job terjemahan. TIDAK pernah ditulis ke `Recording.status`:
+# transkripnya sudah selesai, dan terjemahan yang gagal tidak boleh membuat
+# rekaman yang baik-baik saja tampak gagal.
+JOB_TRANSLATING = "translating"
+TRANSLATE_UNFINISHED = (JOB_QUEUED, JOB_TRANSLATING)
 
 # Model lokal yang boleh dipilih dari UI. Ukuran = perkiraan unduhan int8 (sekali saja).
 LOCAL_MODEL_CHOICES = (
