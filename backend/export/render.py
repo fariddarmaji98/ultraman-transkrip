@@ -1,5 +1,22 @@
 """Render transkrip ke TXT / SRT / JSON. Input = list ORM Segment (punya start_ms dst)."""
 import json
+from dataclasses import dataclass
+
+
+@dataclass
+class ExportSegment:
+    """Segmen siap ekspor untuk teks yang BUKAN milik `Segment` ORM.
+
+    Dipakai mengekspor transkrip terjemahan, yang teksnya dari
+    `segment_translations` sementara waktunya tetap dari segmen asli. Ada karena
+    satu jebakan: mengganti `.text` pada objek ORM akan ikut ditulis balik ke DB
+    oleh SQLAlchemy saat sesi di-flush — ekspor tidak boleh mengubah transkrip.
+    """
+
+    idx: int
+    start_ms: int
+    end_ms: int
+    text: str
 
 
 def render_export(segments, fmt: str) -> tuple[str, str]:

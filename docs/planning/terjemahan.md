@@ -208,8 +208,14 @@ dari tampilan begitu difilter per bahasa.
      bukan sebagai "terjemahkan ke bahasa yang sama".
    - Chat yang kosong sesudah ganti bahasa kini menjelaskan dirinya: percakapan bahasa lain
      tersimpan terpisah, bukan terhapus.
-5. **Fase D — ekspor & tampilan berdampingan.** `?fmt=srt&lang=ja`, dan mode dua kolom
-   asli-vs-terjemahan untuk memeriksa hasil.
+5. **✅ Fase D — ekspor & tampilan berdampingan.** `?fmt=srt&lang=ja` dan tombol "Bandingkan"
+   (dua kolom: terjemahan di kiri, asli redup di kanan).
+   - Tautan ekspor mengikuti bahasa yang sedang ditampilkan — mengunduh transkrip asli sementara
+     layar menunjukkan terjemahan adalah kejutan yang tidak perlu. Nama berkasnya ikut menyebut
+     bahasanya (`transkrip-5-ja.srt`).
+   - Bahasa yang belum diterjemahkan ditolak **404**, bukan diam-diam diekspor sebagai bahasa asli.
+   - `ExportSegment` lahir dari satu jebakan nyata: mengganti `.text` pada objek ORM akan ditulis
+     balik ke DB oleh SQLAlchemy saat sesi di-flush. Ekspor tidak boleh mengubah transkrip.
 
 Fase A berdiri sendiri dan bisa dipakai tanpa Fase B. Fase B adalah pekerjaan yang sesungguhnya.
 

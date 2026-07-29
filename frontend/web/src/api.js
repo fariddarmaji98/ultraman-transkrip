@@ -164,7 +164,9 @@ function parseError(text) {
 
 export const mediaUrl = (id) => `/api/recordings/${id}/media`
 export const sourceUrl = (id) => `/api/recordings/${id}/source`
-export const exportUrl = (id, fmt) => `/api/recordings/${id}/export?fmt=${fmt}`
+// `lang` kosong = transkrip asli. Diisi = versi terjemahan bahasa itu.
+export const exportUrl = (id, fmt, lang) =>
+  `/api/recordings/${id}/export?fmt=${fmt}${lang ? `&lang=${lang}` : ''}`
 
 // --- Terjemahan transkrip ---------------------------------------------------
 // Terpisah dari `getRecording`: terjemahan berjalan di latar dan punya

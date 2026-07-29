@@ -10,7 +10,7 @@ import { langLabel } from '../utils'
 export const ASLI = 'asli'
 
 export default function TranscriptLangBar({
-  languages, source, value, trans, busy, error, onChange, onTranslate,
+  languages, source, value, trans, busy, error, banding, onChange, onTranslate, onBanding,
 }) {
   const pilihan = (languages ?? []).filter((l) => l.id !== source)
   if (!pilihan.length) return null
@@ -29,6 +29,21 @@ export default function TranscriptLangBar({
         ))}
       </select>
       <Status value={value} trans={trans} busy={busy} onTranslate={onTranslate} />
+      {/* Hanya muncul saat ada dua versi untuk dibandingkan — tombol yang
+          tidak mungkin berguna lebih baik tidak ada daripada dimatikan. */}
+      {value !== ASLI && trans?.segments?.length > 0 && (
+        <button
+          onClick={() => onBanding(!banding)}
+          title="Tampilkan transkrip asli berdampingan dengan terjemahannya"
+          className={`ml-auto rounded-md border px-2 py-1 text-[11px] transition ${
+            banding
+              ? 'border-mint/40 bg-mint/10 text-mint'
+              : 'border-edge text-fg3 hover:border-edge2 hover:text-fg'
+          }`}
+        >
+          Bandingkan
+        </button>
+      )}
       {error && <span className="text-[11px] text-red-400">{error}</span>}
     </div>
   )

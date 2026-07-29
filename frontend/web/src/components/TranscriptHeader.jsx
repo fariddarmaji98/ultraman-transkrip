@@ -7,7 +7,7 @@ const FORMATS = ['txt', 'srt', 'json']
 const REDO_OK = ['done', 'failed']
 
 export default function TranscriptHeader({
-  rec, languages, onTitleChange, onRetranscribe, onClose,
+  rec, languages, tlang, onTitleChange, onRetranscribe, onClose,
 }) {
   const lang = recLang(rec, languages)
   return (
@@ -30,7 +30,7 @@ export default function TranscriptHeader({
             Transkrip ulang
           </button>
         )}
-        {rec.status === 'done' && <ExportLinks rec={rec} />}
+        {rec.status === 'done' && <ExportLinks rec={rec} tlang={tlang} />}
         {onClose && (
           <button
             onClick={onClose}
@@ -84,14 +84,16 @@ function EditableTitle({ rec, onTitleChange }) {
   )
 }
 
-function ExportLinks({ rec }) {
+// Ekspor mengikuti bahasa yang sedang DITAMPILKAN. Mengunduh transkrip asli
+// sementara layar menunjukkan terjemahan adalah kejutan yang tidak perlu.
+function ExportLinks({ rec, tlang }) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-fg3">Ekspor</span>
       {FORMATS.map((f) => (
         <a
           key={f}
-          href={exportUrl(rec.id, f)}
+          href={exportUrl(rec.id, f, tlang)}
           className="rounded-md border border-edge px-2.5 py-1 text-xs font-semibold text-mint transition hover:bg-mint/10"
         >
           {f.toUpperCase()}

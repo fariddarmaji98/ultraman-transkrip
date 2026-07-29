@@ -50,7 +50,7 @@ from constants import (
     SOURCE_URL,
     UPLOAD_CHUNK_BYTES,
 )
-from export.render import render_export
+from export.render import ExportSegment, render_export
 from media.ffmpeg import MediaError, probe_duration_ms
 from store import models
 from worker.queue import enqueue
@@ -246,11 +246,15 @@ async def get_source(rid: int, db: DbDep) -> FileResponse:
 
 
 @router.get("/recordings/{rid}/export")
-async def export_transcript(rid: int, db: DbDep, fmt: str = "txt") -> Response:
+async def export_transcript(
+    rid: int, db: DbDep, fmt: str = "txt", lang: str | None = None
+) -> Response:
+    """`lang` kosong = transkrip asli. Diisi = versi terjemahan bahasa itu."""
     await _get_or_404(db, rid)
-    segments = await _segments_of(db, rid)
+    segments = await _export_segments(db, rid, lang)
     body, media_type = render_export(segments, fmt)
-    disposition = f'attachment; filename="transkrip-{rid}.{fmt}"'
+    suffix = f"-{lang}" if lang else ""
+    disposition = f'attachment; filename="transkrip-{rid}{suffix}.{fmt}"'
     return Response(body, media_type=media_type,
                     headers={"Content-Disposition": disposition})
 
@@ -452,6 +456,26 @@ def _reject_if_same_language(rec, lang: str) -> None:
     source = rec.detected_language if rec.language == LANGUAGE_AUTO else rec.language
     if source and source == lang:
         raise HTTPException(422, "transkripnya memang sudah berbahasa itu")
+
+
+async def _export_segments(db, rid: int, lang: str | None):
+    """Teks terjemahan bila diminta; WAKTUNYA tetap dari segmen asli.
+
+    Menolak dengan 404 bila terjemahannya belum ada, alih-alih diam-diam
+    mengekspor bahasa asli — berkas yang isinya bukan bahasa yang diminta jauh
+    lebih membingungkan daripada unduhan yang gagal.
+    """
+    segments = await _segments_of(db, rid)
+    if not lang:
+        return segments
+    teks = {r.idx: r.text for r in await _translation_rows(db, rid, _checked(lang))}
+    if not teks:
+        raise HTTPException(404, f"belum ada terjemahan bahasa {lang} untuk rekaman ini")
+    return [
+        ExportSegment(idx=s.idx, start_ms=s.start_ms, end_ms=s.end_ms,
+                      text=teks.get(s.idx, s.text))
+        for s in segments
+    ]
 
 
 async def _translate_job(db, rid: int, lang: str):

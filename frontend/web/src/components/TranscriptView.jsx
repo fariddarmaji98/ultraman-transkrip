@@ -139,6 +139,9 @@ function Detail({
   const mediaRef = useRef(null)
   const scrollRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(-1)
+  // Mode banding hanya bermakna saat ada terjemahan yang ditampilkan, jadi ia
+  // hidup di sini dan padam sendiri begitu kembali ke bahasa asli.
+  const [banding, setBanding] = useState(false)
 
   // Satu pintu untuk semua lompatan waktu — dari klik segmen maupun dari sitasi
   // di chat. Player boleh tidak ada (media kena retensi), transkripnya tetap
@@ -166,6 +169,7 @@ function Detail({
       <TranscriptHeader
         rec={rec}
         languages={languages}
+        tlang={tlang === ASLI ? undefined : tlang}
         onTitleChange={onTitleChange}
         onRetranscribe={onTranscribe}
         onClose={onClose}
@@ -186,6 +190,8 @@ function Detail({
           tError={tError}
           onTlang={onTlang}
           onTranslate={onTranslate}
+          banding={banding}
+          onBanding={setBanding}
           error={error}
           onTranscribe={onTranscribe}
           mediaRef={mediaRef}
@@ -239,7 +245,7 @@ function glideTo(el, jauh) {
 }
 
 function SourcePanel({
-  rec, languages, tlang, trans, tError, onTlang, onTranslate,
+  rec, languages, tlang, trans, tError, onTlang, onTranslate, banding, onBanding,
   error, onTranscribe, mediaRef, scrollRef, activeIdx, onTime, onSeek,
 }) {
   const { width, dragging, handlers } = usePanelWidth(SOURCE_W)
@@ -283,13 +289,15 @@ function SourcePanel({
             value={tlang}
             trans={trans}
             error={tError}
+            banding={banding}
             onChange={onTlang}
             onTranslate={onTranslate}
+            onBanding={onBanding}
           />
         )}
         <Transcript
           rec={rec}
-          segments={shownSegments(rec, tlang, trans)}
+          segments={shownSegments(rec, tlang, trans, banding)}
           activeIdx={activeIdx}
           onSeek={onSeek}
         />
@@ -376,9 +384,15 @@ function sourceLang(rec) {
 
 // Teks diganti, WAKTU TIDAK — timestamp tetap milik segmen asli, supaya
 // player, sorotan, dan sitasi chat tetap menunjuk titik yang sama.
-function shownSegments(rec, tlang, trans) {
+function shownSegments(rec, tlang, trans, banding) {
   const asli = rec.segments ?? []
   if (tlang === ASLI || !trans?.segments?.length) return asli
   const teks = new Map(trans.segments.map((t) => [t.idx, t.text]))
-  return asli.map((s) => ({ ...s, text: teks.get(s.idx) ?? s.text }))
+  return asli.map((s) => ({
+    ...s,
+    text: teks.get(s.idx) ?? s.text,
+    // Hanya diisi saat mode banding: `SegmentList` memakai keberadaannya
+    // sebagai penanda harus merender dua kolom, bukan flag terpisah.
+    asli: banding ? s.text : undefined,
+  }))
 }
