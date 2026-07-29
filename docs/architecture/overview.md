@@ -36,12 +36,12 @@ hilang saat restart) — jadi job tidak nyangkut.
 | Modul | Isi | Catatan |
 |---|---|---|
 | `app/` | `main.py` (app factory + lifespan), `config.py` (settings env `TRANSKRIP_*`), `deps.py` (sesi DB), `schemas.py`, `naming.py` (bersihkan judul dari nama file), `routes/` | lifespan: init DB → start worker → requeue |
-| `asr/` | `base.py` (protocol `ASRProvider` + `Segment`), `local_whisper.py`, `groq.py`, `__init__.get_provider()` | interface tunggal; lokal lapor progres per-segmen |
-| `analysis/` | `base.py` (Protocol `LLMProvider` async), `openai_compat.py` (adapter httpx), `summarize.py` (map-reduce), `__init__.resolve()`/`get_llm()` | satu jalur OpenAI-compatible untuk Ollama/Groq/DeepSeek/Claude/OpenAI ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)); ringkasan = pemakai pertamanya ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
+| `asr/` | `base.py` (protocol `ASRProvider` + `Segment` + `TranscriptResult`), `local_whisper.py`, `groq.py`, `__init__.get_provider()` | interface tunggal; lokal lapor progres per-segmen; balikan membawa bahasa yang terdengar ([ADR 0011](../adr/0011-bahasa-keluaran-ai.md)) |
+| `analysis/` | `base.py` (Protocol `LLMProvider` async), `openai_compat.py` (adapter httpx), `summarize.py` (map-reduce), `chat.py` (sitasi + pilih konteks), `__init__.resolve()`/`get_llm()` | satu jalur OpenAI-compatible untuk Ollama/Groq/DeepSeek/Claude/OpenAI ([ADR 0007](../adr/0007-mesin-ai-dipilih-dari-ui.md)); ringkasan = pemakai pertamanya ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
 | `capture/` | `base.py` (Protocol `MediaSource` + `MediaInfo`), `ytdlp.py` (`YtDlpSource`), `cookies.py` (kredensial per-platform), `meeting.py` (sesi rekaman meeting), `__init__.get_source()` | dua metode capture: unduh URL via yt-dlp ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)) dan tangkap audio meeting dari ekstensi ([planning](../planning/meeting-capture.md)); `meeting.py` menyimpan potongan per-`seq` lalu menyambungnya |
-| `media/` | `ffmpeg.py`: `probe_duration_ms`, `extract_audio` | subprocess asyncio |
+| `media/` | `ffmpeg.py`: `probe_duration_ms`, `probe_channels`, `remux`, `extract_audio` | subprocess asyncio; `remux -c copy` memperbaiki WebM *live* dari MediaRecorder, `probe_channels` menjaga stereo rekaman meeting |
 | `worker/` | `queue.py` (antrean `(id, kind)`, `enqueue`, `pending_count`, `requeue_pending`), `pipeline.py` (`run_fetch`, `run_transcribe`) | concurrency=1; pipeline dipilih dari `Job.kind`; poller progres via holder thread-safe |
-| `store/` | `models.py` (Recording, Job, Segment), `db.py` (engine async + `init_db`/create_all) | SQLite (`aiosqlite`) |
+| `store/` | `models.py` (Recording, Job, Segment, Summary, ChatMessage), `db.py` (engine async + `init_db`/create_all) | SQLite (`aiosqlite`); `create_all` tidak mengubah tabel lama → kolom baru butuh skrip di `scripts/migrate_*.py` |
 | `export/` | `render.py`: TXT / SRT / JSON | tanpa dependency tambahan |
 | `protection/` | middleware ASGI + pos proteksi | lihat §6 |
 | `constants/` | konstanta terpusat (status, batas, default, format) | tidak impor modul lain (ADR 0001) |
@@ -49,8 +49,11 @@ hilang saat restart) — jadi job tidak nyangkut.
 ## 4. Data model (SQLite)
 
 - **recordings** — `id, title, source_filename, source_kind (upload|url|meeting), source_url,
-  meeting_platform, upload_token, upload_path, media_path, duration_ms, language, status,
-  created_at`. `upload_token` = kapabilitas satu sesi meeting (bukan auth), dikosongkan saat sesi
+  meeting_platform, upload_token, upload_path, media_path, duration_ms, language,
+  detected_language, status, created_at`. **`language` = yang DIMINTA** (`"auto"` default),
+  **`detected_language` = yang TERDENGAR** — diisi ASR hanya bila permintaannya `auto`, karena pada
+  permintaan eksplisit provider cuma memantulkan kembali apa yang diminta
+  ([ADR 0011](../adr/0011-bahasa-keluaran-ai.md)). `upload_token` = kapabilitas satu sesi meeting (bukan auth), dikosongkan saat sesi
   ditutup; disimpan di DB agar sesi selamat saat backend restart.
 - **jobs** — `id, recording_id, kind (fetch|transcribe), status, progress (0–100), error,
   created_at`. Satu recording bisa punya **dua** job berurutan: `fetch` lalu `transcribe` — kode
@@ -62,11 +65,15 @@ hilang saat restart) — jadi job tidak nyangkut.
   dilanjutkan oleh ekstensi, bukan worker (tiga himpunan status di `constants/`, sengaja terpisah).
 - **segments** — `id, recording_id, idx, start_ms, end_ms, text, speaker (nullable)`. `speaker`
   diisi saat diarization (M4). Ditulis bulk, idempoten.
-- **summaries** — `id, recording_id, text, provider, model, created_at`. Satu baris per recording
-  (dibuat ulang = baris lama diganti). `provider`/`model` disimpan sebagai jejak: hasil dari mesin
-  berbeda tidak sebanding ([ADR 0009](../adr/0009-ringkasan-transkrip.md)).
-- **chat_messages** — `id, recording_id, role (user|assistant), text, provider, model, created_at`.
-  Percakapan disimpan agar tidak hilang saat pindah rekaman ([ADR 0010](../adr/0010-chat-transkrip.md)).
+- **summaries** — `id, recording_id, lang, text, provider, model, created_at`. Satu baris per
+  recording **per bahasa**, unik `(recording_id, lang)`; dibuat ulang = baris bahasa itu diganti.
+  `lang` = bahasa **tulisan** ringkasannya, bukan bahasa rekamannya. `provider`/`model` disimpan
+  sebagai jejak: hasil dari mesin berbeda tidak sebanding
+  ([ADR 0009](../adr/0009-ringkasan-transkrip.md), [ADR 0011](../adr/0011-bahasa-keluaran-ai.md)).
+- **chat_messages** — `id, recording_id, lang, role (user|assistant), text, provider, model,
+  created_at`. Percakapan disimpan agar tidak hilang saat pindah rekaman
+  ([ADR 0010](../adr/0010-chat-transkrip.md)); `lang` memisahkan utas per bahasa — pertanyaan
+  Jepang bukan riwayat yang bermakna bagi percakapan Indonesia.
 
 ## 5. ASR provider
 
@@ -99,7 +106,7 @@ Tambah pos = 1 entri di `build_protections()`.
 | Method & path | Fungsi |
 |---|---|
 | `GET /api/health` | healthcheck |
-| `GET /api/config` | info provider/model/limit + katalog model lokal (panel Engine FE) |
+| `GET /api/config` | info provider/model/limit + katalog model lokal + **katalog bahasa** (satu-satunya sumber daftar bahasa; FE tidak menyalinnya) |
 | `PATCH /api/config` | ganti model lokal — 422 di luar katalog, 409 saat Groq/ada job jalan ([ADR 0005](../adr/0005-model-asr-runtime.md)) |
 | `POST /api/recordings` | upload (multipart streaming) → 201 `{recording, job_id}` |
 | `POST /api/recordings/from-url` | unduh dari URL — probe sinkron, tolak 422 lebih awal ([ADR 0008](../adr/0008-video-downloader-dua-langkah.md)) |
@@ -108,14 +115,14 @@ Tambah pos = 1 entri di `build_protections()`.
 | `POST /api/recordings/{id}/finish` | tutup sesi: sambung potongan → ukur durasi → antre transkrip |
 | `DELETE /api/recordings/{id}/meeting` | batalkan sesi: buang potongan + baris recording |
 | `POST /api/recordings/{id}/transcribe` | jalankan transkrip untuk rekaman yang filenya sudah ada — 409 bila sedang diproses, 422 bila file hilang. Generik: dipakai video terunduh **dan** transkrip ulang rekaman upload |
-| `POST /api/recordings/{id}/summarize` | ringkasan AI (sinkron, belasan detik) — 422 bila belum ada transkrip / kunci AI belum diisi, 502 bila provider gagal ([ADR 0009](../adr/0009-ringkasan-transkrip.md)) |
-| `GET/POST/DELETE /api/recordings/{id}/chat` | tanya-jawab dengan transkrip; jawaban menyertakan sitasi `[mm:ss]` ([ADR 0010](../adr/0010-chat-transkrip.md)) |
+| `POST /api/recordings/{id}/summarize?lang=` | ringkasan AI dalam bahasa `lang` (sinkron, belasan detik) — 422 bila belum ada transkrip / bahasa tak dikenal / kunci AI belum diisi, 409 bila dua permintaan bertabrakan, 502 bila provider gagal ([ADR 0009](../adr/0009-ringkasan-transkrip.md), [ADR 0011](../adr/0011-bahasa-keluaran-ai.md)) |
+| `GET/POST/DELETE /api/recordings/{id}/chat?lang=` | tanya-jawab dengan transkrip; satu utas per bahasa, jawaban menyertakan sitasi `[mm:ss]` yang **tidak ikut dilokalkan** ([ADR 0010](../adr/0010-chat-transkrip.md), [ADR 0011](../adr/0011-bahasa-keluaran-ai.md)) |
 | `GET /api/storage` | pemakaian disk folder unggahan (tab Unduh) |
 | `GET /api/cookies` | katalog platform + flag `stored` — **isi cookies tidak pernah dikirim** |
 | `POST /api/cookies/{platform}` | unggah `cookies.txt` (Netscape) — 422 bila formatnya salah, 413 bila >512 KB |
 | `DELETE /api/cookies/{platform}` | lupakan cookies platform |
 | `GET /api/recordings` | daftar (terbaru dulu) |
-| `GET /api/recordings/{id}` | detail + segments + `progress`, `source_available` |
+| `GET /api/recordings/{id}?lang=` | detail + segments + `progress`, `source_available`; `summary` yang ikut adalah versi bahasa `lang` |
 | `PATCH /api/recordings/{id}` | rename judul |
 | `DELETE /api/recordings/{id}` | hapus (media + transkrip) |
 | `GET /api/recordings/{id}/media` | audio hasil ekstraksi (Range) |

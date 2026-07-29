@@ -51,7 +51,8 @@ App (flex h-screen)
     ├─ TranscriptView (bila ada rekaman dipilih) — bersama sidebar = 3 kolom
     │   ├─ TranscriptHeader (membentang penuh: judul editable + Ekspor + tutup)
     │   ├─ AiPanel (KOLOM TENGAH, flex-1)
-    │   │   ├─ TabBar [Ringkasan] [Chat] — badge = jumlah pesan; aktif di localStorage
+    │   │   ├─ TabBar [Ringkasan] [Chat] + LangPicker di ujung kanan — badge = jumlah pesan
+    │   │   │  bahasa aktif di localStorage ('ai-lang'), sama seperti tab aktif
     │   │   ├─ SummaryPane (tab 1) — kartu ringkasan + tombol buat/buat ulang
     │   │   └─ ChatPanel (tab 2) — pesan + composer, tinggi penuh kolom
     │   │       Tab non-aktif disembunyikan (`display:none`), bukan dilepas —
@@ -70,7 +71,7 @@ App (flex h-screen)
 | Komponen | Tugas |
 |---|---|
 | `Sidebar` | rangka: Brand + SidebarTabs + isi tab aktif; lebar & tab tersimpan di `localStorage` |
-| `TabBar` | baris tab generik (`{id,label,count}[]`) — dipakai sidebar **dan** kolom AI, supaya keduanya tidak pelan-pelan beda rupa |
+| `TabBar` | baris tab generik (`{id,label,count}[]`) — dipakai sidebar **dan** kolom AI, supaya keduanya tidak pelan-pelan beda rupa. Prop `right` menaruh isi di ujung kanan (pemilih bahasa) agar ia berbagi garis bawah yang sama |
 | `SidebarTabs` | pemisah Transkrip vs Unduh, dengan badge jumlah item tiap tab |
 | `TranscribeTab` | unggah + engine + statistik + Riwayat (filter: di luar `downloading`/`downloaded`) |
 | `DownloadTab` | form URL + pemakaian disk + arsip video (filter: `source_kind === 'url'`); daftarnya pakai `showDownload` sehingga tiap item punya tombol simpan-ke-komputer |
@@ -83,7 +84,8 @@ App (flex h-screen)
 | `SettingsModal` | popup mesin AI dari ikon gerigi: pilih provider, model, kunci API, tes koneksi. Kunci tersimpan → field **dikunci**; ganti kunci = hapus dulu, dan hapus wajib konfirmasi ([ADR 0007 §Amandemen](../adr/0007-mesin-ai-dipilih-dari-ui.md)) |
 | `ConfirmModal` | konfirmasi aksi tak-bisa-dibatalkan (hapus rekaman, hapus kunci API). `z-40` — selalu di atas modal lain, termasuk saat dipanggil dari dalam `SettingsModal` (`z-30`) |
 | `AiPanel` | kolom tengah: `TabBar` + tab Ringkasan/Chat, masing-masing tinggi penuh ([ADR 0006 §Amandemen](../adr/0006-workspace-tiga-kolom.md)). Tombolnya mati sampai transkrip `done` ([ADR 0009](../adr/0009-ringkasan-transkrip.md), [0010](../adr/0010-chat-transkrip.md)) |
-| `ChatPanel` | tanya-jawab tersimpan per rekaman, gelembung pesan, bersihkan percakapan lewat `ConfirmModal`. Prop `active` menyalakan panel **dan** memicu scroll ke bawah — `scrollIntoView` tak berpengaruh saat masih `display:none` |
+| `LangPicker` | bahasa **keluaran AI** — ringkasan & chat. Beda maksud dari pemilih bahasa di panel unggah, yang menentukan bahasa apa yang *didengarkan* mesin transkrip; yang ini tidak menyentuh transkrip ([ADR 0011](../adr/0011-bahasa-keluaran-ai.md)). Kartu ringkasan kosong menyebut bahasanya, supaya tidak terbaca "ringkasannya hilang" |
+| `ChatPanel` | tanya-jawab tersimpan per rekaman **per bahasa** — `lang` masuk dep array agar utas lama tidak bertahan di layar sementara pertanyaan berikutnya masuk ke utas lain; "Bersihkan" hanya menghapus utas bahasa aktif. Gelembung pesan, konfirmasi lewat `ConfirmModal`. Prop `active` menyalakan panel **dan** memicu scroll ke bawah — `scrollIntoView` tak berpengaruh saat masih `display:none` |
 | `CitedText` | render `[mm:ss]` (dan rentang `[mm:ss-mm:ss]`) jadi tombol seek; sitasi di luar durasi dicoret, tidak bisa diklik |
 | `SummaryText` | render subset Markdown yang diminta di prompt (`## judul`, `- butir`, paragraf) — sengaja bukan library |
 | `UploadPanel` | pilih file + bahasa, unggah (XHR + progress), panggil `onUploaded` |

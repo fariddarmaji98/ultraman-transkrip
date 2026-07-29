@@ -33,8 +33,9 @@ fitur AI (ringkasan, chat, "second brain").
 - **Ringkasan & chat multibahasa**: pilih bahasa keluaran AI (9 bahasa) di panel asisten — model
   membaca transkrip **asli** dan menulis langsung dalam bahasa itu, bukan menerjemahkan hasil.
   Tiap bahasa punya ringkasan dan utas chatnya sendiri, tersimpan, jadi berpindah bahasa yang
-  sudah pernah dibuat tidak memanggil AI lagi. Bahasa rekaman ikut terdeteksi dan ditampilkan
-  ([planning](docs/planning/terjemahan.md)).
+  sudah pernah dibuat tidak memanggil AI lagi. Bahasa rekaman ikut terdeteksi dan ditampilkan —
+  **yang terdengar**, dibedakan tegas dari **yang diminta**
+  ([ADR 0011](docs/adr/0011-bahasa-keluaran-ai.md) · [planning](docs/planning/terjemahan.md)).
 - **Chat dengan transkrip**: tanya isi rekaman, jawabannya menyertakan menit sumber `[mm:ss]` yang
   **bisa diklik** untuk melompat ke titik itu ([ADR 0010](docs/adr/0010-chat-transkrip.md)).
   Ringkasan dan chat dipisah tab agar keduanya dapat tinggi penuh
@@ -81,10 +82,11 @@ otomatis saat restart**.
 backend/            Python + FastAPI
   app/              app factory, config, routes (health, recordings, jobs), schemas, naming
   asr/              interface ASRProvider + adapter local_whisper / groq
-  analysis/         seam AI (stub LLM/Embedding) — untuk ringkasan/chat nanti
-  media/            helper ffmpeg (probe, ekstrak)
+  analysis/         mesin AI: ringkasan (map-reduce) + chat bersitasi, keduanya multibahasa
+  media/            helper ffmpeg (probe durasi & kanal, remux, ekstrak)
   worker/           antrean + pipeline transkripsi
-  store/            model SQLAlchemy + engine (recordings, jobs, segments)
+  store/            model SQLAlchemy + engine (recordings, jobs, segments, summaries, chat)
+  scripts/          migrasi ALTER & perbaikan data (create_all tidak mengubah tabel lama)
   export/           render TXT / SRT / JSON
   protection/       gerbang tol: rate-limit, throttle upload, queue-guard
   constants/        konstanta terpusat (ADR 0001)
@@ -143,7 +145,7 @@ Arah berikutnya (planning tersedia): ringkasan + action item AI (M2) → chat/se
 ## Dokumentasi
 
 - Arsitektur: [architecture/overview.md](docs/architecture/overview.md) · [constants](docs/architecture/constants.md) · [ui](docs/architecture/ui.md) · [pelajaran: definisi ganda](docs/architecture/pelajaran-definisi-ganda.md)
-- Keputusan (ADR): [0001 constants](docs/adr/0001-centralized-constants.md) · [0002 pivot webapp](docs/adr/0002-pivot-webapp-upload-transkrip.md) · [0003 modular monolith](docs/adr/0003-modular-monolith-not-microservices.md) · [0004 UI gelap](docs/adr/0004-dark-ui-colibri.md) · [0005 model runtime](docs/adr/0005-model-asr-runtime.md) · [0006 workspace 3 kolom](docs/adr/0006-workspace-tiga-kolom.md) · [0007 mesin AI dari UI](docs/adr/0007-mesin-ai-dipilih-dari-ui.md) · [0008 video downloader](docs/adr/0008-video-downloader-dua-langkah.md) · [0009 ringkasan](docs/adr/0009-ringkasan-transkrip.md) · [0010 chat transkrip](docs/adr/0010-chat-transkrip.md)
+- Keputusan (ADR): [0001 constants](docs/adr/0001-centralized-constants.md) · [0002 pivot webapp](docs/adr/0002-pivot-webapp-upload-transkrip.md) · [0003 modular monolith](docs/adr/0003-modular-monolith-not-microservices.md) · [0004 UI gelap](docs/adr/0004-dark-ui-colibri.md) · [0005 model runtime](docs/adr/0005-model-asr-runtime.md) · [0006 workspace 3 kolom](docs/adr/0006-workspace-tiga-kolom.md) · [0007 mesin AI dari UI](docs/adr/0007-mesin-ai-dipilih-dari-ui.md) · [0008 video downloader](docs/adr/0008-video-downloader-dua-langkah.md) · [0009 ringkasan](docs/adr/0009-ringkasan-transkrip.md) · [0010 chat transkrip](docs/adr/0010-chat-transkrip.md) · [0011 bahasa keluaran AI](docs/adr/0011-bahasa-keluaran-ai.md)
 - Rencana: [webapp transkrip](docs/planning/webapp-upload-transkrip.md) · [arah Colibri](docs/planning/colibri-direction.md) · [video downloader](docs/planning/video-downloader.md) · [tangkap audio meeting](docs/planning/meeting-capture.md) · [terjemahan](docs/planning/terjemahan.md) · [control panel](docs/planning/control-panel.md) (ditunda — repo terpisah)
 
 ## Privasi & etika
