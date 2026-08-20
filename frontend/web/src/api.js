@@ -2,11 +2,15 @@
 
 export async function listRecordings() {
   const res = await fetch('/api/recordings')
+  // Jangan pernah menetapkan `recordings` ke non-array (mis. `{detail}` dari 429
+  // gerbang tol): pemanggil memakai `.filter()`/`.some()` dan langsung crash.
+  if (!res.ok) return []
   return res.json()
 }
 
 export async function getConfig() {
   const res = await fetch('/api/config')
+  if (!res.ok) return null
   return res.json()
 }
 

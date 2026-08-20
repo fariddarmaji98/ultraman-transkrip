@@ -212,7 +212,7 @@ ACCEPTED_SUFFIXES = {
 }
 
 # Gerbang tol proteksi anti-spam (in-memory; single-instance MVP)
-RATE_LIMIT_MAX = 60           # posA: maks permintaan per IP
+RATE_LIMIT_MAX = 300          # posA: maks permintaan per IP (polling FE 2 detik mudah 60+/menit)
 RATE_LIMIT_WINDOW_S = 60      #       dalam 60 detik
 UPLOAD_LIMIT_MAX = 12         # posB: maks unggahan per IP
 UPLOAD_LIMIT_WINDOW_S = 600   #       dalam 10 menit
