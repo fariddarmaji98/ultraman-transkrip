@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     // Host tunnel (ngrok) harus di-allow; request /api tetap diproxy ke backend lokal.
-    allowedHosts: ['unreclusive-ula-cursively.ngrok-free.dev', 'localhost'],
+    // true = izinkan semua host: dev-only, di belakang ngrok host-nya dinamis.
+    allowedHosts: true,
     proxy: { '/api': 'http://127.0.0.1:8000' },
   },
 })
