@@ -63,6 +63,13 @@ export async function summarizeRecording(id, lang) {
   return data
 }
 
+export async function extractRecording(id, lang) {
+  const res = await fetch(`/api/recordings/${id}/extract?lang=${lang}`, { method: 'POST' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal mengekstrak context')
+  return data
+}
+
 export async function startTranscribe(id) {
   const res = await fetch(`/api/recordings/${id}/transcribe`, { method: 'POST' })
   const data = await res.json().catch(() => ({}))
