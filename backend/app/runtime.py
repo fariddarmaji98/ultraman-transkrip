@@ -35,13 +35,19 @@ def set_local_model(model: str) -> None:
     _write()
 
 
-def set_llm(provider: str, model: str, api_key: str | None = None) -> None:
+def set_llm(provider: str, model: str, api_key: str | None = None,
+            base_url: str | None = None) -> None:
     settings.llm_provider = provider
     settings.llm_model = model
     llm = _state.setdefault("llm", {})
     llm["provider"], llm["model"] = provider, model
     if api_key:
         llm.setdefault("keys", {})[provider] = api_key
+    # Custom URL: base_url milik provider custom tersimpan sendiri; provider
+    # bawaan tidak punya URL yang bisa diubah dari UI (katalog adalah sumbernya).
+    if provider == "custom":
+        if base_url:
+            llm["custom_base_url"] = base_url.rstrip("/")
     _write()
 
 
@@ -55,6 +61,11 @@ def llm_key(provider: str) -> str:
     if provider == settings.llm_provider and settings.llm_api_key:
         return settings.llm_api_key
     return _keys().get(provider, "")
+
+
+def custom_base_url() -> str:
+    """Base URL provider custom tersimpan (dipakai hanya saat provider aktif)."""
+    return (_state.get("llm") or {}).get("custom_base_url", "")
 
 
 def providers_with_key() -> set[str]:

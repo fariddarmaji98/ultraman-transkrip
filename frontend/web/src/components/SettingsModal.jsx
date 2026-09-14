@@ -1,26 +1,36 @@
 // Popup setelan mesin AI (ringkasan & chat): pilih provider lokal atau API.
 // Kunci API hanya dikirim ke backend — nilainya tidak pernah dibaca balik.
 import { useEffect, useState } from 'react'
-import { forgetLlmKey, getLlm, setLlm, testLlm } from '../api'
+import { forgetLlmKey, getLlm, listLlmModels, setLlm, testLlm } from '../api'
 import ConfirmModal from './ConfirmModal'
 
 export default function SettingsModal({ onClose }) {
   const [cfg, setCfg] = useState(null)
-  const [form, setForm] = useState({ provider: '', model: '', api_key: '' })
+  const [form, setForm] = useState({ provider: '', model: '', api_key: '', base_url: '' })
   const [test, setTest] = useState(null)
   const [busy, setBusy] = useState('')
   const [confirming, setConfirming] = useState(false)
+  const [models, setModels] = useState(null) // null = belum dimuat; {ok, models|detail}
 
   useEffect(() => {
     getLlm().then((data) => {
       setCfg(data)
-      setForm({ provider: data.provider, model: data.model, api_key: '' })
+      setForm({
+        provider: data.provider,
+        model: data.model,
+        api_key: '',
+        base_url: data.base_url || '',
+      })
     })
   }, [])
 
   function pick(p) {
-    setForm({ provider: p.id, model: p.default_model, api_key: '' })
+    // Custom: model dikosongkan — tidak ada default yang bisa dijamin valid,
+    // dan input teksnya memang disabled sampai daftar dimuat.
+    const model = p.id === 'custom' ? '' : p.default_model
+    setForm({ provider: p.id, model, api_key: '', base_url: cfg?.base_url || '' })
     setTest(null)
+    setModels(null) // daftar model milik provider lama tidak boleh bocor ke yang baru
   }
 
   async function run(kind, fn) {
@@ -61,7 +71,30 @@ export default function SettingsModal({ onClose }) {
               />
             ))}
           </div>
-          <ModelField value={form.model} onChange={(model) => setForm({ ...form, model })} />
+          <ModelField
+            value={form.model}
+            onChange={(model) => setForm({ ...form, model })}
+            models={models}
+            busy={busy === 'models'}
+            requireLoad={form.provider === 'custom'}
+            onLoad={async () => {
+              setModels(null)
+              setTest(null)
+              await run('models', async () => {
+                const res = await listLlmModels(form)
+                if (!res.ok) throw new Error(res.detail)
+                setModels({ ok: true, models: res.models })
+                // Custom: model harus dipilih dari daftar yang barusan divalidasi.
+                // Nilai lama (mis. model provider sebelumnya) tidak berlaku lagi.
+                if (form.provider === 'custom' && !res.models.some((m) => m.id === form.model)) {
+                  setForm((f) => ({ ...f, model: '' }))
+                }
+              })
+            }}
+          />
+          {form.provider === 'custom' && (
+            <UrlField value={form.base_url} onChange={(base_url) => setForm({ ...form, base_url })} />
+          )}
           {active?.needs_key && (
             <KeyField
               value={form.api_key}
@@ -140,14 +173,92 @@ function Tag({ children, mint }) {
   return <span className={`rounded-full border px-1.5 py-px text-[10px] ${tone}`}>{children}</span>
 }
 
-function ModelField({ value, onChange }) {
+// Label opsi dropdown: "glm-5.3 · A · text, vision" — cermin gaya katalog
+// BandelAI "(A, text)". Kemampuan hanya muncul bila provider melaporkannya;
+// urutan tetap: grade dulu, lalu modality.
+function modelLabel(m) {
+  const bits = []
+  if (m.grade) bits.push(m.grade)
+  const caps = []
+  if (m.text) caps.push('text')
+  if (m.vision) caps.push('vision')
+  if (caps.length) bits.push(caps.join(', '))
+  return bits.length ? `${m.id} · ${bits.join(' · ')}` : m.id
+}
+
+// Model = dropdown yang datanya diambil dari provider (`GET /models`).
+// Provider custom: freetext DI-DISABLE — daftar harus dimuat dulu, karena
+// model proxy tidak bisa ditebak dan salah ketik = kegagalan senyap saat
+// ringkasan dijalankan. Provider bawaan tetap boleh diketik (default katalog
+// dijamin valid) — memuat daftar di sana adalah bantuan, bukan syarat.
+function ModelField({ value, onChange, models, busy, onLoad, requireLoad }) {
+  const loaded = models?.ok ? models.models : null
   return (
-    <label className="mt-4 block">
-      <span className="text-xs text-fg3">Model</span>
+    <div className="mt-4">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-fg3">Model</span>
+        <button
+          type="button"
+          onClick={onLoad}
+          disabled={!!busy}
+          className="text-[10px] text-fg3 transition hover:text-fg disabled:opacity-50"
+        >
+          {busy ? 'Memuat…' : 'Muat daftar model'}
+        </button>
+      </div>
+      {loaded ? (
+        <>
+          <select
+            value={loaded.some((m) => m.id === value) ? value : ''}
+            onChange={(e) => onChange(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-edge bg-panel2 px-3 py-2 font-mono text-xs text-fg outline-none focus:border-mint/60"
+          >
+            {!loaded.some((m) => m.id === value) && (
+              <option value="">{value || '— pilih model —'}</option>
+            )}
+            {loaded.map((m) => (
+              <option key={m.id} value={m.id}>
+                {modelLabel(m)}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-[10px] text-fg3">
+            {loaded.length} model dari provider — klik "Muat daftar model" untuk menyegarkan.
+          </span>
+        </>
+      ) : (
+        <>
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={requireLoad}
+            placeholder={requireLoad ? 'klik "Muat daftar model" dulu' : ''}
+            className="mt-1 w-full rounded-lg border border-edge bg-panel2 px-3 py-2 font-mono text-xs text-fg outline-none focus:border-mint/60 placeholder:font-sans placeholder:text-fg3 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          {models && !models.ok && (
+            <span className="mt-1 block text-[10px] leading-snug text-amber-400">
+              {models.detail}
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// Hanya tampil untuk provider Custom URL. Placeholder menjelaskan konvensi
+// "/v1" karena itu kesalahan paling umum: base URL tanpa /v1 = 404 di
+// /chat/completions, dan pesan errornya tidak menyebut penyebabnya.
+function UrlField({ value, onChange }) {
+  return (
+    <label className="mt-3 block">
+      <span className="text-xs text-fg3">Base URL</span>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border border-edge bg-panel2 px-3 py-2 font-mono text-xs text-fg outline-none focus:border-mint/60"
+        placeholder="https://contoh-proxy.xyz/v1"
+        spellCheck="false"
+        className="mt-1 w-full rounded-lg border border-edge bg-panel2 px-3 py-2 font-mono text-xs text-fg outline-none focus:border-mint/60 placeholder:font-sans placeholder:text-fg3"
       />
     </label>
   )

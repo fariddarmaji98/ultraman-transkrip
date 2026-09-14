@@ -125,6 +125,12 @@ LLM_PROVIDERS = (
         "default_model": "gpt-4o-mini", "needs_key": True,
         "note": "Umum dan stabil.",
     },
+    {
+        "id": "custom", "label": "Custom URL", "base_url": "",
+        "default_model": "", "needs_key": True,
+        "note": "Endpoint sendiri / API proxy OpenAI-compatible — tempel base URL "
+                "(sampai /v1), kunci, dan nama model.",
+    },
 )
 LLM_PROVIDER_IDS = tuple(p["id"] for p in LLM_PROVIDERS)
 LLM_TIMEOUT_S = 120  # transkrip panjang butuh waktu; jangan putus di tengah

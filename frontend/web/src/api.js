@@ -100,6 +100,7 @@ export async function getLlm() {
 
 export const setLlm = (body) => sendLlm('/api/llm', 'PATCH', body)
 export const testLlm = (body) => sendLlm('/api/llm/test', 'POST', body)
+export const listLlmModels = (body) => sendLlm('/api/llm/models', 'POST', body)
 
 export async function forgetLlmKey(provider) {
   await fetch(`/api/llm/${provider}/key`, { method: 'DELETE' })

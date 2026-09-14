@@ -32,6 +32,48 @@ class OpenAICompatProvider:
             "max_tokens": 5,
         })
 
+    async def list_models(self) -> list[dict]:
+        """Daftar model dari `GET {base_url}/models` (konvensi OpenAI-compatible).
+
+        Balikan dinormalkan jadi dict per model: `id` selalu ada; `grade`,
+        `vision` hanya bila provider melaporkannya (proxy seperti BandelAI
+        menyertakannya; OpenAI/Groq tidak). Model dengan `enabled: false`
+        (stok habis) DIBUANG — untuk provider polos field itu tidak ada,
+        jadi tidak ada yang terbuang.
+        """
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        url = f"{self.base_url}/models"
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                res = await client.get(url, headers=headers)
+        except httpx.HTTPError as exc:
+            raise LLMError(f"tidak bisa menghubungi {self.base_url}") from exc
+        if res.status_code >= 400:
+            raise LLMError(_error_of(res))
+        data = res.json().get("data") or []
+        # Ada provider yang membalik list of strings, bukan list of objek.
+        out: list[dict] = []
+        for m in data:
+            if isinstance(m, str):
+                out.append({"id": m})
+                continue
+            mid = m.get("id")
+            if not mid:
+                continue
+            entry = {"id": mid}
+            inputs = (m.get("modalities") or {}).get("input") or []
+            if "text" in inputs:
+                entry["text"] = True
+            if bool(m.get("vision")) or "image" in inputs:
+                entry["vision"] = True
+            if m.get("grade"):
+                entry["grade"] = str(m["grade"])
+            if m.get("enabled") is False:
+                continue  # stok habis: tidak ditawarkan sama sekali
+            out.append(entry)
+        out.sort(key=lambda e: e["id"])
+        return out
+
     async def _chat(self, body: dict) -> dict:
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         url = f"{self.base_url}/chat/completions"

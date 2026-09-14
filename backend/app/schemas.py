@@ -130,3 +130,4 @@ class LlmIn(BaseModel):
     provider: str
     model: str = ""
     api_key: str | None = None  # kosong = pakai yang sudah tersimpan
+    base_url: str | None = None  # hanya untuk provider custom

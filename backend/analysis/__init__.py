@@ -21,6 +21,9 @@ def resolve(provider_id: str = "", model: str = "") -> dict:
     base_url = entry["base_url"]
     if settings.llm_base_url and entry["id"] == settings.llm_provider:
         base_url = settings.llm_base_url  # escape hatch env, mis. Ollama di host lain
+    # Custom URL: URL-nya datang dari runtime.json (diisi via UI), bukan katalog.
+    if entry["id"] == "custom":
+        base_url = runtime.custom_base_url()
     return {
         "provider": entry["id"],
         "base_url": base_url,
