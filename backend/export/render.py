@@ -2,6 +2,8 @@
 import json
 from dataclasses import dataclass
 
+from constants import EXTRACT_CATEGORIES, EXTRACT_LABELS
+
 
 @dataclass
 class ExportSegment:
@@ -25,6 +27,32 @@ def render_export(segments, fmt: str) -> tuple[str, str]:
     if fmt == "json":
         return _json(segments), "application/json"
     return _txt(segments), "text/plain; charset=utf-8"
+
+
+def render_brief(extract, title: str, lang: str) -> str:
+    """Render ekstraksi terstruktur jadi brief markdown siap-tempel.
+
+    `extract` = dict empat kategori → list `{text, at_ms}` (pola `ExtractData`
+    ter-serialize). Heading mengikuti bahasa extract (EXTRACT_LABELS); kategori
+    kosong ditulis eksplisit — "tidak ada" adalah informasi, bukan kegagalan.
+    """
+    labels = EXTRACT_LABELS.get(lang, EXTRACT_LABELS["id"])
+    lines = [f"# {title}", "", "> Context terstruktur dari transkrip — sitasi menit `[mm:ss]`."]
+    for cat in EXTRACT_CATEGORIES:
+        lines += ["", f"## {labels.get(cat, cat)}", ""]
+        items = extract.get(cat, [])
+        if not items:
+            lines.append("- _(tidak ada)_")
+            continue
+        for it in items:
+            stamp = _mmss(it["at_ms"])
+            lines.append(f"- [{stamp}] {it['text'].strip()}")
+    return "\n".join(lines) + "\n"
+
+
+def _mmss(ms: int) -> str:
+    minutes, seconds = divmod(ms, 60_000)
+    return f"{minutes:02d}:{seconds // 1000:02d}"
 
 
 def _txt(segments) -> str:

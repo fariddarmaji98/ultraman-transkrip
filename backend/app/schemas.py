@@ -63,6 +63,26 @@ class SummaryOut(BaseModel):
     created_at: datetime
 
 
+class ExtractItemOut(BaseModel):
+    text: str
+    at_ms: int
+
+
+class ExtractOut(BaseModel):
+    """Hasil ekstraksi terstruktur. `recording_id` & `lang` disertakan supaya
+    klien bisa memvalidasi hasilnya milik rekaman/bahasa yang diminta."""
+
+    recording_id: int
+    lang: str
+    decisions: list[ExtractItemOut]
+    requirements: list[ExtractItemOut]
+    constraints: list[ExtractItemOut]
+    open_questions: list[ExtractItemOut]
+    provider: str
+    model: str
+    created_at: datetime
+
+
 class ChatMessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -82,6 +102,7 @@ class RecordingDetail(RecordingOut):
     media_available: bool
     segments: list[SegmentOut]
     summary: SummaryOut | None = None
+    extract: "ExtractOut | None" = None
 
 
 class JobOut(BaseModel):

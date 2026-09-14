@@ -149,6 +149,33 @@ CHAT_BLOCK_LINES = 25    # ukuran potongan saat transkrip harus dipilih sebagian
 CHAT_HISTORY_TURNS = 6   # pesan lama yang ikut dikirim (3 tanya-jawab)
 CHAT_MAX_QUESTION = 2000
 
+# Ekstraksi terstruktur transkrip (transcript as context, ADR 0013). Transkrip
+# diangkat jadi context membangun project: keputusan / kebutuhan / batasan /
+# pertanyaan terbuka, tiap item bersitasi menit. Pola map-reduce sama dengan
+# ringkasan, tapi penggabungan potongan TANPA LLM (array JSON bisa di-union
+# mekanis, lalu diurutkan per `at_ms`).
+EXTRACT_CHUNK_CHARS = 12000
+EXTRACT_MAX_CHUNKS = 12   # >12 potongan: transkrip dipangkas, diberitahukan
+# Urutan kategori menentukan urutan render di UI & ekspor. Jangan diubah
+# sembarangan: schema ekstraksi (pydantic) mengunci kunci yang sama persis.
+EXTRACT_CATEGORIES = ("decisions", "requirements", "constraints", "open_questions")
+# Label per kategori untuk ekspor/UI. Heading ekspor mengikuti bahasa extract;
+# untuk sekarang cukup Indonesia + Inggris (dua bahasa utama pemakai).
+EXTRACT_LABELS = {
+    "id": {
+        "decisions": "Keputusan",
+        "requirements": "Kebutuhan",
+        "constraints": "Batasan",
+        "open_questions": "Pertanyaan terbuka",
+    },
+    "en": {
+        "decisions": "Decisions",
+        "requirements": "Requirements",
+        "constraints": "Constraints",
+        "open_questions": "Open questions",
+    },
+}
+
 # Target audio untuk Whisper (16 kHz mono)
 ASR_SAMPLE_RATE = 16000
 ASR_CHANNELS = 1

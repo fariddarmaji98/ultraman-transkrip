@@ -16,6 +16,8 @@ from app.naming import clean_title, download_name
 from app.schemas import (
     ChatIn,
     ChatMessageOut,
+    ExtractItemOut,
+    ExtractOut,
     FromUrlIn,
     RecordingDetail,
     RecordingOut,
@@ -27,6 +29,7 @@ from app.schemas import (
 )
 import analysis
 from analysis.chat import ask
+from analysis.extract import extract as run_extract
 from analysis.openai_compat import LLMError
 from analysis.summarize import summarize
 # alias: nama `get_source` sudah dipakai route penyaji file di bawah
@@ -38,6 +41,7 @@ from constants import (
     CHAT_MAX_QUESTION,
     DEFAULT_AI_LANGUAGE,
     DOWNLOAD_MAX_DURATION_S,
+    EXTRACT_CATEGORIES,
     LANGUAGE_AUTO,
     LANGUAGE_BY_ID,
     JOB_DOWNLOADING,
@@ -50,7 +54,7 @@ from constants import (
     SOURCE_URL,
     UPLOAD_CHUNK_BYTES,
 )
-from export.render import ExportSegment, render_export
+from export.render import ExportSegment, render_brief, render_export
 from media.ffmpeg import MediaError, probe_duration_ms
 from store import models
 from worker.queue import enqueue
@@ -104,7 +108,8 @@ async def get_recording(rid: int, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE) 
     segments = await _segments_of(db, rid)
     progress = await _progress_of(db, rid)
     summary = await _summary_of(db, rid, _checked(lang))
-    return _to_detail(rec, segments, progress, summary)
+    extract = await _extract_of(db, rid, _checked(lang))
+    return _to_detail(rec, segments, progress, summary, extract)
 
 
 @router.post("/recordings/{rid}/summarize", response_model=SummaryOut)
@@ -120,6 +125,21 @@ async def summarize_recording(
     _reject_if_llm_unset(cfg)
     text = await _run_summary(segments, cfg, _checked(lang))
     return await _save_summary(db, rid, text, cfg, lang)
+
+
+@router.post("/recordings/{rid}/extract", response_model=ExtractOut)
+async def extract_recording(
+    rid: int, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE
+) -> ExtractOut:
+    """Ekstrak context terstruktur (ADR 0013) pakai mesin AI aktif. Sinkron."""
+    await _get_or_404(db, rid)
+    segments = await _segments_of(db, rid)
+    if not segments:
+        raise HTTPException(422, "belum ada transkrip untuk diekstrak")
+    cfg = analysis.resolve()
+    _reject_if_llm_unset(cfg)
+    data, truncated = await _run_extract(segments, cfg, _checked(lang))
+    return await _save_extract(db, rid, data, cfg, lang, truncated)
 
 
 @router.get("/recordings/{rid}/chat", response_model=list[ChatMessageOut])
@@ -249,13 +269,34 @@ async def get_source(rid: int, db: DbDep) -> FileResponse:
 async def export_transcript(
     rid: int, db: DbDep, fmt: str = "txt", lang: str | None = None
 ) -> Response:
-    """`lang` kosong = transkrip asli. Diisi = versi terjemahan bahasa itu."""
+    """`lang` kosong = transkrip asli. Diisi = versi terjemahan bahasa itu.
+
+    `fmt=brief` = ekstraksi terstruktur (ADR 0013) sebagai markdown — `lang`
+    menentukan bahasa extract yang diekspor (default `id`).
+    """
     await _get_or_404(db, rid)
+    if fmt == "brief":
+        return await _export_brief(db, rid, lang)
     segments = await _export_segments(db, rid, lang)
     body, media_type = render_export(segments, fmt)
     suffix = f"-{lang}" if lang else ""
     disposition = f'attachment; filename="transkrip-{rid}{suffix}.{fmt}"'
     return Response(body, media_type=media_type,
+                    headers={"Content-Disposition": disposition})
+
+
+async def _export_brief(db, rid: int, lang: str | None) -> Response:
+    import json as _json
+
+    rec = await _get_or_404(db, rid)
+    lang_ok = _checked(lang or DEFAULT_AI_LANGUAGE)
+    row = await _extract_of(db, rid, lang_ok)
+    if row is None:
+        raise HTTPException(404, "belum ada ekstraksi — jalankan tombol Ekstrak dulu")
+    payload = _json.loads(row.data)
+    body = render_brief(payload, rec.title, lang_ok)
+    disposition = f'attachment; filename="brief-{rid}-{lang_ok}.md"'
+    return Response(body, media_type="text/markdown; charset=utf-8",
                     headers={"Content-Disposition": disposition})
 
 
@@ -333,6 +374,56 @@ async def _save_summary(db, rid: int, text: str, cfg: dict, lang: str) -> models
         raise HTTPException(409, "ringkasan bahasa ini sedang dibuat — coba lagi") from exc
     await db.refresh(row)
     return row
+
+
+async def _run_extract(segments, cfg: dict, lang: str):
+    try:
+        return await run_extract(segments, analysis.get_llm(), lang)
+    except LLMError as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
+async def _save_extract(db, rid: int, data, cfg: dict, lang: str, truncated: bool):
+    """Satu extract per recording PER BAHASA — lama diganti (pola `summaries`)."""
+    import json as _json
+
+    # Catatan terpotong ditempel di teks item pertama kategori pertama, supaya
+    # jejaknya ikut tersimpan dan tampil di UI/ekspor — bukan lenyap sebagai
+    # efek samping. Kalau seluruh kategori kosong, tidak ada tempat menaruhnya,
+    # dan itu diterima: hasil kosong + terpotong sudah informatif.
+    payload = data.model_dump()
+    if truncated:
+        payload = _annotate_truncated(payload)
+    await db.execute(
+        delete(models.RecordingExtract).where(
+            models.RecordingExtract.recording_id == rid,
+            models.RecordingExtract.lang == lang,
+        )
+    )
+    row = models.RecordingExtract(
+        recording_id=rid, lang=lang, data=_json.dumps(payload, ensure_ascii=False),
+        provider=cfg["provider"], model=cfg["model"],
+    )
+    db.add(row)
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(409, "ekstraksi bahasa ini sedang dibuat — coba lagi") from exc
+    await db.refresh(row)
+    return _extract_out(row)
+
+
+def _annotate_truncated(payload: dict) -> dict:
+    """Tandai potongan transkrip yang tak diekstrak (ADR 0013, catatan senyap)."""
+    for cat in EXTRACT_CATEGORIES:
+        if payload.get(cat):
+            payload[cat][0]["text"] += f"\n[{_TRUNCATED_NOTE}]"
+            break
+    return payload
+
+
+_TRUNCATED_NOTE = "transkrip terpotong — hanya bagian awal yang diekstrak"
 
 
 def _checked(lang: str) -> str:
@@ -569,7 +660,33 @@ async def _summary_of(db, rid: int, lang: str) -> models.Summary | None:
     return result.scalars().first()
 
 
-def _to_detail(rec, segments, progress: int, summary) -> RecordingDetail:
+async def _extract_of(db, rid: int, lang: str) -> models.RecordingExtract | None:
+    result = await db.execute(
+        select(models.RecordingExtract)
+        .where(models.RecordingExtract.recording_id == rid,
+               models.RecordingExtract.lang == lang)
+        .order_by(models.RecordingExtract.id.desc())
+    )
+    return result.scalars().first()
+
+
+def _extract_out(row: models.RecordingExtract) -> ExtractOut:
+    """Baris DB → schema keluaran. `data` JSON diparse kembali; malformed =
+    error server (tidak boleh senyap — itu tanda korupsi, bukan data lama)."""
+    import json as _json
+
+    payload = _json.loads(row.data)
+    return ExtractOut(
+        recording_id=row.recording_id, lang=row.lang,
+        decisions=[ExtractItemOut(**i) for i in payload.get("decisions", [])],
+        requirements=[ExtractItemOut(**i) for i in payload.get("requirements", [])],
+        constraints=[ExtractItemOut(**i) for i in payload.get("constraints", [])],
+        open_questions=[ExtractItemOut(**i) for i in payload.get("open_questions", [])],
+        provider=row.provider, model=row.model, created_at=row.created_at,
+    )
+
+
+def _to_detail(rec, segments, progress: int, summary, extract=None) -> RecordingDetail:
     return RecordingDetail(
         id=rec.id, title=rec.title, source_filename=rec.source_filename,
         source_kind=rec.source_kind, source_url=rec.source_url,
@@ -580,6 +697,7 @@ def _to_detail(rec, segments, progress: int, summary) -> RecordingDetail:
         media_available=bool(rec.media_path and Path(rec.media_path).exists()),
         segments=[SegmentOut.model_validate(s) for s in segments],
         summary=SummaryOut.model_validate(summary) if summary else None,
+        extract=_extract_out(extract) if extract else None,
     )
 
 

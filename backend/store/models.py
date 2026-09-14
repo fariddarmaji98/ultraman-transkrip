@@ -60,6 +60,9 @@ class Recording(Base):
     translations: Mapped[list["SegmentTranslation"]] = relationship(
         back_populates="recording", cascade="all, delete-orphan"
     )
+    extracts: Mapped[list["RecordingExtract"]] = relationship(
+        back_populates="recording", cascade="all, delete-orphan"
+    )
 
 
 class Job(Base):
@@ -133,6 +136,34 @@ class ChatMessage(Base):
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
     recording: Mapped["Recording"] = relationship(back_populates="chat")
+
+
+class RecordingExtract(Base):
+    """Ekstraksi terstruktur transkrip (ADR 0013): context untuk membangun project.
+
+    `data` = JSON tervalidasi dengan empat kategori (`decisions`, `requirements`,
+    `constraints`, `open_questions`), tiap item `{text, at_ms}`. Disimpan sebagai
+    Teks, bukan tabel anak, karena item tidak pernah di-query terpisah dari
+    rekamannya — normalisasi hanya menambah migrasi & join tanpa pemakai.
+
+    `lang` = bahasa TULISAN hasil ekstraksi (pola `summaries`), unik per
+    `(recording_id, lang)` supaya "buat ulang" menimpa baris yang jelas.
+    """
+
+    __tablename__ = "recording_extracts"
+    __table_args__ = (
+        UniqueConstraint("recording_id", "lang", name="uq_extract_recording_lang"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    lang: Mapped[str] = mapped_column(String(16), default=DEFAULT_AI_LANGUAGE)
+    data: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(32))
+    model: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+    recording: Mapped["Recording"] = relationship(back_populates="extracts")
 
 
 class SegmentTranslation(Base):
