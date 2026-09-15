@@ -99,6 +99,18 @@ function ExportLinks({ rec, tlang }) {
           {f.toUpperCase()}
         </a>
       ))}
+      {/* Brief = ekstraksi terstruktur (ADR 0013). Bahasanya BUKAN tlang:
+          brief milik extract per bahasa AI (default id), bukan terjemahan
+          transkrip — tlang kosong/ASLI pun brief tetap pakai bahasa extract. */}
+      {rec.extract && (
+        <a
+          href={exportUrl(rec.id, 'brief', undefined)}
+          title="Context terstruktur: keputusan, kebutuhan, batasan, pertanyaan terbuka — bersitasi menit"
+          className="rounded-md border border-mint/40 px-2.5 py-1 text-xs font-semibold text-mint transition hover:bg-mint/10"
+        >
+          BRIEF
+        </a>
+      )}
     </div>
   )
 }

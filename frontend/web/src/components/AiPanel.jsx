@@ -3,8 +3,8 @@
 // ringkasan. Tab yang tidak aktif disembunyikan (bukan dilepas) agar percakapan
 // yang sedang dijawab tidak hilang saat pindah tab.
 // Mesin AI-nya dipilih di popup Setelan — lihat ADR 0007.
-import { useState } from 'react'
-import { extractRecording, summarizeRecording } from '../api'
+import { useEffect, useState } from 'react'
+import { extractRecording, setLabels, summarizeRecording } from '../api'
 import { fmtDate, langLabel } from '../utils'
 import useLocalState from '../hooks/useLocalState'
 import ChatPanel from './ChatPanel'
@@ -188,7 +188,116 @@ function ExtractPane({ rec, ready, active, lang, onExtracted, onSeek }) {
         onRun={run}
         onSeek={onSeek}
       />
+      <LabelCard rec={rec} onChanged={onExtracted} />
     </div>
+  )
+}
+
+// Label manual + auto-tag (ADR 0018). Editor lokal, PUT menyimpan seluruh list;
+// auto-tag hanya tampil (milik LLM, bukan milik user — mengeditnya akan hilang
+// saat "Buat ulang" extract).
+function LabelCard({ rec, onChanged }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const labels = rec.labels || []
+  const autoTags = rec.extract?.auto_tags || []
+
+  useEffect(() => {
+    if (editing) setDraft(labels.join(', '))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing])
+
+  async function save() {
+    setBusy(true)
+    setError(null)
+    try {
+      await setLabels(rec.id, draft.split(',').map((s) => s.trim()).filter(Boolean))
+      setEditing(false)
+      onChanged?.()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-edge bg-panel2 p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold text-fg">Label</h3>
+        <button
+          onClick={() => (editing ? setEditing(false) : setEditing(true))}
+          className="text-[10px] text-fg3 transition hover:text-fg"
+        >
+          {editing ? 'Batal' : 'Ubah label'}
+        </button>
+      </div>
+
+      {/* auto-tag: hasil LLM, hanya tampil */}
+      {autoTags.length > 0 && (
+        <div className="mt-2">
+          <p className="text-[10px] text-fg3">Topik otomatis (dari ekstraksi):</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {autoTags.map((t) => (
+              <Tag key={t}>{t}</Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* label manual: milik user */}
+      {editing ? (
+        <div className="mt-2">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="label1, label2 — pisahkan dengan koma"
+            spellCheck="false"
+            className="w-full rounded-lg border border-edge bg-panel px-3 py-2 text-xs text-fg outline-none focus:border-mint/60 placeholder:text-fg3"
+          />
+          <p className="mt-1 text-[10px] leading-snug text-fg3">
+            Huruf kecil, tanpa spasi (pakai tanda hubung), maks 4 label. List baru menggantikan
+            yang lama.
+          </p>
+          <button
+            onClick={save}
+            disabled={busy}
+            className="mt-2 w-full rounded-lg bg-mint px-3 py-2 text-xs font-semibold text-canvas transition hover:bg-mint2 disabled:opacity-50"
+          >
+            {busy ? 'Menyimpan…' : 'Simpan label'}
+          </button>
+          {error && <p className="mt-2 text-xs leading-snug text-red-400">{error}</p>}
+        </div>
+      ) : (
+        <div className="mt-2">
+          {labels.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {labels.map((l) => (
+                <Tag key={l} mint>{l}</Tag>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs leading-relaxed text-fg3">
+              Belum ada label — beri label project supaya rekaman ini mudah ditemukan lagi
+              (mis. <span className="font-mono">project-rok-bot</span>).
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Tag({ children, mint }) {
+  const tone = mint
+    ? 'border-mint/40 text-mint'
+    : 'border-edge2 text-fg3'
+  return (
+    <span className={`rounded-full border px-2 py-px font-mono text-[10px] ${tone}`}>
+      {children}
+    </span>
   )
 }
 

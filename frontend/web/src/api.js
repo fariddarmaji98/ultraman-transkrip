@@ -78,6 +78,23 @@ export async function extractRecording(id, lang) {
   return data
 }
 
+export async function getLabels(id) {
+  const res = await fetch(`/api/recordings/${id}/labels`)
+  if (!res.ok) return []
+  return res.json().catch(() => [])
+}
+
+export async function setLabels(id, labels) {
+  const res = await fetch(`/api/recordings/${id}/labels`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ labels }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal menyimpan label')
+  return data
+}
+
 export async function startTranscribe(id) {
   const res = await fetch(`/api/recordings/${id}/transcribe`, { method: 'POST' })
   const data = await res.json().catch(() => ({}))
