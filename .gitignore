@@ -56,3 +56,6 @@ recordings/
 backend/store/*.db
 backend/store/*.sqlite
 *.index
+
+# Log launcher/servers (scripts/start-servers.ps1)
+.logs/

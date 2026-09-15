@@ -45,6 +45,22 @@ fitur AI (ringkasan, chat, "second brain").
   Direkam **stereo** (kiri = peserta, kanan = saya) agar nanti bisa dibedakan siapa yang bicara
   ([planning](docs/planning/meeting-capture.md) · [cara pasang](frontend/extension/README.md)).
 - **Bahasa Indonesia divalidasi**: `large-v3-turbo` ~5,4% WER pada FLEURS-id (lihat `samples/`).
+- **Context terstruktur (tab Context)**: ekstrak keputusan / kebutuhan / batasan / pertanyaan
+  terbuka dari transkrip, tiap item bersitasi `[mm:ss]` klik-able; auto-tag topik dari LLM +
+  label manual; ekspor **brief markdown** siap-tempel
+  ([ADR 0013](docs/adr/0013-extraction-transkrip.md) · [0018](docs/adr/0018-labeling-dua-lapis.md)).
+- **MCP context provider**: project ini bisa dipanggil AI agent (Hermes/Claude/Cursor) lewat
+  MCP — 6 tool: `transcribe_url` (kirim URL video → dapat context), `get_job`, `get_context`,
+  `list_recordings`, `label_recording`, `search_context` (pencarian semantic lintas-rekaman,
+  Ollama embeddings lokal)
+  ([ADR 0015](docs/adr/0015-mcp-context-provider.md) · [0017](docs/adr/0017-mcp-server-fase2a.md) ·
+  [0019](docs/adr/0019-semantic-search-embedding.md) · [planning](docs/planning/mcp-context-provider.md)).
+- **Pemeliharaan yt-dlp otomatis**: update saat startup + cek harian, versi baru dipakai via
+  restart terjadwal; splashscreen maintenance di UI selama proses
+  ([ADR 0016](docs/adr/0016-auto-update-ytdlp.md)).
+- **Provider LLM Custom URL**: sambungkan API proxy OpenAI-compatible apa pun; daftar model
+  diambil langsung dari provider (`GET /v1/models`) jadi dropdown beranotasi grade/modality
+  ([ADR 0014](docs/adr/0014-provider-custom-url.md)).
 
 ## Arsitektur (saat ini)
 
@@ -145,9 +161,10 @@ Arah berikutnya (planning tersedia): ringkasan + action item AI (M2) → chat/se
 ## Dokumentasi
 
 - Arsitektur: [architecture/overview.md](docs/architecture/overview.md) · [constants](docs/architecture/constants.md) · [ui](docs/architecture/ui.md) · [pelajaran: definisi ganda](docs/architecture/pelajaran-definisi-ganda.md)
-- Keputusan (ADR): [0001 constants](docs/adr/0001-centralized-constants.md) · [0002 pivot webapp](docs/adr/0002-pivot-webapp-upload-transkrip.md) · [0003 modular monolith](docs/adr/0003-modular-monolith-not-microservices.md) · [0004 UI gelap](docs/adr/0004-dark-ui-colibri.md) · [0005 model runtime](docs/adr/0005-model-asr-runtime.md) · [0006 workspace 3 kolom](docs/adr/0006-workspace-tiga-kolom.md) · [0007 mesin AI dari UI](docs/adr/0007-mesin-ai-dipilih-dari-ui.md) · [0008 video downloader](docs/adr/0008-video-downloader-dua-langkah.md) · [0009 ringkasan](docs/adr/0009-ringkasan-transkrip.md) · [0010 chat transkrip](docs/adr/0010-chat-transkrip.md) · [0011 bahasa keluaran AI](docs/adr/0011-bahasa-keluaran-ai.md) · [0012 ketahanan 429 & rate-limit](docs/adr/0012-resilience-fix-download-blank-page.md)
-- QA: [checklist uji manual](docs/qa/checklist.md) — repo ini belum punya tes otomatis
-- Rencana: [webapp transkrip](docs/planning/webapp-upload-transkrip.md) · [arah Colibri](docs/planning/colibri-direction.md) · [video downloader](docs/planning/video-downloader.md) · [tangkap audio meeting](docs/planning/meeting-capture.md) · [terjemahan](docs/planning/terjemahan.md) · [control panel](docs/planning/control-panel.md) (ditunda — repo terpisah)
+- Keputusan (ADR): [0001 constants](docs/adr/0001-centralized-constants.md) · [0002 pivot webapp](docs/adr/0002-pivot-webapp-upload-transkrip.md) · [0003 modular monolith](docs/adr/0003-modular-monolith-not-microservices.md) · [0004 UI gelap](docs/adr/0004-dark-ui-colibri.md) · [0005 model runtime](docs/adr/0005-model-asr-runtime.md) · [0006 workspace 3 kolom](docs/adr/0006-workspace-tiga-kolom.md) · [0007 mesin AI dari UI](docs/adr/0007-mesin-ai-dipilih-dari-ui.md) · [0008 video downloader](docs/adr/0008-video-downloader-dua-langkah.md) · [0009 ringkasan](docs/adr/0009-ringkasan-transkrip.md) · [0010 chat transkrip](docs/adr/0010-chat-transkrip.md) · [0011 bahasa keluaran AI](docs/adr/0011-bahasa-keluaran-ai.md) · [0012 ketahanan 429 & rate-limit](docs/adr/0012-resilience-fix-download-blank-page.md) · [0013 ekstraksi context](docs/adr/0013-extraction-transkrip.md) · [0014 provider custom URL](docs/adr/0014-provider-custom-url.md) · [0015 MCP context provider](docs/adr/0015-mcp-context-provider.md) · [0016 auto-update yt-dlp](docs/adr/0016-auto-update-ytdlp.md) · [0017 MCP server Fase 2a](docs/adr/0017-mcp-server-fase2a.md) · [0018 labeling dua lapis](docs/adr/0018-labeling-dua-lapis.md) · [0019 semantic search](docs/adr/0019-semantic-search-embedding.md)
+- QA: [checklist uji manual](docs/qa/checklist.md) · tes unit: `backend/scripts/qa_extract.py` (12) ·
+  `backend/scripts/qa_embeddings.py` (7) — jalankan dari `backend/` dengan venv
+- Rencana: [webapp transkrip](docs/planning/webapp-upload-transkrip.md) · [arah Colibri](docs/planning/colibri-direction.md) · [video downloader](docs/planning/video-downloader.md) · [tangkap audio meeting](docs/planning/meeting-capture.md) · [terjemahan](docs/planning/terjemahan.md) · [transcript as context](docs/planning/transcript-as-context.md) · [MCP context provider](docs/planning/mcp-context-provider.md) · [control panel](docs/planning/control-panel.md) (ditunda — repo terpisah)
 
 ## Privasi & etika
 
