@@ -20,14 +20,17 @@ Urutan pengerjaan; centang + catat commit hash di `commits.md`.
 - [x] 9. `api.js`: `extractRecording(id, lang)`, `exportUrl(id, 'brief', lang)` (sudah ada generic)
 - [x] 10. Panel asisten: tab "Context" — tombol "Ekstrak", render 4 kategori,
        item `[mm:ss]` klik-able (komponen TimeStamp), tombol "Buat ulang"
-- [ ] 11. Tombol ekspor "Brief (md)" di samping ekspor existing
+- [x] 11. Tombol ekspor "Brief (md)" di samping ekspor existing
+       — commit 7e82304: tombol BRIEF di TranscriptHeader (muncul saat extract ada)
 
 ## Penutup
 
-- [ ] 12. Update `docs/planning/transcript-as-context.md` status Fase 1 → selesai
+- [x] 12. Update `docs/planning/transcript-as-context.md` status Fase 1 → selesai
+       — commit 6d230c8 (bersama dokumen fitur)
 - [x] 13. QA: rekaman lama tanpa extract (field null, tidak error), transkrip panjang (>12 chunk),
        LLM mati (pesan error jelas), bahasa `en` (extract terpisah dari `id`)
        — 12 unit test (scripts/qa_extract.py) + QA integration 2026-09-15:
        extract en terpisah & tidak menimpa id; rec tanpa extract = null aman;
        kunci LLM invalid → 502 pesan jelas; brief en heading English
-- [ ] 14. Commit berjenjang: backend → frontend → docs; update `commits.md`
+- [x] 14. Commit berjenjang: backend → frontend → docs; update `commits.md`
+       — e3eddc7 backend, 09ef8fd frontend, 336e35e spec, 6d230c8 docs, 25d79a6 QA
