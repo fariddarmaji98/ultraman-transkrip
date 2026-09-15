@@ -1,5 +1,13 @@
 // Klien backend. Semua request lewat /api (diproxy Vite ke FastAPI).
 
+export async function getMaintenance() {
+  // 503/timeout saat backend sedang restart = dianggap "sedang maintenance"
+  // oleh pemanggil; di sini cukup balikkan null dan biarkan poll berikutnya.
+  const res = await fetch('/api/maintenance').catch(() => null)
+  if (!res || !res.ok) return null
+  return res.json().catch(() => null)
+}
+
 export async function listRecordings() {
   const res = await fetch('/api/recordings')
   // Jangan pernah menetapkan `recordings` ke non-array (mis. `{detail}` dari 429

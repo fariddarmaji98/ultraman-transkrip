@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getConfig, listRecordings } from './api'
+import { getConfig, getMaintenance, listRecordings } from './api'
 import { isActive } from './utils'
 import Sidebar from './components/Sidebar'
 import TranscriptView from './components/TranscriptView'
 import EmptyState from './components/EmptyState'
+import MaintenanceOverlay from './components/MaintenanceOverlay'
 
 export default function App() {
   const [recordings, setRecordings] = useState([])
   const [config, setConfig] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
+  const [maintenance, setMaintenance] = useState(null)
 
   const refresh = useCallback(async () => {
     setRecordings(await listRecordings())
@@ -18,6 +20,22 @@ export default function App() {
     refresh()
     getConfig().then(setConfig).catch(() => {})
   }, [refresh])
+
+  // Pemeliharaan (update yt-dlp otomatis): poll ringan tiap 2 detik. Status
+  // dipegang selalu — overlay yang memutuskan tampil/tidak dari `updating`.
+  useEffect(() => {
+    let alive = true
+    const tick = async () => {
+      const s = await getMaintenance()
+      if (alive && s) setMaintenance(s)
+    }
+    tick()
+    const timer = setInterval(tick, 2000)
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [])
 
   // Selama ada unduhan/transkrip berjalan, segarkan daftar supaya progres di
   // sidebar ikut bergerak. Bergantung pada boolean, bukan array — agar interval
@@ -36,6 +54,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-canvas text-fg">
+      <MaintenanceOverlay status={maintenance} />
       <Sidebar
         recordings={recordings}
         config={config}

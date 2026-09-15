@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
 from app import runtime
+from app import updater
 from app.config import settings
 from app.deps import DbDep
 from app.schemas import ConfigIn
@@ -27,6 +28,13 @@ router = APIRouter()
 @router.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+@router.get("/maintenance")
+async def maintenance() -> dict:
+    """Status updater yt-dlp (app/updater.py). Dipoll frontend tiap 2 detik —
+    `updating: true` memunculkan splashscreen maintenance; selesai = balik sendiri."""
+    return updater.status()
 
 
 @router.get("/config")

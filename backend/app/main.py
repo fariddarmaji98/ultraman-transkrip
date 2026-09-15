@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import runtime
+from app import updater
 from app.config import settings
 from app.routes import cookies, health, jobs, llm, meetings, recordings
 from protection import install_protection
@@ -19,9 +20,11 @@ async def lifespan(app: FastAPI):
     runtime.load()  # pilihan model dari UI (kalau ada) menimpa default
     await init_db()
     task = asyncio.create_task(worker_loop())
+    update_task = asyncio.create_task(updater.maintenance_loop())
     await requeue_pending()  # lanjutkan job yang belum selesai setelah restart
     yield
     task.cancel()
+    update_task.cancel()
 
 
 def create_app() -> FastAPI:
