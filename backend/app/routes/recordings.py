@@ -7,6 +7,7 @@ from uuid import uuid4
 import aiofiles
 from fastapi import APIRouter, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
+from loguru import logger
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
@@ -447,7 +448,32 @@ async def _save_extract(db, rid: int, data, cfg: dict, lang: str, truncated: boo
         await db.rollback()
         raise HTTPException(409, "ekstraksi bahasa ini sedang dibuat — coba lagi") from exc
     await db.refresh(row)
+    await _index_extract(rid, lang, payload)
     return _extract_out(row)
+
+
+async def _index_extract(rid: int, lang: str, payload: dict) -> None:
+    """Index item extract ke pencarian semantic (Fase 3). Gagal TIDAK
+    menggagalkan ekstraksi: index adalah pelengkap, extract tetap tersimpan
+    dan bisa dicari lewat label. Kegagalan dicatat, bukan senyap."""
+    import asyncio
+
+    from analysis.embeddings import get_embeddings, get_index
+    from store.db import SessionLocal
+
+    async with SessionLocal() as db:
+        rows = (await db.execute(
+            select(models.RecordingLabel).where(models.RecordingLabel.recording_id == rid)
+        )).scalars().all()
+    labels = [r.label for r in rows]
+    try:
+        n = await asyncio.to_thread(
+            get_index().index_extract, rid, lang, payload, labels, get_embeddings()
+        )
+        if n:
+            logger.info("{} item context diindeks (rec={}, lang={})", n, rid, lang)
+    except Exception as exc:
+        logger.warning("index embedding gagal (rec={}): {}", rid, exc)
 
 
 def _annotate_truncated(payload: dict) -> dict:

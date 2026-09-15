@@ -287,6 +287,58 @@ async def label_recording(recording_id: int, labels: list[str]) -> dict:
     return {"ok": True, "recording_id": recording_id, "labels": clean}
 
 
+@_server.tool(
+    name="search_context",
+    description=(
+        "Cari context LINTAS rekaman di arsip berdasarkan makna (semantic search). "
+        "Balikkan item context (kategori + sitasi menit + rekaman) paling relevan "
+        "dengan query. Filter opsional: label & kategori. Contoh: "
+        "'keputusan soal database', 'batasan budget project AI team'."
+    ),
+)
+async def search_context(query: str, label: str | None = None,
+                         category: str | None = None, limit: int = 8) -> dict:
+    if not query.strip():
+        return {"ok": False, "detail": "query kosong"}
+    from analysis.embeddings import get_embeddings, get_index
+
+    idx = get_index()
+    if not idx.items:
+        return {"ok": False, "detail": "index kosong — jalankan ekstraksi context dulu"}
+    try:
+        import asyncio
+        results = await asyncio.to_thread(
+            idx.search, query, get_embeddings(), min(limit, 20), label, category
+        )
+    except Exception as exc:
+        return {"ok": False, "detail": f"pencarian gagal (Ollama hidup?): {exc}"[:300]}
+
+    # Sertakan judul rekaman supaya hasil berdiri sendiri bagi agent.
+    async with SessionLocal() as db:
+        titles = {}
+        for r in results:
+            if r["recording_id"] not in titles:
+                rec = await db.get(models.Recording, r["recording_id"])
+                titles[r["recording_id"]] = rec.title if rec else f"(rekaman #{r['recording_id']})"
+
+    return {
+        "ok": True,
+        "query": query,
+        "count": len(results),
+        "items": [
+            {
+                "recording_id": r["recording_id"],
+                "recording_title": titles[r["recording_id"]],
+                "category": r["category"],
+                "at_ms": r["at_ms"],
+                "text": r["text"],
+                "score": r["score"],
+            }
+            for r in results
+        ],
+    }
+
+
 # --- entrypoint -------------------------------------------------------------
 
 def main() -> None:

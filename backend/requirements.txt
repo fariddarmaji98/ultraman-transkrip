@@ -23,3 +23,5 @@ yt-dlp[default]>=2026.7
 
 # MCP server (Fase 2a, ADR 0017) — context provider untuk AI agent
 mcp>=2
+# Pencarian semantic (Fase 3, ADR 0019)
+numpy>=1.26
