@@ -7,6 +7,9 @@
 > Selaras [ADR 0003](../adr/0003-modular-monolith-not-microservices.md) — fitur tumbuh sebagai
 > modul `analysis/` di atas core transkripsi, bukan layanan terpisah.
 
+> **Status 2026-09-15**: Fase 1 ✅ selesai + QA (ADR 0013, doc fitur `fitur/transcript-as-context/`).
+> Fase 2 digeser ke project AI agent sebagai konsumen context (ADR 0015). Fase 3 menyusul.
+
 ## 1. Ringkasan masalah
 
 Saat ini tiap rekaman adalah pulau: transkrip → ringkasan bebas-format → chat per-rekaman. Pola itu
