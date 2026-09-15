@@ -10,7 +10,8 @@
 
 > **Status 2026-09-15**: Fase 2a ✅ (MCP server + 4 tool, ADR 0017) · Fase 2b ✅ (labeling dua
 > lapis, ADR 0018) — terpasang & teruji di Hermes (`hermes mcp test` 5/5 tools).
-> Fase 3 (`search_context` embedding) menyusul. UI web label manual menyusul.
+> Fase 3 ✅ (`search_context` semantic, ADR 0019 — Ollama nomic-embed-text, index otomatis,
+> terverifikasi lintas-rekaman). UI web label manual ✅. **Semua fase selesai.**
 
 ## 1. Ringkasan keputusan (sudah disetujui user)
 
