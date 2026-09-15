@@ -22,6 +22,8 @@ export default function DownloaderInfo({ downloader }) {
 function label(age, stale) {
   if (age === null || age === undefined) return 'Umur versi tidak terbaca.'
   if (stale)
-    return `Versi berumur ${age} hari — extractor mudah rusak saat situs berubah. Jalankan scripts/update_ytdlp.py lalu restart backend.`
-  return `Versi berumur ${age} hari. Perbarui berkala lewat scripts/update_ytdlp.py.`
+    // Pemeliharaan sudah otomatis (app/updater.py): instruksi manual tidak lagi
+    // relevan untuk pengguna — yang perlu diketahui hanya sedang dikejar otomatis.
+    return `Versi berumur ${age} hari — pembaruan otomatis akan memperbarui saat rilis nightly tersedia.`
+  return `Versi berumur ${age} hari — diperbarui otomatis setiap hari.`
 }

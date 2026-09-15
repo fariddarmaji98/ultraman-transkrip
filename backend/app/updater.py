@@ -98,18 +98,16 @@ async def run_update(force: bool, reason: str) -> None:
             _state["last_result"] = {"ok": True, "version": after, "updated": False}
             logger.info("yt-dlp sudah terbaru ({}, cek {})", after, reason)
             return
-        if _reload():
-            _state["last_result"] = {"ok": True, "version": after, "updated": True}
-            logger.info("yt-dlp {} → {} ({}), dimuat ulang tanpa restart",
-                        before, after, reason)
-        else:
-            # Install sukses tapi reload gagal — versi baru dipakai setelah
-            # restart berikutnya; jangan digaduhkan ke pengguna.
-            _state["last_result"] = {
-                "ok": True, "version": after, "updated": True, "restart_needed": True,
-            }
-            logger.warning("yt-dlp diperbarui ke {} tapi reload gagal — dipakai "
-                           "penuh setelah restart", after)
+        # Versi berubah: proses HARUS lahir ulang untuk memakainya. Reload
+        # modul terbukti tidak cukup — `from yt_dlp import YoutubeDL` di
+        # modul lain tetap memegang referensi lama, /api/config melaporkan
+        # versi basi padahal disk sudah baru. Restart via launcher terjadwal
+        # (Task Scheduler / watchdog) yang idempoten; frontend sudah menampilkan
+        # splashscreen maintenance selama proses ini.
+        _state["last_result"] = {"ok": True, "version": after, "updated": True}
+        logger.info("yt-dlp {} → {} ({}) — menjadwalkan restart backend",
+                    before, after, reason)
+        _request_restart()
     finally:
         _state.update(updating=False, message="")
 
@@ -132,3 +130,21 @@ def _reload() -> bool:
     except Exception as exc:  # reload gagal tidak boleh mematikan server
         logger.warning("reload yt_dlp gagal: {}", exc)
         return False
+
+
+def _request_restart() -> None:
+    """Akhiri proses ini dengan rapi; launcher watchdog membangkitkan ulang.
+
+    Delay memberi waktu respons terakhir terkirim (frontend melihat status
+    selesai) sebelum koneksi ditutup — dan watchdog maks 5 menit kemudian
+    menyalakan backend dengan yt-dlp versi baru.
+    """
+    import threading
+
+    def _exit():
+        import time
+        time.sleep(3)
+        logger.info("keluar untuk memuat yt-dlp baru — watchdog akan memulai ulang")
+        os._exit(0)  # bukan sys.exit: pastikan berhenti walau ada task asyncio
+
+    threading.Thread(target=_exit, daemon=True).start()
