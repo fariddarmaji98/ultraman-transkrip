@@ -196,16 +196,34 @@ async def get_context(recording_id: int, lang: str = DEFAULT_AI_LANGUAGE) -> dic
         summary = srow.text if srow else None
         brief_url = f"/api/recordings/{recording_id}/export?fmt=brief&lang={lang}"
 
+    tags = await _tags_of(recording_id)
     return {
         "ok": True,
         "recording_id": recording_id,
         "title": rec.title,
         "lang": lang,
         "summary": summary,
+        "auto_tags": tags,
         "context": {c: payload.get(c, []) for c in EXTRACT_CATEGORIES},
         "brief_url": brief_url,
         "note": "brief_url relatif ke server transkrip (base http://<host>:8000)",
     }
+
+
+async def _tags_of(recording_id: int) -> list[str]:
+    """Auto-tag + label manual digabung: satu konsep bagi agent."""
+    async with SessionLocal() as db:
+        ex = (await db.execute(
+            select(models.RecordingExtract)
+            .where(models.RecordingExtract.recording_id == recording_id)
+            .order_by(models.RecordingExtract.id.desc())
+        )).scalars().first()
+        tags = json.loads(ex.auto_tags or "[]") if ex else []
+        labels = (await db.execute(
+            select(models.RecordingLabel)
+            .where(models.RecordingLabel.recording_id == recording_id)
+        )).scalars().all()
+    return sorted(set(tags) | {l.label for l in labels})
 
 
 # --- tool: arsip ------------------------------------------------------------
@@ -214,13 +232,23 @@ async def get_context(recording_id: int, lang: str = DEFAULT_AI_LANGUAGE) -> dic
     name="list_recordings",
     description=(
         "Daftar rekaman tersimpan di arsip (hasil ingest manual maupun agent), "
-        "terbaru dulu. Filter opsional per label (Fase 2b) atau status."
+        "terbaru dulu. Filter opsional per label (manual maupun auto-tag) "
+        "atau status."
     ),
 )
-async def list_recordings(status: str | None = None, limit: int = 20) -> dict:
+async def list_recordings(status: str | None = None, label: str | None = None,
+                          limit: int = 20) -> dict:
     q = select(models.Recording).order_by(models.Recording.created_at.desc()).limit(min(limit, 100))
     if status:
         q = q.where(models.Recording.status == status)
+    if label:
+        # Label manual (recording_labels) ATAU auto-tag (recording_extracts):
+        # satu konsep bagi pemanggil, dua sumber di dalam.
+        tagged = select(models.RecordingLabel.recording_id).where(
+            models.RecordingLabel.label == label)
+        auto = select(models.RecordingExtract.recording_id).where(
+            models.RecordingExtract.auto_tags.contains(f'"{label}"'))
+        q = q.where(models.Recording.id.in_(tagged) | models.Recording.id.in_(auto))
     async with SessionLocal() as db:
         rows = (await db.execute(q)).scalars().all()
     return {
@@ -232,6 +260,31 @@ async def list_recordings(status: str | None = None, limit: int = 20) -> dict:
             for r in rows
         ],
     }
+
+
+@_server.tool(
+    name="label_recording",
+    description=(
+        "Set label manual sebuah rekaman (2-4 kata kunci lowercase, mis. "
+        "'project-rok-bot'). PUT-semantik: list baru MENGGANTIKAN label lama. "
+        "Label dipakai memfilter arsip lewat list_recordings(label=...)."
+    ),
+)
+async def label_recording(recording_id: int, labels: list[str]) -> dict:
+    from analysis.extract import ExtractData
+
+    clean = ExtractData.sanitize_topics(labels)
+    async with SessionLocal() as db:
+        rec = await db.get(models.Recording, recording_id)
+        if rec is None:
+            return {"ok": False, "detail": f"rekaman {recording_id} tidak ditemukan"}
+        from sqlalchemy import delete as sa_delete
+        await db.execute(sa_delete(models.RecordingLabel).where(
+            models.RecordingLabel.recording_id == recording_id))
+        for label in clean:
+            db.add(models.RecordingLabel(recording_id=recording_id, label=label))
+        await db.commit()
+    return {"ok": True, "recording_id": recording_id, "labels": clean}
 
 
 # --- entrypoint -------------------------------------------------------------

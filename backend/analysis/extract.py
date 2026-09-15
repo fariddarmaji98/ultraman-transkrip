@@ -30,11 +30,13 @@ from constants import (
 _RULES = (
     "You extract structured facts from a recording transcript to be used as "
     "context for building a project. Every item must come from the transcript; "
-    "invent nothing. Output ONLY valid JSON with exactly these four keys and no "
-    "others: \"decisions\", \"requirements\", \"constraints\", \"open_questions\". "
-    "Each value is an array of objects with \"text\" (string) and \"at_ms\" "
-    "(integer). An empty category is an empty array — that is a valid answer, not "
-    "a failure. No markdown fences, no commentary."
+    "invent nothing. Output ONLY valid JSON with exactly these five keys and no "
+    "others: \"decisions\", \"requirements\", \"constraints\", \"open_questions\", "
+    "and \"topics\". The first four map to arrays of objects with \"text\" (string) "
+    "and \"at_ms\" (integer). \"topics\" is an array of 2-4 short lowercase tags "
+    "(letters, digits, hyphen only) describing what the recording is about — the "
+    "theme, not every noun mentioned. An empty category is an empty array — that "
+    "is a valid answer, not a failure. No markdown fences, no commentary."
 )
 
 _FORMAT = (
@@ -63,13 +65,30 @@ class ExtractItem(BaseModel):
 
 
 class ExtractData(BaseModel):
-    """Empat kategori kunci ekstraksi. Kategori hilang di-backfill `[]` oleh
-    pydantic — itu jawaban sah, bukan error; item rusak = ValidationError."""
+    """Empat kategori kunci ekstraksi + topik. Kategori hilang di-backfill `[]` oleh
+    pydantic — itu jawaban sah, bukan error; item rusak = ValidationError.
 
+    `topics` = auto-tag LLM (ADR 0018): 0–4 tag pendek lowercase, dibersihkan
+    dari karakter asing di validator — bukan alasan gagal."""
     decisions: list[ExtractItem] = []
     requirements: list[ExtractItem] = []
     constraints: list[ExtractItem] = []
     open_questions: list[ExtractItem] = []
+    topics: list[str] = []
+
+    @staticmethod
+    def sanitize_topics(raw: list) -> list[str]:
+        """Tag wajar: lowercase, huruf-angka-hyfen, maks 32 char, maks 4 buah.
+        Tag menyimpang dibuang, bukan menggagalkan ekstraksi — topik adalah
+        pelengkap, bukan kontrak inti."""
+        out: list[str] = []
+        for t in raw:
+            if not isinstance(t, str):
+                continue
+            tag = t.strip().lower()[:32]
+            if tag and all(c.isalnum() or c == "-" for c in tag) and tag not in out:
+                out.append(tag)
+        return out[:4]
 
     def items(self, category: str) -> list[ExtractItem]:
         return getattr(self, category)
@@ -85,13 +104,17 @@ async def extract(segments, llm, lang: str = DEFAULT_AI_LANGUAGE) -> tuple[Extra
         raise LLMError("transkrip kosong — tidak ada yang bisa diekstrak")
     chunks, truncated = _split("\n".join(lines))
     merged: dict[str, list[ExtractItem]] = {c: [] for c in EXTRACT_CATEGORIES}
+    topics: list[str] = []
     for chunk in chunks:
         data = _parse(await llm.complete(_ask(chunk, lang)))
         for cat in EXTRACT_CATEGORIES:
             merged[cat].extend(data.items(cat))
+        for t in data.topics:
+            if t not in topics:
+                topics.append(t)
     for cat in EXTRACT_CATEGORIES:
         merged[cat] = _dedup(merged[cat])
-    return ExtractData(**merged), truncated
+    return ExtractData(topics=topics[:4], **merged), truncated
 
 
 def _parse(raw: str) -> ExtractData:
@@ -105,9 +128,10 @@ def _parse(raw: str) -> ExtractData:
         raise LLMError("format balikan LLM tidak berupa objek JSON")
     # Kunci asing tidak boleh lolos diam-diam: ekstraksi yang membawa kategori
     # tak dikenal adalah gejala prompt menyimpang, bukan data yang layak dipakai.
-    unknown = set(obj) - set(EXTRACT_CATEGORIES)
+    unknown = set(obj) - set(EXTRACT_CATEGORIES) - {"topics"}
     if unknown:
         raise LLMError(f"kategori tak dikenal dari LLM: {sorted(unknown)}")
+    obj["topics"] = ExtractData.sanitize_topics(obj.get("topics") or [])
     try:
         return ExtractData.model_validate(obj)
     except ValidationError as exc:

@@ -63,6 +63,9 @@ class Recording(Base):
     extracts: Mapped[list["RecordingExtract"]] = relationship(
         back_populates="recording", cascade="all, delete-orphan"
     )
+    labels: Mapped[list["RecordingLabel"]] = relationship(
+        back_populates="recording", cascade="all, delete-orphan"
+    )
 
 
 class Job(Base):
@@ -148,6 +151,10 @@ class RecordingExtract(Base):
 
     `lang` = bahasa TULISAN hasil ekstraksi (pola `summaries`), unik per
     `(recording_id, lang)` supaya "buat ulang" menimpa baris yang jelas.
+
+    `auto_tags` = topik dari LLM saat ekstraksi (ADR 0018) — dipisah kolom dari
+    `data` karena pemakainya berbeda: `data` dikonsumsi utuh per bahasa,
+    `auto_tags` dipakai untuk filter lintas-rekaman dan tidak berbahasa.
     """
 
     __tablename__ = "recording_extracts"
@@ -159,11 +166,33 @@ class RecordingExtract(Base):
     recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
     lang: Mapped[str] = mapped_column(String(16), default=DEFAULT_AI_LANGUAGE)
     data: Mapped[str] = mapped_column(Text)
+    auto_tags: Mapped[str] = mapped_column(Text, default="[]")
     provider: Mapped[str] = mapped_column(String(32))
     model: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
     recording: Mapped["Recording"] = relationship(back_populates="extracts")
+
+
+class RecordingLabel(Base):
+    """Label manual satu rekaman (ADR 0018) — bebas-string, banyak-ke-banyak.
+
+    Label project user bertambah terus; katalog justru menghambat. Unik per
+    (recording_id, label) supaya menambah label yang sama dua kali tidak
+    menduplikasi baris. Dihapus cascade bersama recording.
+    """
+
+    __tablename__ = "recording_labels"
+    __table_args__ = (
+        UniqueConstraint("recording_id", "label", name="uq_reclabel_rec_label"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recording_id: Mapped[int] = mapped_column(ForeignKey("recordings.id"))
+    label: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+    recording: Mapped["Recording"] = relationship(back_populates="labels")
 
 
 class SegmentTranslation(Base):

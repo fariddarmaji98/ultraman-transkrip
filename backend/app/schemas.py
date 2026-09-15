@@ -78,9 +78,17 @@ class ExtractOut(BaseModel):
     requirements: list[ExtractItemOut]
     constraints: list[ExtractItemOut]
     open_questions: list[ExtractItemOut]
+    auto_tags: list[str] = []   # topik dari LLM (ADR 0018)
+    labels: list[str] = []      # label manual user (ADR 0018)
     provider: str
     model: str
     created_at: datetime
+
+
+class LabelsIn(BaseModel):
+    """Body PUT /recordings/{rid}/labels — list baru menggantikan seluruhnya."""
+
+    labels: list[str]
 
 
 class ChatMessageOut(BaseModel):
@@ -103,6 +111,7 @@ class RecordingDetail(RecordingOut):
     segments: list[SegmentOut]
     summary: SummaryOut | None = None
     extract: "ExtractOut | None" = None
+    labels: list[str] = []
 
 
 class JobOut(BaseModel):

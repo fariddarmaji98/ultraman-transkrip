@@ -19,6 +19,7 @@ from app.schemas import (
     ExtractItemOut,
     ExtractOut,
     FromUrlIn,
+    LabelsIn,
     RecordingDetail,
     RecordingOut,
     RenameIn,
@@ -109,7 +110,10 @@ async def get_recording(rid: int, db: DbDep, lang: LangQ = DEFAULT_AI_LANGUAGE) 
     progress = await _progress_of(db, rid)
     summary = await _summary_of(db, rid, _checked(lang))
     extract = await _extract_of(db, rid, _checked(lang))
-    return _to_detail(rec, segments, progress, summary, extract)
+    labels = _labels_of_sync((await db.execute(
+        select(models.RecordingLabel).where(models.RecordingLabel.recording_id == rid)
+    )).scalars().all())
+    return _to_detail(rec, segments, progress, summary, extract, labels)
 
 
 @router.post("/recordings/{rid}/summarize", response_model=SummaryOut)
@@ -140,6 +144,36 @@ async def extract_recording(
     _reject_if_llm_unset(cfg)
     data, truncated = await _run_extract(segments, cfg, _checked(lang))
     return await _save_extract(db, rid, data, cfg, lang, truncated)
+
+
+@router.get("/recordings/{rid}/labels", response_model=list[str])
+async def list_labels(rid: int, db: DbDep) -> list[str]:
+    await _get_or_404(db, rid)
+    rows = (await db.execute(
+        select(models.RecordingLabel)
+        .where(models.RecordingLabel.recording_id == rid)
+        .order_by(models.RecordingLabel.label)
+    )).scalars().all()
+    return [r.label for r in rows]
+
+
+@router.put("/recordings/{rid}/labels")
+async def set_labels(rid: int, db: DbDep, body: LabelsIn) -> list[str]:
+    """Ganti seluruh label manual rekaman (PUT semantik: list baru menggantikan).
+
+    Label dinormalkan seperti auto-tag (lowercase, alnum+hyfen, maks 32) supaya
+    filter pencarian tidak pecah karena variasi ejaan."""
+    from analysis.extract import ExtractData
+
+    await _get_or_404(db, rid)
+    clean = ExtractData.sanitize_topics(body.labels)
+    await db.execute(
+        delete(models.RecordingLabel).where(models.RecordingLabel.recording_id == rid)
+    )
+    for label in clean:
+        db.add(models.RecordingLabel(recording_id=rid, label=label))
+    await db.commit()
+    return clean
 
 
 @router.get("/recordings/{rid}/chat", response_model=list[ChatMessageOut])
@@ -394,6 +428,7 @@ async def _save_extract(db, rid: int, data, cfg: dict, lang: str, truncated: boo
     payload = data.model_dump()
     if truncated:
         payload = _annotate_truncated(payload)
+    auto_tags = _json.dumps(data.topics, ensure_ascii=False)
     await db.execute(
         delete(models.RecordingExtract).where(
             models.RecordingExtract.recording_id == rid,
@@ -402,6 +437,7 @@ async def _save_extract(db, rid: int, data, cfg: dict, lang: str, truncated: boo
     )
     row = models.RecordingExtract(
         recording_id=rid, lang=lang, data=_json.dumps(payload, ensure_ascii=False),
+        auto_tags=auto_tags,
         provider=cfg["provider"], model=cfg["model"],
     )
     db.add(row)
@@ -676,18 +712,25 @@ def _extract_out(row: models.RecordingExtract) -> ExtractOut:
     import json as _json
 
     payload = _json.loads(row.data)
+    tags = _json.loads(row.auto_tags or "[]")
     return ExtractOut(
         recording_id=row.recording_id, lang=row.lang,
         decisions=[ExtractItemOut(**i) for i in payload.get("decisions", [])],
         requirements=[ExtractItemOut(**i) for i in payload.get("requirements", [])],
         constraints=[ExtractItemOut(**i) for i in payload.get("constraints", [])],
         open_questions=[ExtractItemOut(**i) for i in payload.get("open_questions", [])],
+        auto_tags=tags,
         provider=row.provider, model=row.model, created_at=row.created_at,
     )
 
 
-def _to_detail(rec, segments, progress: int, summary, extract=None) -> RecordingDetail:
-    return RecordingDetail(
+def _labels_of_sync(rows) -> list[str]:
+    return sorted({r.label for r in rows})
+
+
+def _to_detail(rec, segments, progress: int, summary, extract=None,
+               labels: list[str] | None = None) -> RecordingDetail:
+    out = RecordingDetail(
         id=rec.id, title=rec.title, source_filename=rec.source_filename,
         source_kind=rec.source_kind, source_url=rec.source_url,
         status=rec.status, duration_ms=rec.duration_ms, language=rec.language,
@@ -698,7 +741,9 @@ def _to_detail(rec, segments, progress: int, summary, extract=None) -> Recording
         segments=[SegmentOut.model_validate(s) for s in segments],
         summary=SummaryOut.model_validate(summary) if summary else None,
         extract=_extract_out(extract) if extract else None,
+        labels=labels or [],
     )
+    return out
 
 
 def _remove_files(rec) -> None:
