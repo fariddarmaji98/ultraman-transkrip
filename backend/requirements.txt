@@ -20,3 +20,6 @@ httpx>=0.27               # provider Groq + adapter LLM OpenAI-compatible (analy
 # Channel NIGHTLY wajib: extractor rusak tiap situs berubah — update rutin, bukan opsional.
 #   uv pip install -U --prerelease=allow "yt-dlp[default]"
 yt-dlp[default]>=2026.7
+
+# MCP server (Fase 2a, ADR 0017) — context provider untuk AI agent
+mcp>=2
