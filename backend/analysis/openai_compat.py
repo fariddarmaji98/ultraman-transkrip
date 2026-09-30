@@ -3,6 +3,8 @@
 Satu adapter melayani Ollama lokal, Groq, DeepSeek, Claude, dan OpenAI — yang
 berbeda hanya base_url + kunci. Menambah provider = entri di `constants`.
 """
+import json
+
 import httpx
 
 from constants import LLM_TIMEOUT_S
@@ -84,7 +86,10 @@ class OpenAICompatProvider:
             raise LLMError(f"tidak bisa menghubungi {self.base_url}") from exc
         if res.status_code >= 400:
             raise LLMError(_error_of(res))
-        return res.json()
+        data = _safe_json(res)
+        if not isinstance(data, dict):
+            raise LLMError("respons LLM tidak sesuai format OpenAI")
+        return data
 
 
 def _error_of(res: httpx.Response) -> str:
@@ -95,12 +100,35 @@ def _error_of(res: httpx.Response) -> str:
     elif res.status_code == 404:
         fallback += " — model tidak ditemukan di provider ini"
     try:
-        err = res.json().get("error")
+        data = _safe_json(res)
     except ValueError:
         return fallback
-    if isinstance(err, dict):
-        return err.get("message") or fallback
-    return str(err) if err else fallback
+    if isinstance(data, dict):
+        err = data.get("error")
+        if isinstance(err, dict):
+            return err.get("message") or fallback
+        if err:
+            return str(err)
+    return fallback
+
+
+def _safe_json(res: httpx.Response) -> dict | list:
+    """Parse response JSON; kalau body mengandung lebih dari satu JSON object
+    (contoh: proxy error concatenate dua response), ambil object pertama.
+    """
+    text = res.text.strip()
+    try:
+        return res.json()
+    except ValueError:
+        pass
+    if not text:
+        raise ValueError("response body kosong")
+    decoder = json.JSONDecoder()
+    try:
+        obj, _idx = decoder.raw_decode(text)
+        return obj
+    except ValueError as exc:
+        raise ValueError(f"response bukan JSON valid: {text[:200]}") from exc
 
 
 def _content_of(data: dict) -> str:
