@@ -39,6 +39,8 @@ async def test_llm(body: LlmIn) -> dict:
         await provider.ping()
     except LLMError as exc:
         return {"ok": False, "detail": str(exc)}
+    except Exception as exc:
+        return {"ok": False, "detail": f"error tak terduga: {type(exc).__name__}: {exc}"}
     return {"ok": True, "detail": f"{provider.model} merespons"}
 
 
