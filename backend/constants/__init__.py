@@ -9,6 +9,7 @@ JOB_FAILED = "failed"
 JOB_DOWNLOADING = "downloading"  # sedang diunduh dari URL
 JOB_DOWNLOADED = "downloaded"    # file siap, belum ditranskrip (terminal sampai user minta)
 JOB_RECORDING = "recording"      # sesi meeting berjalan; ekstensi masih mengirim potongan
+JOB_PAUSED = "paused"            # transkrip dijeda — sebagian segmen sudah tersimpan
 
 # TIGA himpunan berbeda — jangan disatukan. Tiap pemakai butuh jawaban berbeda
 # untuk pertanyaan "sedang sibuk?", dan menyatukannya pernah jadi jebakan.
@@ -19,7 +20,7 @@ JOB_RECORDING = "recording"      # sesi meeting berjalan; ekstensi masih mengiri
 #   guard tombol transkrip: semua yang sedang berjalan, termasuk `recording`.
 #   guard ganti model ASR : hanya yang benar-benar memakai Whisper.
 ACTIVE_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING, JOB_DOWNLOADING)
-NOT_TRANSCRIBABLE_STATUSES = ACTIVE_STATUSES + (JOB_RECORDING,)
+NOT_TRANSCRIBABLE_STATUSES = ACTIVE_STATUSES + (JOB_RECORDING, JOB_PAUSED)
 TRANSCRIBE_BUSY_STATUSES = (JOB_QUEUED, JOB_EXTRACTING, JOB_TRANSCRIBING)
 
 # Jenis job & asal rekaman

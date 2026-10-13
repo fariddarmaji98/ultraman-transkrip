@@ -19,6 +19,7 @@ import analysis
 from analysis.translate import translate_segments
 from app.config import settings
 from asr import get_provider
+from asr.base import Segment
 from capture import get_source
 from constants import (
     FETCH_GAP_MAX_S,
@@ -31,6 +32,7 @@ from constants import (
     JOB_KIND_FETCH,
     JOB_KIND_TRANSCRIBE,
     JOB_KIND_TRANSLATE,
+    JOB_PAUSED,
     JOB_TRANSCRIBING,
     JOB_TRANSLATING,
     LANGUAGE_AUTO,
@@ -38,6 +40,7 @@ from constants import (
 from media.ffmpeg import extract_audio
 from store import models
 from store.db import SessionLocal
+from worker.pause import is_paused as _is_paused, clear_pause as _clear_pause
 
 
 async def run_fetch(recording_id: int) -> None:
@@ -59,8 +62,14 @@ async def run_transcribe(recording_id: int) -> None:
         if rec is None or job is None:
             return
         try:
-            await _extract(db, rec, job)
-            await _transcribe(db, rec, job)
+            # Resume: jika ada segmen parsial (status paused), skip extract
+            # dan lanjut transkrip dari segmen terakhir.
+            if rec.status == JOB_PAUSED:
+                _clear_pause(recording_id)
+                await _transcribe_resume(db, rec, job)
+            else:
+                await _extract(db, rec, job)
+                await _transcribe(db, rec, job)
             await _set(db, rec, job, JOB_DONE, 100)
         except Exception as exc:  # noqa: BLE001 — semua kegagalan job -> failed
             logger.exception("transkrip gagal recording={}", recording_id)
@@ -207,16 +216,65 @@ async def _transcribe(db, rec, job) -> None:
         result = await asyncio.to_thread(
             provider.transcribe, Path(rec.media_path), rec.language,
             lambda p: holder.__setitem__("pct", p),
+            lambda: _is_paused(rec.id),
         )
     finally:
         poller.cancel()
         await _await_cancel(poller)
-    # Jangan menimpa nilai lama dengan None: transkrip ulang dengan bahasa yang
-    # dipilih manual tidak melaporkan deteksi, dan itu bukan alasan menghapus
-    # fakta yang sudah pernah diketahui.
     if result.language:
         rec.detected_language = result.language
-    await _save_segments(db, rec.id, result.segments)
+    if _is_paused(rec.id):
+        await _save_segments_partial(db, rec.id, result.segments)
+        await _set(db, rec, job, JOB_PAUSED, job.progress)
+        logger.info("transkrip dijeda recording={} segmen={}", rec.id, len(result.segments))
+    else:
+        await _save_segments(db, rec.id, result.segments)
+
+
+async def _transcribe_resume(db, rec, job) -> None:
+    """Lanjut transkrip dari segmen terakhir yang tersimpan.
+
+    faster-whisper tidak support seek-to-segment, jadi transkrip ulang full
+    tapi skip segmen yang sudah ada dan simpan sisanya. Progress dimulai dari
+    nilai saat pause.
+    """
+    existing = await _ordered_segments(db, rec.id)
+    skip_n = len(existing)
+    if skip_n == 0:
+        # Tidak ada segmen parsial — mulai dari extract
+        await _extract(db, rec, job)
+        await _transcribe(db, rec, job)
+        return
+    await _set(db, rec, job, JOB_TRANSCRIBING, job.progress)
+    provider = get_provider()
+    holder = {"pct": job.progress}
+    poller = asyncio.create_task(_poll(db, rec, job, holder, JOB_TRANSCRIBING))
+    try:
+        result = await asyncio.to_thread(
+            provider.transcribe, Path(rec.media_path), rec.language,
+            lambda p: holder.__setitem__("pct", p),
+            lambda: _is_paused(rec.id),
+        )
+    finally:
+        poller.cancel()
+        await _await_cancel(poller)
+    # Ambil segmen setelah yang sudah ada, reindex dari skip_n
+    new_segments = result.segments[skip_n:]
+    if result.language:
+        rec.detected_language = result.language
+    if _is_paused(rec.id):
+        # Pause kedua kali: simpan segmen baru sebagai kelanjutan
+        await _append_segments(db, rec.id, new_segments, skip_n)
+        await _set(db, rec, job, JOB_PAUSED, job.progress)
+        logger.info("transkrip dijeda recording={} segmen baru={}", rec.id, len(new_segments))
+    else:
+        # Selesai: simpan ulang semua (lama + baru)
+        all_segments = list(existing) + [
+            Segment(idx=skip_n + i, start_ms=s.start_ms, end_ms=s.end_ms,
+                    text=s.text, speaker=s.speaker)
+            for i, s in enumerate(new_segments)
+        ]
+        await _save_segments(db, rec.id, all_segments)
 
 
 async def _poll(db, rec, job, holder, status: str) -> None:
@@ -244,6 +302,48 @@ async def _save_segments(db, recording_id: int, segments) -> None:
             end_ms=s.end_ms, text=s.text, speaker=s.speaker,
         )
         for s in segments
+    ])
+    await db.commit()
+
+
+async def _save_segments_partial(db, recording_id: int, segments) -> None:
+    """Pause: hapus segmen dengan idx >= len(segments) yang sudah ada, lalu
+    upsert segmen baru. Segmen lama di bawah idx tetap."""
+    if not segments:
+        return
+    max_idx = max(s.idx for s in segments)
+    await db.execute(
+        delete(models.Segment).where(
+            models.Segment.recording_id == recording_id,
+            models.Segment.idx >= len(segments),
+        )
+    )
+    # Hapus segmen duplikat dengan idx yang sama lalu tambah ulang
+    existing_idxs = {s.idx for s in segments}
+    await db.execute(
+        delete(models.Segment).where(
+            models.Segment.recording_id == recording_id,
+            models.Segment.idx.in_(existing_idxs),
+        )
+    )
+    db.add_all([
+        models.Segment(
+            recording_id=recording_id, idx=s.idx, start_ms=s.start_ms,
+            end_ms=s.end_ms, text=s.text, speaker=s.speaker,
+        )
+        for s in segments
+    ])
+    await db.commit()
+
+
+async def _append_segments(db, recording_id: int, segments, offset: int) -> None:
+    """Tambah segmen baru setelah offset (pause kedua kali)."""
+    db.add_all([
+        models.Segment(
+            recording_id=recording_id, idx=offset + i, start_ms=s.start_ms,
+            end_ms=s.end_ms, text=s.text, speaker=s.speaker,
+        )
+        for i, s in enumerate(segments)
     ])
     await db.commit()
 

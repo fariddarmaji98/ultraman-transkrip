@@ -37,15 +37,15 @@ export default function App() {
     }
   }, [])
 
-  // Selama ada unduhan/transkrip berjalan, segarkan daftar supaya progres di
-  // sidebar ikut bergerak. Bergantung pada boolean, bukan array — agar interval
-  // tidak dibuat ulang tiap kali data datang.
+  // Selama ada unduhan/transkrip berjalan atau dijeda, segarkan daftar supaya
+  // progres di sidebar ikut bergerak. Bergantung pada boolean, bukan array.
   const busy = recordings.some(isActive)
+  const hasPaused = recordings.some((r) => r.status === 'paused')
   useEffect(() => {
-    if (!busy) return
+    if (!busy && !hasPaused) return
     const timer = setInterval(refresh, 2000)
     return () => clearInterval(timer)
-  }, [busy, refresh])
+  }, [busy, hasPaused, refresh])
 
   async function handleNew(res) {
     await refresh()

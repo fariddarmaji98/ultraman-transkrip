@@ -43,8 +43,11 @@ export function fmtBytes(n) {
 const ACTIVE = ['queued', 'extracting', 'transcribing', 'downloading']
 // Status khas unduhan: belum masuk pipeline transkrip sama sekali.
 const DOWNLOAD_ONLY = ['downloading', 'downloaded']
+// Status dijeda — tidak aktif tapi bukan selesai/gagal.
+const PAUSED = ['paused']
 
 export const isActive = (rec) => ACTIVE.includes(rec.status)
+export const isPaused = (rec) => PAUSED.includes(rec.status)
 export const isDownload = (rec) => rec.source_kind === 'url'
 export const inTranscriptPhase = (rec) => !DOWNLOAD_ONLY.includes(rec.status)
 

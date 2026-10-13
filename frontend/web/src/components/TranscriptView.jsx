@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { getRecording, getTranslation, sourceUrl, startTranscribe, startTranslate } from '../api'
+import { getRecording, getTranslation, sourceUrl, startTranscribe, startTranslate, pauseTranscribe, resumeTranscribe, listRecordings } from '../api'
 import { currentSegment, isVideo, nearestSegment } from '../utils'
+import ConfirmModal from './ConfirmModal'
 import TranscriptHeader from './TranscriptHeader'
 import SegmentList from './SegmentList'
 import ProgressSteps from './ProgressSteps'
@@ -16,7 +17,7 @@ import TranscriptLangBar, { ASLI } from './TranscriptLangBar'
 const DEFAULT_AI_LANG = 'id'
 const TRANSCRIBING = ['queued', 'extracting', 'transcribing']
 const RUNNING = ['queued', 'translating']   // job terjemahan yang masih jalan
-const PENDING = [...TRANSCRIBING, 'downloading']  // masih berjalan -> terus di-poll
+const PENDING = [...TRANSCRIBING, 'downloading', 'paused']  // masih berjalan/dijeda -> terus di-poll
 const SOURCE_W = { key: 'source-width', min: 360, max: 900, initial: 560, handleSide: 'left' }
 const SCROLL_MS = 420  // durasi animasi gulir ke segmen tujuan
 const PHASE = {
@@ -24,6 +25,7 @@ const PHASE = {
   extracting: 'Mengekstrak audio…',
   transcribing: 'Mentranskripsi…',
   downloading: 'Mengunduh video…',
+  paused: 'Dijeda',
 }
 
 export default function TranscriptView({ id, languages, onDone, onClose }) {
@@ -99,13 +101,56 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
     onDoneRef.current?.()
   }
 
+  const [showPauseConfirm, setShowPauseConfirm] = useState(false)
+
   async function transcribe() {
     setError(null)
+    // Cek apakah ada transkrip lain sedang berjalan
+    const all = await listRecordings()
+    const busyOther = all.find((r) => TRANSCRIBING.includes(r.status) && r.id !== id)
+    if (busyOther) {
+      setShowPauseConfirm(true)
+      return
+    }
     try {
-      // Jangan pasang balasan POST ke state: bentuknya RecordingOut (tanpa
-      // `segments`), sedangkan komponen ini butuh RecordingDetail. Cukup mulai
-      // ulang polling — tick() langsung mengambil detail yang utuh.
       await startTranscribe(id)
+      setRound((n) => n + 1)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function confirmPauseAndTranscribe() {
+    setShowPauseConfirm(false)
+    setError(null)
+    try {
+      // Pause semua transkrip berjalan, lalu mulai yang baru
+      const all = await listRecordings()
+      await Promise.all(
+        all.filter((r) => TRANSCRIBING.includes(r.status) && r.id !== id)
+           .map((r) => pauseTranscribe(r.id))
+      )
+      await startTranscribe(id)
+      setRound((n) => n + 1)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function pauseCurrent() {
+    setError(null)
+    try {
+      await pauseTranscribe(id)
+      setRound((n) => n + 1)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function resumeCurrent() {
+    setError(null)
+    try {
+      await resumeTranscribe(id)
       setRound((n) => n + 1)
     } catch (err) {
       setError(err.message)
@@ -114,27 +159,40 @@ export default function TranscriptView({ id, languages, onDone, onClose }) {
 
   if (!rec) return <p className="p-6 text-fg3">Memuat…</p>
   return (
-    <Detail
-      rec={rec}
-      languages={languages}
-      lang={aiLang}
-      tlang={tlang}
-      trans={trans}
-      tError={tError}
-      onTlang={setLang}
-      onTranslate={translate}
-      error={error}
-      onTranscribe={transcribe}
-      onRefresh={() => setRound((n) => n + 1)}
-      onTitleChange={applyTitle}
-      onClose={onClose}
-    />
+    <>
+      {showPauseConfirm && (
+        <ConfirmModal
+          title="Hentikan transkrip berjalan?"
+          message="Transkrip yang sedang berjalan akan dijeda. Segmen yang sudah selesai tersimpan dan bisa dilanjutkan nanti."
+          confirmLabel="Jeda & mulai baru"
+          onConfirm={confirmPauseAndTranscribe}
+          onCancel={() => setShowPauseConfirm(false)}
+        />
+      )}
+      <Detail
+        rec={rec}
+        languages={languages}
+        lang={aiLang}
+        tlang={tlang}
+        trans={trans}
+        tError={tError}
+        onTlang={setLang}
+        onTranslate={translate}
+        error={error}
+        onTranscribe={transcribe}
+        onPause={pauseCurrent}
+        onResume={resumeCurrent}
+        onRefresh={() => setRound((n) => n + 1)}
+        onTitleChange={applyTitle}
+        onClose={onClose}
+      />
+    </>
   )
 }
 
 function Detail({
   rec, languages, lang, tlang, trans, tError, onTlang, onTranslate,
-  error, onTranscribe, onRefresh, onTitleChange, onClose,
+  error, onTranscribe, onPause, onResume, onRefresh, onTitleChange, onClose,
 }) {
   const mediaRef = useRef(null)
   const scrollRef = useRef(null)
@@ -194,6 +252,8 @@ function Detail({
           onBanding={setBanding}
           error={error}
           onTranscribe={onTranscribe}
+          onPause={onPause}
+          onResume={onResume}
           mediaRef={mediaRef}
           scrollRef={scrollRef}
           activeIdx={activeIdx}
@@ -246,7 +306,7 @@ function glideTo(el, jauh) {
 
 function SourcePanel({
   rec, languages, tlang, trans, tError, onTlang, onTranslate, banding, onBanding,
-  error, onTranscribe, mediaRef, scrollRef, activeIdx, onTime, onSeek,
+  error, onTranscribe, onPause, onResume, mediaRef, scrollRef, activeIdx, onTime, onSeek,
 }) {
   const { width, dragging, handlers } = usePanelWidth(SOURCE_W)
   return (
@@ -277,7 +337,18 @@ function SourcePanel({
           <>
             <ProgressSteps status={rec.status} />
             <ProgressBar status={rec.status} progress={rec.progress} />
+            {onPause && (
+              <button
+                onClick={onPause}
+                className="mt-3 rounded-lg border border-amber-400/40 px-3 py-2 text-xs font-medium text-amber-400 transition hover:bg-amber-400/10"
+              >
+                Jeda transkrip
+              </button>
+            )}
           </>
+        )}
+        {rec.status === 'paused' && (
+          <PausedCard progress={rec.progress} onResume={onResume} error={error} />
         )}
         {rec.status === 'failed' && (
           <p className="text-red-400">Gagal diproses. Cek pesan error, lalu coba lagi.</p>
@@ -361,6 +432,27 @@ function DownloadedCard({ onTranscribe, error }) {
       >
         Transkrip sekarang
       </button>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+    </div>
+  )
+}
+
+function PausedCard({ progress, onResume, error }) {
+  return (
+    <div className="mb-5 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
+      <p className="text-sm font-medium text-amber-400">Transkrip dijeda</p>
+      <p className="mt-1 text-xs leading-relaxed text-fg3">
+        Segmen yang sudah ditranskrip tersimpan. Lanjutkan kapan saja.
+      </p>
+      <div className="mt-2 text-xs text-fg3 tabular-nums">{progress}% selesai</div>
+      {onResume && (
+        <button
+          onClick={onResume}
+          className="mt-3 rounded-lg bg-mint px-3 py-2 text-xs font-semibold text-canvas transition hover:bg-mint2"
+        >
+          Lanjutkan transkrip
+        </button>
+      )}
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
     </div>
   )

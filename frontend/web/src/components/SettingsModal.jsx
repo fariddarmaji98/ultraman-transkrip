@@ -1,10 +1,57 @@
-// Popup setelan mesin AI (ringkasan & chat): pilih provider lokal atau API.
+// Popup setelan general: 2 tab — Mesin AI (ringkasan & chat) + Unduhan (mesin unduh, cookies, penyimpanan).
 // Kunci API hanya dikirim ke backend — nilainya tidak pernah dibaca balik.
 import { useEffect, useState } from 'react'
-import { forgetLlmKey, getLlm, listLlmModels, setLlm, testLlm } from '../api'
+import { forgetLlmKey, getLlm, getStorage, listLlmModels, setLlm, testLlm } from '../api'
 import ConfirmModal from './ConfirmModal'
+import CookiesPanel from './CookiesPanel'
+import DownloaderInfo from './DownloaderInfo'
+import StorageInfo from './StorageInfo'
 
-export default function SettingsModal({ onClose }) {
+export default function SettingsModal({ config, recordings, onClose }) {
+  const [tab, setTab] = useState('ai')
+  return (
+    <Shell onClose={onClose}>
+      <div className="mb-4 flex gap-1 border-b border-edge">
+        <TabButton active={tab === 'ai'} onClick={() => setTab('ai')}>Mesin AI</TabButton>
+        <TabButton active={tab === 'unduh'} onClick={() => setTab('unduh')}>Unduhan</TabButton>
+      </div>
+      {tab === 'ai' ? (
+        <AiTab onClose={onClose} />
+      ) : (
+        <UnduhTab config={config} recordings={recordings} />
+      )}
+    </Shell>
+  )
+}
+
+function TabButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`-mb-px border-b-2 px-3 py-2 text-xs font-medium transition ${
+        active ? 'border-mint text-mint' : 'border-transparent text-fg3 hover:text-fg'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function UnduhTab({ config, recordings }) {
+  const [storage, setStorage] = useState(null)
+  const key = (recordings ?? []).map((r) => `${r.id}:${r.status}`).join(',')
+  useEffect(() => {
+    getStorage().then(setStorage).catch(() => {})
+  }, [key])
+  return (
+    <div className="space-y-4">
+      <DownloaderInfo downloader={config?.downloader} />
+      <CookiesPanel />
+      <StorageInfo storage={storage} />
+    </div>
+  )
+}
+function AiTab({ onClose }) {
   const [cfg, setCfg] = useState(null)
   const [form, setForm] = useState({ provider: '', model: '', api_key: '', base_url: '' })
   const [test, setTest] = useState(null)
@@ -56,7 +103,7 @@ export default function SettingsModal({ onClose }) {
 
   const active = cfg?.providers.find((p) => p.id === form.provider)
   return (
-    <Shell onClose={onClose}>
+    <>
       {!cfg ? (
         <p className="py-6 text-sm text-fg3">Memuat setelan…</p>
       ) : (
@@ -124,7 +171,7 @@ export default function SettingsModal({ onClose }) {
           />
         </>
       )}
-    </Shell>
+    </>
   )
 }
 
@@ -133,13 +180,11 @@ function Shell({ children, onClose }) {
     <div className="relative z-30" role="dialog" aria-modal="true">
       <div className="fixed inset-0 bg-black/60" onClick={onClose} />
       <div className="fixed inset-0 z-30 flex min-h-full items-center justify-center p-4">
-        <div className="relative w-full max-w-lg rounded-xl border border-edge bg-panel p-6 shadow-2xl">
-          <h3 className="text-base font-semibold text-fg">Mesin AI</h3>
-          <p className="mb-4 mt-1 text-xs text-fg3">
-            Dipakai untuk ringkasan dan chat transkrip. Transkripsi tetap memakai engine di panel
-            Engine.
-          </p>
-          {children}
+        <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border border-edge bg-panel p-6 shadow-2xl">
+          <h3 className="text-base font-semibold text-fg">Setelan general</h3>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {children}
+          </div>
         </div>
       </div>
     </div>

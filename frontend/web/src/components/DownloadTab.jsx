@@ -1,18 +1,12 @@
-// Isi tab Unduh: tempel URL + arsip video hasil unduhan + pemakaian disk.
-// Hasil unduhan tetap tinggal di sini walau sudah ditranskrip (planning §11).
-import { useEffect, useState } from 'react'
-import { getStorage } from '../api'
+// Isi tab Unduh: tempel URL + arsip video hasil unduhan.
+// Setelan mesin unduh, cookies, dan penyimpanan dipindah ke popup Setelan.
 import { isDownload } from '../utils'
-import CookiesPanel from './CookiesPanel'
-import DownloaderInfo from './DownloaderInfo'
 import RecordingList from './RecordingList'
 import SectionLabel from './SectionLabel'
-import StorageInfo from './StorageInfo'
 import UrlForm from './UrlForm'
 
 export default function DownloadTab({
   recordings,
-  config,
   selectedId,
   onSelect,
   onChanged,
@@ -20,13 +14,9 @@ export default function DownloadTab({
   onCreated,
 }) {
   const items = recordings.filter(isDownload)
-  const storage = useStorage(items)
   return (
     <>
       <UrlForm onCreated={onCreated} />
-      <DownloaderInfo downloader={config?.downloader} />
-      <CookiesPanel />
-      <StorageInfo storage={storage} />
       <div>
         <SectionLabel>Video terunduh</SectionLabel>
         <RecordingList
@@ -43,14 +33,4 @@ export default function DownloadTab({
       </div>
     </>
   )
-}
-
-// Muat ulang angka disk hanya saat daftar/status unduhan berubah — bukan tiap poll.
-function useStorage(items) {
-  const [storage, setStorage] = useState(null)
-  const key = items.map((r) => `${r.id}:${r.status}`).join(',')
-  useEffect(() => {
-    getStorage().then(setStorage).catch(() => {})
-  }, [key])
-  return storage
 }

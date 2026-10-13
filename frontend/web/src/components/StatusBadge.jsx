@@ -5,6 +5,7 @@ const META = {
   queued: { label: 'Antre', color: 'text-amber-400', Icon: ClockIcon },
   extracting: { label: 'Mengekstrak audio', color: 'text-amber-400', Icon: SpinnerIcon },
   transcribing: { label: 'Mentranskripsi', color: 'text-mint', Icon: SpinnerIcon },
+  paused: { label: 'Dijeda', color: 'text-amber-400', Icon: PauseIcon },
   done: { label: 'Selesai', color: 'text-mint', Icon: CheckIcon },
   failed: { label: 'Gagal', color: 'text-red-400', Icon: AlertIcon },
 }
@@ -77,6 +78,14 @@ function SpinnerIcon() {
     <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function PauseIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M7 4a1 1 0 0 1 1 1v10a1 1 0 0 1-2 0V5a1 1 0 0 1 1-1Zm6 0a1 1 0 0 1 1 1v10a1 1 0 0 1-2 0V5a1 1 0 0 1 1-1Z" clipRule="evenodd" />
     </svg>
   )
 }

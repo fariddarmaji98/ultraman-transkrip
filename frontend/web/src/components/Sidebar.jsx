@@ -41,7 +41,13 @@ export default function Sidebar({ recordings, config, onCreated, ...tabProps }) 
           <TranscribeTab recordings={recordings} config={config} {...tabProps} />
         )}
       </div>
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsModal
+          config={config}
+          recordings={recordings}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </aside>
   )
 }
@@ -60,7 +66,7 @@ function Brand({ onSettings }) {
       </div>
       <button
         onClick={onSettings}
-        title="Setelan mesin AI"
+        title="Setelan general"
         aria-label="Setelan"
         className="ml-auto shrink-0 rounded-lg border border-edge p-1.5 text-fg3 transition hover:border-edge2 hover:text-fg"
       >

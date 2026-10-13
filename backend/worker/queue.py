@@ -1,4 +1,8 @@
-"""Antrean in-process, satu konsumen (concurrency=1 — hemat RAM VPS).
+"""Antrean in-process: fetch (unduh) dan transcribe jalan terpisah.
+
+Fetch = I/O bound, boleh paralel dengan transcribe (CPU bound).
+Transcribe = CPU bound, serial (concurrency=1) — CPU tidak bisa dibagi efisien
+untuk model int8. Translate juga serial lewat antrean transcribe (ringan, async).
 
 Item antrean = `(recording_id, kind)`; `kind` menentukan pipeline mana yang jalan.
 Saat butuh durabilitas lintas-restart / worker terpisah, ganti ke Procrastinate-on-Postgres
@@ -21,7 +25,8 @@ from store import models
 from store.db import SessionLocal
 from worker.pipeline import run_fetch, run_transcribe, run_translate
 
-_queue: "asyncio.Queue[tuple[int, str]]" = asyncio.Queue()
+_fetch_queue: "asyncio.Queue[tuple[int, str]]" = asyncio.Queue()
+_work_queue: "asyncio.Queue[tuple[int, str]]" = asyncio.Queue()
 _RUNNERS = {
     JOB_KIND_FETCH: run_fetch,
     JOB_KIND_TRANSCRIBE: run_transcribe,
@@ -30,12 +35,13 @@ _RUNNERS = {
 
 
 async def enqueue(recording_id: int, kind: str = JOB_KIND_TRANSCRIBE) -> None:
-    await _queue.put((recording_id, kind))
+    q = _fetch_queue if kind == JOB_KIND_FETCH else _work_queue
+    await q.put((recording_id, kind))
 
 
 def pending_count() -> int:
     """Jumlah job menunggu di antrean (dipakai posC gerbang tol)."""
-    return _queue.qsize()
+    return _fetch_queue.qsize() + _work_queue.qsize()
 
 
 async def requeue_pending() -> None:
@@ -47,7 +53,7 @@ async def requeue_pending() -> None:
             )
         )
         for rid, status in result.all():
-            await _queue.put((rid, _kind_for(status)))
+            await enqueue(rid, _kind_for(status))
         await _requeue_translations(db)
 
 
@@ -63,18 +69,28 @@ async def _requeue_translations(db) -> None:
         )
     )
     for (rid,) in result.all():
-        await _queue.put((rid, JOB_KIND_TRANSLATE))
+        await _work_queue.put((rid, JOB_KIND_TRANSLATE))
 
 
 def _kind_for(status: str) -> str:
     return JOB_KIND_FETCH if status == JOB_DOWNLOADING else JOB_KIND_TRANSCRIBE
 
 
-async def worker_loop() -> None:
-    logger.info("worker mulai")
+# ponytail: concurrency=1 untuk transcribe — CPU int8 tidak scale paralel.
+# Saat GPU tersedia (CTranslate2 CUDA), naikkan ke 2-3.
+async def _worker_loop(q: asyncio.Queue, name: str) -> None:
+    logger.info("worker {} mulai", name)
     while True:
-        recording_id, kind = await _queue.get()
+        recording_id, kind = await q.get()
         try:
             await _RUNNERS[kind](recording_id)
         finally:
-            _queue.task_done()
+            q.task_done()
+
+
+async def worker_loop() -> None:
+    """Compatibility: tetap dipanggil lifespan, sekarang start kedua worker."""
+    await asyncio.gather(
+        _worker_loop(_fetch_queue, "fetch"),
+        _worker_loop(_work_queue, "transcribe"),
+    )

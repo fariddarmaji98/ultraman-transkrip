@@ -47,19 +47,23 @@ from constants import (
     LANGUAGE_AUTO,
     LANGUAGE_BY_ID,
     JOB_DOWNLOADING,
+    JOB_FAILED,
     JOB_KIND_FETCH,
     JOB_KIND_TRANSCRIBE,
     JOB_KIND_TRANSLATE,
+    JOB_PAUSED,
     JOB_QUEUED,
     MAX_UPLOAD_BYTES,
     NOT_TRANSCRIBABLE_STATUSES,
     SOURCE_URL,
+    TRANSCRIBE_BUSY_STATUSES,
     UPLOAD_CHUNK_BYTES,
 )
 from export.render import ExportSegment, render_brief, render_export
 from media.ffmpeg import MediaError, probe_duration_ms
 from store import models
 from worker.queue import enqueue
+from worker.pause import request_pause
 
 router = APIRouter()
 
@@ -261,6 +265,45 @@ async def start_transcribe(rid: int, db: DbDep) -> RecordingOut:
     await db.refresh(rec)
     await enqueue(rec.id, JOB_KIND_TRANSCRIBE)
     return _with_progress(rec, job.progress)
+
+
+@router.post("/recordings/{rid}/retry", response_model=RecordingOut, status_code=202)
+async def retry_recording(rid: int, db: DbDep) -> RecordingOut:
+    """Coba ulang recording yang gagal. URL source belum ada file → fetch ulang;
+    file sudah ada → transcribe ulang."""
+    rec = await _get_or_404(db, rid)
+    if rec.status != JOB_FAILED:
+        raise HTTPException(409, "hanya recording gagal yang bisa diulang")
+    if rec.source_kind == SOURCE_URL and not rec.upload_path:
+        job = await _create_job(db, rec.id, JOB_KIND_FETCH)
+        rec.status = JOB_DOWNLOADING
+    else:
+        job = await _create_job(db, rec.id, JOB_KIND_TRANSCRIBE)
+        rec.status = JOB_QUEUED
+    await db.commit()
+    await db.refresh(rec)
+    await enqueue(rec.id, job.kind)
+    return _with_progress(rec, job.progress)
+
+
+@router.post("/recordings/{rid}/pause", response_model=RecordingOut)
+async def pause_transcribe(rid: int, db: DbDep) -> RecordingOut:
+    """Jeda transkrip berjalan. Segmen parsial disimpan, bisa dilanjutkan."""
+    rec = await _get_or_404(db, rid)
+    if rec.status not in TRANSCRIBE_BUSY_STATUSES:
+        raise HTTPException(409, "tidak ada transkrip berjalan untuk dijeda")
+    request_pause(rid)  # worker cek flag ini di segmen berikutnya
+    return _with_progress(rec, await _progress_of(db, rid))
+
+
+@router.post("/recordings/{rid}/resume", response_model=RecordingOut, status_code=202)
+async def resume_transcribe(rid: int, db: DbDep) -> RecordingOut:
+    """Lanjut transkrip yang dijeda."""
+    rec = await _get_or_404(db, rid)
+    if rec.status != JOB_PAUSED:
+        raise HTTPException(409, "rekaman ini tidak dijeda")
+    await enqueue(rec.id, JOB_KIND_TRANSCRIBE)
+    return _with_progress(rec, await _progress_of(db, rid))
 
 
 @router.patch("/recordings/{rid}", response_model=RecordingOut)

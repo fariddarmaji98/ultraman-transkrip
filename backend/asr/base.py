@@ -35,7 +35,12 @@ class TranscriptResult:
 
 class ASRProvider(Protocol):
     def transcribe(
-        self, audio_path: Path, language: str, on_progress: ProgressCb | None = None
+        self, audio_path: Path, language: str, on_progress: ProgressCb | None = None,
+        cancel_check: Callable[[], bool] | None = None,
     ) -> TranscriptResult:
-        """`language` = "auto" untuk deteksi otomatis, atau kode ISO (id/en/...)."""
+        """`language` = "auto" untuk deteksi otomatis, atau kode ISO (id/en/...).
+
+        `cancel_check` — bila diset dan returns True, hentikan konsumsi segmen
+        (pause). Provider mengembalikan segmen parsial yang sudah dikumpulkan.
+        """
         ...

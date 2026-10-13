@@ -10,12 +10,15 @@ from faster_whisper import WhisperModel
 from app.config import settings
 from asr.base import ProgressCb, Segment, TranscriptResult
 from constants import LANGUAGE_AUTO
+from typing import Callable
 
 
 @lru_cache(maxsize=1)
 def _model() -> WhisperModel:
+    import os
     return WhisperModel(
-        settings.local_whisper_model, device="cpu", compute_type="int8"
+        settings.local_whisper_model, device="cpu", compute_type="int8",
+        cpu_threads=os.cpu_count() or 8,
     )
 
 
@@ -25,16 +28,19 @@ def reset_model_cache() -> None:
 
 
 class LocalWhisperProvider:
-    def transcribe(self, audio_path, language, on_progress: ProgressCb | None = None):
+    def transcribe(self, audio_path, language, on_progress: ProgressCb | None = None,
+                   cancel_check: Callable[[], bool] | None = None):
         lang = None if language == LANGUAGE_AUTO else language
         segments, info = _model().transcribe(
             str(audio_path), language=lang, vad_filter=True
         )
-        # `info` sudah lengkap sebelum generator segmen dikonsumsi, tapi bahasa
-        # hanya bermakna pada jalur auto: bila bahasanya diminta, faster-whisper
-        # memantulkannya kembali dengan probabilitas 1 — itu gema, bukan deteksi.
+        collected: list[Segment] = []
+        for seg in _iter_segments(segments, info, on_progress):
+            collected.append(seg)
+            if cancel_check and cancel_check():
+                break
         return TranscriptResult(
-            segments=list(_iter_segments(segments, info, on_progress)),
+            segments=collected,
             language=info.language if lang is None else None,
         )
 

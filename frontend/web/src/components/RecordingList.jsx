@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { deleteRecording, sourceUrl } from '../api'
+import { deleteRecording, retryDownload, sourceUrl } from '../api'
 import { fmtDate, fmtTime, isActive } from '../utils'
 import StatusBadge from './StatusBadge'
 import ConfirmModal from './ConfirmModal'
@@ -25,6 +25,15 @@ export default function RecordingList({
     onChanged()
   }
 
+  async function retry(id) {
+    try {
+      await retryDownload(id)
+      onChanged()
+    } catch {
+      // error sudah ada di status recording — polling akan tunjukkan
+    }
+  }
+
   if (!items.length) return <p className="text-sm text-fg3">{emptyText}</p>
 
   return (
@@ -37,6 +46,7 @@ export default function RecordingList({
             selected={r.id === selectedId}
             showDownload={showDownload}
             onSelect={() => onSelect(r.id)}
+            onRetry={() => retry(r.id)}
             onDelete={(e) => {
               e.stopPropagation()
               setPendingId(r.id)
@@ -58,9 +68,9 @@ export default function RecordingList({
 }
 
 // Berkasnya baru ada setelah unduhan selesai — jangan tawarkan simpan sebelum itu.
-const HAS_FILE = (rec) => !['downloading', 'failed'].includes(rec.status)
+const HAS_FILE = (rec) => !['downloading', 'failed', 'paused'].includes(rec.status)
 
-function RecordingItem({ rec, selected, showDownload, onSelect, onDelete }) {
+function RecordingItem({ rec, selected, showDownload, onSelect, onRetry, onDelete }) {
   return (
     <li
       onClick={onSelect}
@@ -80,6 +90,7 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onDelete }) {
           </span>
         </div>
         {isActive(rec) && <MiniBar progress={rec.progress} />}
+        {rec.status === 'paused' && <MiniBar progress={rec.progress} paused />}
       </div>
       <div className="flex shrink-0 items-center">
         {showDownload && HAS_FILE(rec) && (
@@ -94,6 +105,19 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onDelete }) {
             <SaveIcon />
           </a>
         )}
+        {rec.status === 'failed' && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onRetry()
+            }}
+            title="Coba ulang"
+            aria-label="Coba ulang"
+            className="rounded p-1.5 text-fg3 transition hover:bg-mint/10 hover:text-mint"
+          >
+            <RetryIcon />
+          </button>
+        )}
         <button
           title="Hapus"
           aria-label="Hapus"
@@ -107,11 +131,11 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onDelete }) {
   )
 }
 
-function MiniBar({ progress }) {
+function MiniBar({ progress, paused }) {
   return (
     <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-edge">
       <div
-        className="h-full rounded-full bg-mint transition-all duration-500"
+        className={`h-full rounded-full transition-all duration-500 ${paused ? 'bg-amber-400' : 'bg-mint'}`}
         style={{ width: `${progress ?? 0}%` }}
       />
     </div>
@@ -132,6 +156,25 @@ function SaveIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M12 4v11m0 0 4-4m-4 4-4-4M5 17v1.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V17"
+      />
+    </svg>
+  )
+}
+
+function RetryIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0 1 12-3l1 1M19 15a7 7 0 0 1-12 3l-1-1"
       />
     </svg>
   )

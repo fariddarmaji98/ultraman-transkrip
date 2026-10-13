@@ -102,6 +102,27 @@ export async function startTranscribe(id) {
   return data
 }
 
+export async function retryDownload(id) {
+  const res = await fetch(`/api/recordings/${id}/retry`, { method: 'POST' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal mencoba ulang')
+  return data
+}
+
+export async function pauseTranscribe(id) {
+  const res = await fetch(`/api/recordings/${id}/pause`, { method: 'POST' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal menjeda transkrip')
+  return data
+}
+
+export async function resumeTranscribe(id) {
+  const res = await fetch(`/api/recordings/${id}/resume`, { method: 'POST' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.detail ?? 'gagal melanjutkan transkrip')
+  return data
+}
+
 export async function getCookies() {
   const res = await fetch('/api/cookies')
   return res.json()
