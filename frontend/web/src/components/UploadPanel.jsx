@@ -1,61 +1,64 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { uploadRecording } from '../api'
 
-// "Deteksi otomatis" bukan bahasa, jadi ia tidak ada di katalog server — ia
-// pilihan untuk TIDAK memilih. Sisa daftarnya datang dari GET /api/config;
-// jangan menambah bahasa di sini, tambahkan di backend/constants.
-const AUTO = { id: 'auto', label: 'Deteksi otomatis' }
-
-export default function UploadPanel({ languages, onUploaded }) {
-  const options = [AUTO, ...(languages ?? [])]
-  const [file, setFile] = useState(null)
-  const [language, setLanguage] = useState('auto')
+// Unggah file audio/video ke server. Tidak auto-transkrip — file tersimpan
+// sebagai data mentah (status=downloaded), muncul di list Video Terunduh.
+// Pilih file → langsung upload. Bahasa dipegang pipeline transkrip ("auto").
+export default function UploadPanel({ onUploaded }) {
+  const inputRef = useRef(null)
   const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
 
-  async function submit(e) {
-    e.preventDefault()
+  async function doUpload(file) {
     if (!file) return
     setError(null)
     setProgress(0)
     try {
-      const res = await uploadRecording(file, language, setProgress)
-      setFile(null)
+      const res = await uploadRecording(file, setProgress)
       onUploaded(res)
     } catch (err) {
       setError(err.message)
     } finally {
       setProgress(null)
+      if (inputRef.current) inputRef.current.value = ''
     }
   }
 
   return (
-    <form className="flex flex-col gap-2.5" onSubmit={submit}>
-      <label className="relative flex min-h-[76px] cursor-pointer items-center justify-center rounded-xl border border-dashed border-edge2 bg-panel2 p-3 text-center text-sm text-fg2 transition hover:border-mint hover:text-fg">
+    <div
+      className="flex flex-col gap-2"
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        doUpload(e.dataTransfer.files[0])
+      }}
+    >
+      <label
+        className={`relative flex min-h-[76px] cursor-pointer items-center justify-center rounded-xl border border-dashed p-3 text-center text-sm transition ${
+          dragOver
+            ? 'border-mint bg-mint/5 text-mint'
+            : 'border-edge2 bg-panel2 text-fg2 hover:border-mint hover:text-fg'
+        }`}
+      >
         <input
+          ref={inputRef}
           type="file"
           accept="audio/*,video/*"
-          onChange={(e) => setFile(e.target.files[0] ?? null)}
+          onChange={(e) => doUpload(e.target.files[0])}
           className="absolute inset-0 cursor-pointer opacity-0"
+          disabled={progress !== null}
         />
-        <span className="truncate">{file ? file.name : 'Pilih audio / video…'}</span>
+        <span className="truncate">
+          {progress !== null
+            ? `Mengunggah ${progress}%`
+            : error
+              ? error
+              : 'Klik atau seret audio / video ke sini'}
+        </span>
       </label>
-      <select
-        value={language}
-        onChange={(e) => setLanguage(e.target.value)}
-        className="rounded-lg border border-edge bg-panel2 px-3 py-2 text-sm text-fg"
-      >
-        {options.map((l) => (
-          <option key={l.id} value={l.id}>{l.label}</option>
-        ))}
-      </select>
-      <button
-        type="submit"
-        disabled={!file || progress !== null}
-        className="rounded-lg bg-mint px-3 py-2 text-sm font-semibold text-canvas transition hover:bg-mint2 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {progress !== null ? `Mengunggah ${progress}%` : 'Unggah'}
-      </button>
       {progress !== null && (
         <div className="h-1.5 overflow-hidden rounded-full bg-edge">
           <div
@@ -64,7 +67,6 @@ export default function UploadPanel({ languages, onUploaded }) {
           />
         </div>
       )}
-      {error && <p className="text-xs text-red-400">{error}</p>}
-    </form>
+    </div>
   )
 }

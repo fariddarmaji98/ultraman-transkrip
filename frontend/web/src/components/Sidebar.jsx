@@ -34,7 +34,6 @@ export default function Sidebar({ recordings, config, onCreated, ...tabProps }) 
         {tab === 'unduh' ? (
           <DownloadTab
             recordings={recordings}
-            config={config}
             onCreated={onCreated}
             {...tabProps}
           />

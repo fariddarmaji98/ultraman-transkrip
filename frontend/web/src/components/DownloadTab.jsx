@@ -8,7 +8,6 @@ import UploadPanel from './UploadPanel'
 
 export default function DownloadTab({
   recordings,
-  config,
   selectedId,
   onSelect,
   onChanged,
@@ -22,7 +21,7 @@ export default function DownloadTab({
       <UrlForm onCreated={onCreated} />
       <div>
         <SectionLabel>Atau unggah file</SectionLabel>
-        <UploadPanel languages={config?.languages} onUploaded={onUploaded} />
+        <UploadPanel onUploaded={onUploaded} />
       </div>
       <div>
         <SectionLabel>Video terunduh</SectionLabel>

@@ -188,7 +188,7 @@ export async function renameRecording(id, title) {
   })
 }
 
-export function uploadRecording(file, language, onProgress) {
+export function uploadRecording(file, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/recordings')
@@ -196,14 +196,13 @@ export function uploadRecording(file, language, onProgress) {
       onProgress(Math.round((e.loaded / e.total) * 100))
     xhr.onload = () => finishUpload(xhr, resolve, reject)
     xhr.onerror = () => reject(new Error('koneksi gagal'))
-    xhr.send(buildForm(file, language))
+    xhr.send(buildForm(file))
   })
 }
 
-function buildForm(file, language) {
+function buildForm(file) {
   const form = new FormData()
   form.append('file', file)
-  form.append('language', language)
   return form
 }
 
