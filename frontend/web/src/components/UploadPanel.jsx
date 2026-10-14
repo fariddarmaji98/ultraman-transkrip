@@ -4,7 +4,7 @@ import { uploadRecording } from '../api'
 // Unggah file audio/video ke server. Tidak auto-transkrip — file tersimpan
 // sebagai data mentah (status=downloaded), muncul di list Video Terunduh.
 // Pilih file → langsung upload. Bahasa dipegang pipeline transkrip ("auto").
-export default function UploadPanel({ onUploaded }) {
+export default function UploadPanel({ onUploaded, onCancel }) {
   const inputRef = useRef(null)
   const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
@@ -66,6 +66,14 @@ export default function UploadPanel({ onUploaded }) {
             style={{ width: `${progress}%` }}
           />
         </div>
+      )}
+      {progress === null && (
+        <button
+          onClick={onCancel}
+          className="self-end rounded-lg border border-edge px-3 py-1.5 text-xs text-fg3 transition hover:text-fg"
+        >
+          Batal
+        </button>
       )}
     </div>
   )

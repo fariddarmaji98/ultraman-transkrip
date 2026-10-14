@@ -1,10 +1,9 @@
-// Isi tab Unduh: masukkan media (URL + import) + arsip video hasil unduhan.
+// Isi tab Media: masukkan media (URL/import via toggle) + arsip video.
 // Setelan mesin unduh, cookies, dan penyimpanan dipindah ke popup Setelan.
 import { isRaw } from '../utils'
 import RecordingList from './RecordingList'
 import SectionLabel from './SectionLabel'
-import UrlForm from './UrlForm'
-import UploadPanel from './UploadPanel'
+import MediaInput from './MediaInput'
 
 export default function DownloadTab({
   recordings,
@@ -18,11 +17,7 @@ export default function DownloadTab({
   const items = recordings.filter(isRaw)
   return (
     <>
-      <UrlForm onCreated={onCreated} />
-      <div>
-        <SectionLabel>Atau unggah file</SectionLabel>
-        <UploadPanel onUploaded={onUploaded} />
-      </div>
+      <MediaInput onCreated={onCreated} onUploaded={onUploaded} />
       <div>
         <SectionLabel>Video terunduh</SectionLabel>
         <RecordingList

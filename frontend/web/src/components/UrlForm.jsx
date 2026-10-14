@@ -15,7 +15,7 @@ const PLACEHOLDER = [
   '- TikTok dan X paling mulus, YouTube kadang minta login',
 ].join('\n')
 
-export default function UrlForm({ onCreated }) {
+export default function UrlForm({ onCreated, onCancel }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState(null)
@@ -60,16 +60,26 @@ export default function UrlForm({ onCreated }) {
         className={FIELD}
       />
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-fg3">
-          {urlCount > 0 ? `${urlCount} URL siap diunduh` : ''}
-        </span>
         <button
-          type="submit"
-          disabled={!urlCount || busy}
-          className="rounded-lg bg-mint px-3 py-2 text-sm font-semibold text-canvas transition hover:bg-mint2 disabled:cursor-not-allowed disabled:opacity-40"
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="rounded-lg border border-edge px-3 py-2 text-sm text-fg3 transition hover:text-fg disabled:opacity-40"
         >
-          {busy ? 'Memproses…' : urlCount > 1 ? `Unduh ${urlCount} video` : 'Unduh video'}
+          Batal
         </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-fg3">
+            {urlCount > 0 ? `${urlCount} URL siap diunduh` : ''}
+          </span>
+          <button
+            type="submit"
+            disabled={!urlCount || busy}
+            className="rounded-lg bg-mint px-3 py-2 text-sm font-semibold text-canvas transition hover:bg-mint2 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {busy ? 'Memproses…' : urlCount > 1 ? `Unduh ${urlCount} video` : 'Unduh video'}
+          </button>
+        </div>
       </div>
       {results && (
         <div className="space-y-1">
