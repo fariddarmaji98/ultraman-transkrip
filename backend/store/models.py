@@ -37,6 +37,10 @@ class Recording(Base):
     media_path: Mapped[str | None] = mapped_column(String(512), default=None)
     duration_ms: Mapped[int | None] = mapped_column(default=None)
     language: Mapped[str] = mapped_column(String(16), default=LANGUAGE_AUTO)
+    # Petunjuk dari pemanggil API (`audio`/`video`). Pada unduhan URL ini benar-
+    # benar dipakai: `audio` melewati video sama sekali, jadi unduhan lebih kecil
+    # dan transkrip lebih cepat. Baris lama & non-API default `video`.
+    content_type: Mapped[str] = mapped_column(String(8), default="video")
     # `language` = yang DIMINTA; ini yang benar-benar TERDENGAR, diisi saat
     # transkrip selesai dan hanya pada permintaan "auto". Nullable karena
     # rekaman lama, yang belum ditranskrip, dan yang bahasanya dipilih manual

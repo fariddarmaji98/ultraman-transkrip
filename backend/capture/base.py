@@ -36,7 +36,12 @@ class MediaSource(Protocol):
         ...
 
     def fetch_video(
-        self, url: str, dst_dir: Path, stem: str, on_progress: ProgressCb | None
+        self, url: str, dst_dir: Path, stem: str, on_progress: ProgressCb | None,
+        audio_only: bool = False,
     ) -> Path:
-        """Unduh ke temp, pindah ke `dst_dir/stem.<ext>` hanya bila sukses."""
+        """Unduh ke temp, pindah ke `dst_dir/stem.<ext>` hanya bila sukses.
+
+        `audio_only` — ambil stream audio saja. Dipakai API transkrip: video
+        tidak pernah ditonton, dan audio saja jauh lebih kecil & cepat.
+        """
         ...

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import runtime
 from app import updater
 from app.config import settings
-from app.routes import cookies, health, jobs, llm, meetings, recordings
+from app.routes import api_transcribe, cookies, health, jobs, llm, meetings, recordings
 from protection import install_protection
 from store.db import init_db
 from worker.queue import requeue_pending, worker_loop
@@ -38,7 +38,9 @@ def create_app() -> FastAPI:
     # (`/recordings/meeting`) sedangkan `recordings` punya `/recordings/{rid}`.
     # Pencocokan mengikuti urutan pendaftaran — kalau terbalik, `meeting`
     # terbaca sebagai sebuah `rid` dan balasannya 405, bukan 404 yang jelas.
-    for module in (health, meetings, recordings, jobs, llm, cookies):
+    # `api_transcribe` berjalur `/transcribe`, di luar `/recordings` — urutannya
+    # bebas, tapi didaftarkan lebih dulu supaya jalur API terkumpul di atas.
+    for module in (health, api_transcribe, meetings, recordings, jobs, llm, cookies):
         app.include_router(module.router, prefix="/api")
     return app
 

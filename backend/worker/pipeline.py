@@ -22,6 +22,7 @@ from asr import get_provider
 from asr.base import Segment
 from capture import get_source
 from constants import (
+    CONTENT_AUDIO,
     FETCH_GAP_MAX_S,
     FETCH_GAP_MIN_S,
     JOB_DONE,
@@ -190,6 +191,7 @@ async def _fetch(db, rec, job) -> None:
         path = await asyncio.to_thread(
             get_source().fetch_video, rec.source_url, settings.upload_dir,
             uuid4().hex, lambda p: holder.__setitem__("pct", p),
+            rec.content_type == CONTENT_AUDIO,
         )
     finally:
         poller.cancel()

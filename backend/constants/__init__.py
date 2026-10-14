@@ -30,6 +30,18 @@ JOB_KIND_TRANSLATE = "translate"
 SOURCE_UPLOAD = "upload"
 SOURCE_URL = "url"
 SOURCE_MEETING = "meeting"
+# Asal dari API programatik (POST /api/transcribe). Dipakai sebagai penanda untuk
+# pembersihan file otomatis nanti — request API tidak meninggalkan file permanen.
+SOURCE_API = "api"
+
+# --- API transkrip (POST /api/transcribe) ------------------------------------
+# Pemanggil menunggu balasan berisi transkrip, jadi endpoint ini menahan request
+# sampai job selesai. Batasnya longgar: transkrip CPU 1 jam audio bisa belasan menit.
+CONTENT_AUDIO = "audio"
+CONTENT_VIDEO = "video"
+CONTENT_TYPES = (CONTENT_AUDIO, CONTENT_VIDEO)
+API_POLL_INTERVAL_S = 2
+API_WAIT_TIMEOUT_S = 3600
 
 # Batas upload & streaming
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB

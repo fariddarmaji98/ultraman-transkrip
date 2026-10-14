@@ -52,23 +52,26 @@ class YtDlpSource:
                 raise _translate(exc) from exc
         return _to_info(_single(info))
 
-    def fetch_video(self, url, dst_dir: Path, stem: str, on_progress=None) -> Path:
+    def fetch_video(self, url, dst_dir: Path, stem: str, on_progress=None,
+                    audio_only: bool = False) -> Path:
         with tempfile.TemporaryDirectory(prefix="transkrip-dl-") as tmp:
             tmp_dir = Path(tmp)
-            self._download(url, tmp_dir, on_progress)
+            self._download(url, tmp_dir, on_progress, audio_only)
             produced = _only_file(tmp_dir)
             dst = dst_dir / f"{stem}{produced.suffix.lower()}"
             shutil.move(str(produced), dst)  # pindah hanya setelah sukses
         return dst
 
-    def _download(self, url: str, tmp_dir: Path, on_progress: ProgressCb | None) -> None:
+    def _download(self, url: str, tmp_dir: Path, on_progress: ProgressCb | None,
+                  audio_only: bool = False) -> None:
         seen = {"pct": 0}
         opts = _opts(url, {
-            "format": _FORMAT,
+            "format": _AUDIO_FORMAT if audio_only else _FORMAT,
             "outtmpl": str(tmp_dir / "media.%(ext)s"),
-            "merge_output_format": "mp4",
             "progress_hooks": [lambda d: _report(d, seen, on_progress)],
         })
+        if not audio_only:
+            opts["merge_output_format"] = "mp4"
         with yt_dlp.YoutubeDL(opts) as ydl:
             try:
                 ydl.download([url])
@@ -80,6 +83,9 @@ _FORMAT = (
     f"bestvideo[height<={DOWNLOAD_MAX_HEIGHT}]+bestaudio/"
     f"best[height<={DOWNLOAD_MAX_HEIGHT}]/best"
 )
+# Audio saja: stream terbaik lalu ekstrak ke m4a. Tanpa video, unduhan jauh
+# lebih kecil — API transkrip tidak pernah menonton hasilnya.
+_AUDIO_FORMAT = "bestaudio/best"
 
 
 def _report(d: dict, seen: dict, on_progress: ProgressCb | None) -> None:

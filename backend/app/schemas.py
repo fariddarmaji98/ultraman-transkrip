@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from constants import DEFAULT_LANGUAGE
+from constants import CONTENT_VIDEO, DEFAULT_LANGUAGE
 
 
 class SegmentOut(BaseModel):
@@ -141,6 +141,36 @@ class ConfigIn(BaseModel):
 class FromUrlIn(BaseModel):
     url: str
     language: str = DEFAULT_LANGUAGE
+
+
+class ApiTranscribeIn(BaseModel):
+    """Payload API transkrip. `url` XOR `file` — salah satu wajib ada."""
+
+    url: str | None = None
+    content_type: str = CONTENT_VIDEO
+    summary: bool = False
+    language: str = DEFAULT_LANGUAGE
+
+
+class ApiTranscribeOut(BaseModel):
+    """Balasan API transkrip: hasil lengkap, bukan sekadar id job.
+
+    Endpoint ini sinkron — pemanggil menunggu sampai transkrip (dan ringkasan
+    bila diminta) selesai, jadi hasilnya dikirim sekaligus. `recording_id` tetap
+    disertakan supaya rekamannya bisa dibuka lagi dari aplikasi.
+    """
+
+    recording_id: int
+    status: str
+    title: str
+    language: str                  # bahasa yang diminta ("auto" bila dideteksi)
+    detected_language: str | None = None
+    duration_ms: int | None = None
+    source: str                    # "url" | "file"
+    text: str = ""                 # transkrip utuh, segmen digabung
+    segments: list[SegmentOut] = []
+    summary: str | None = None
+    error: str | None = None
 
 
 class MeetingStartIn(BaseModel):

@@ -18,4 +18,11 @@ def client_ip(request: Request) -> str:
 
 
 def is_upload(request: Request) -> bool:
-    return request.method == "POST" and request.url.path == "/api/recordings"
+    """Jalur mahal: unggah berkas ke server. Dipakai pos throttle & antrean.
+
+    `/api/transcribe` ikut dihitung karena ia juga bisa menerima berkas —
+    tanpa ini, satu pemanggil API bisa membanjiri server lewat jalur itu.
+    """
+    if request.method != "POST":
+        return False
+    return request.url.path in ("/api/recordings", "/api/transcribe")
