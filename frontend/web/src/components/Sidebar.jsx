@@ -4,20 +4,22 @@ import DownloadTab from './DownloadTab'
 import ResizeHandle from './ResizeHandle'
 import SettingsModal from './SettingsModal'
 import SidebarTabs from './SidebarTabs'
+import SummaryTab from './SummaryTab'
 import TranscribeTab from './TranscribeTab'
 import usePanelWidth from '../hooks/usePanelWidth'
 import useLocalState from '../hooks/useLocalState'
-import { hasTranscript, isRaw } from '../utils'
+import { hasTranscript, isRaw, isReady } from '../utils'
 
 const WIDTH = { key: 'sidebar-width', min: 280, max: 560, initial: 340, handleSide: 'right' }
 
 export default function Sidebar({ recordings, config, onCreated, ...tabProps }) {
   const { width, dragging, handlers } = usePanelWidth(WIDTH)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [tab, setTab] = useLocalState('sidebar-tab', 'transkrip')
+  const [tab, setTab] = useLocalState('sidebar-tab', 'media')
   const counts = {
+    media: recordings.filter(isRaw).length,
     transkrip: recordings.filter(hasTranscript).length,
-    unduh: recordings.filter(isRaw).length,
+    summary: recordings.filter(isReady).length,
   }
   return (
     <aside
@@ -31,12 +33,14 @@ export default function Sidebar({ recordings, config, onCreated, ...tabProps }) 
       <Brand onSettings={() => setSettingsOpen(true)} />
       <SidebarTabs active={tab} counts={counts} onChange={setTab} data-test="sidebar-tabs" />
       <div data-test="sidebar-content" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {tab === 'unduh' ? (
+        {tab === 'media' ? (
           <DownloadTab
             recordings={recordings}
             onCreated={onCreated}
             {...tabProps}
           />
+        ) : tab === 'summary' ? (
+          <SummaryTab recordings={recordings} {...tabProps} />
         ) : (
           <TranscribeTab recordings={recordings} config={config} {...tabProps} />
         )}

@@ -51,6 +51,7 @@ class RecordingOut(BaseModel):
     detected_language: str | None = None  # yang TERDENGAR; None bila belum pernah dideteksi
     created_at: datetime
     progress: int = 0  # diisi route dari job terbaru; 0 saat baru dibuat
+    has_summary: bool = False  # true bila recording punya ringkasan
 
 
 class SummaryOut(BaseModel):

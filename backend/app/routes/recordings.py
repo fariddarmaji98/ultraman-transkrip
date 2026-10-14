@@ -104,7 +104,11 @@ async def list_recordings(db: DbDep) -> list[RecordingOut]:
         select(models.Recording).order_by(models.Recording.created_at.desc())
     )
     latest = await _latest_progress(db)
-    return [_with_progress(r, latest.get(r.id, 0)) for r in result.scalars().all()]
+    summaries = await _summary_flags(db)
+    return [
+        _with_progress(r, latest.get(r.id, 0), r.id in summaries)
+        for r in result.scalars().all()
+    ]
 
 
 @router.get("/recordings/{rid}", response_model=RecordingDetail)
@@ -746,9 +750,18 @@ async def _latest_progress(db) -> dict[int, int]:
     return {rid: progress for rid, progress in rows.all()}
 
 
-def _with_progress(rec, progress: int) -> RecordingOut:
+async def _summary_flags(db) -> set[int]:
+    """Recording id yang punya ringkasan — sekali query untuk seluruh daftar."""
+    rows = await db.execute(
+        select(models.Summary.recording_id).distinct()
+    )
+    return {r[0] for r in rows.all()}
+
+
+def _with_progress(rec, progress: int, has_summary: bool = False) -> RecordingOut:
     out = RecordingOut.model_validate(rec)
     out.progress = progress
+    out.has_summary = has_summary
     return out
 
 

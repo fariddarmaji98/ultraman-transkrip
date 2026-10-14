@@ -5,8 +5,15 @@ import { useState } from 'react'
 import { createFromUrl } from '../api'
 
 const FIELD =
-  'rounded-lg border border-edge2 bg-canvas px-3 py-2 text-sm text-fg outline-none ' +
+  'rounded-lg border border-edge2 bg-canvas px-3 py-2 text-xs leading-relaxed text-fg outline-none ' +
   'transition placeholder:text-fg3 focus:border-mint resize-none'
+
+const PLACEHOLDER = [
+  '- Tempel URL video',
+  '- Gunakan baris baru untuk multi-unduh',
+  '- Maks 720p · 4 jam · 2 GB',
+  '- TikTok dan X paling mulus, YouTube kadang minta login',
+].join('\n')
 
 export default function UrlForm({ onCreated }) {
   const [text, setText] = useState('')
@@ -46,9 +53,9 @@ export default function UrlForm({ onCreated }) {
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Tempel URL video… satu per baris untuk multi-unduh"
+        placeholder={PLACEHOLDER}
         spellCheck="false"
-        rows={3}
+        rows={5}
         aria-label="URL video"
         className={FIELD}
       />
@@ -74,15 +81,6 @@ export default function UrlForm({ onCreated }) {
           ))}
         </div>
       )}
-      <Notice />
     </form>
-  )
-}
-
-function Notice() {
-  return (
-    <div className="space-y-1 text-[10px] leading-relaxed text-fg3">
-      <p>Maks 720p · 4 jam · 2 GB. TikTok dan X paling mulus; YouTube kadang minta login.</p>
-    </div>
   )
 }

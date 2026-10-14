@@ -52,6 +52,8 @@ export const isPaused = (rec) => PAUSED.includes(rec.status)
 export const isRaw = (rec) => RAW_STATUSES.includes(rec.status)
 // Data setengah matang: sudah masuk pipeline transkrip (punya transkrip atau sedang dibuat).
 export const hasTranscript = (rec) => !RAW_STATUSES.includes(rec.status)
+// Data matang: sudah punya transkrip dan ringkasan.
+export const isReady = (rec) => rec.has_summary === true
 
 // Nama bahasa dari kode ISO. Katalognya datang dari GET /api/config — jangan
 // pernah menyalinnya ke sini, karena daftar kedua yang ikut basi persis itu yang
