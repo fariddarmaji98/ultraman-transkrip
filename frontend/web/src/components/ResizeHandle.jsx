@@ -1,8 +1,9 @@
 // Batang geser lebar panel. Induknya wajib `relative`.
-export default function ResizeHandle({ side = 'right', dragging, handlers }) {
+export default function ResizeHandle({ side = 'right', dragging, handlers, ...rest }) {
   const pos = side === 'left' ? '-left-1' : '-right-1'
   return (
     <div
+      {...rest}
       {...handlers}
       role="separator"
       aria-orientation="vertical"

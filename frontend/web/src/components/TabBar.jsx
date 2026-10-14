@@ -3,9 +3,9 @@
 // berbeda rupa seperti sepasang komponen kembar.
 // `right` = isi opsional di ujung kanan baris (mis. pemilih bahasa), supaya ia
 // berbagi garis bawah yang sama alih-alih memotongnya jadi dua.
-export default function TabBar({ tabs, active, onChange, right }) {
+export default function TabBar({ tabs, active, onChange, right, ...rest }) {
   return (
-    <div className="flex shrink-0 items-center gap-1 border-b border-edge px-3">
+    <div {...rest} className="flex shrink-0 items-center gap-1 border-b border-edge px-3">
       <div className="flex gap-1" role="tablist">
         {tabs.map((t) => (
           <Tab
