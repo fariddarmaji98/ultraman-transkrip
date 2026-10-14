@@ -1,22 +1,29 @@
-// Isi tab Unduh: tempel URL + arsip video hasil unduhan.
+// Isi tab Unduh: masukkan media (URL + import) + arsip video hasil unduhan.
 // Setelan mesin unduh, cookies, dan penyimpanan dipindah ke popup Setelan.
-import { isDownload } from '../utils'
+import { isRaw } from '../utils'
 import RecordingList from './RecordingList'
 import SectionLabel from './SectionLabel'
 import UrlForm from './UrlForm'
+import UploadPanel from './UploadPanel'
 
 export default function DownloadTab({
   recordings,
+  config,
   selectedId,
   onSelect,
   onChanged,
   onDeselect,
   onCreated,
+  onUploaded,
 }) {
-  const items = recordings.filter(isDownload)
+  const items = recordings.filter(isRaw)
   return (
     <>
       <UrlForm onCreated={onCreated} />
+      <div>
+        <SectionLabel>Atau unggah file</SectionLabel>
+        <UploadPanel languages={config?.languages} onUploaded={onUploaded} />
+      </div>
       <div>
         <SectionLabel>Video terunduh</SectionLabel>
         <RecordingList
@@ -25,7 +32,7 @@ export default function DownloadTab({
           onSelect={onSelect}
           onChanged={onChanged}
           onDeselect={onDeselect}
-          emptyText="Belum ada video diunduh."
+          emptyText="Belum ada video."
           showDownload
           confirmTitle="Hapus video?"
           confirmMessage="File video dan transkripnya (bila ada) akan dihapus permanen dan tidak bisa dikembalikan."

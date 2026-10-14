@@ -41,15 +41,17 @@ export function fmtBytes(n) {
 
 // Status yang masih berjalan — dipakai polling, statistik, dan bar progres.
 const ACTIVE = ['queued', 'extracting', 'transcribing', 'downloading']
-// Status khas unduhan: belum masuk pipeline transkrip sama sekali.
-const DOWNLOAD_ONLY = ['downloading', 'downloaded']
+// Status mentah: file sudah ada, belum masuk pipeline transkrip.
+const RAW_STATUSES = ['downloading', 'downloaded']
 // Status dijeda — tidak aktif tapi bukan selesai/gagal.
 const PAUSED = ['paused']
 
 export const isActive = (rec) => ACTIVE.includes(rec.status)
 export const isPaused = (rec) => PAUSED.includes(rec.status)
-export const isDownload = (rec) => rec.source_kind === 'url'
-export const inTranscriptPhase = (rec) => !DOWNLOAD_ONLY.includes(rec.status)
+// Data mentah: punya file tapi belum punya transkrip.
+export const isRaw = (rec) => RAW_STATUSES.includes(rec.status)
+// Data setengah matang: sudah masuk pipeline transkrip (punya transkrip atau sedang dibuat).
+export const hasTranscript = (rec) => !RAW_STATUSES.includes(rec.status)
 
 // Nama bahasa dari kode ISO. Katalognya datang dari GET /api/config — jangan
 // pernah menyalinnya ke sini, karena daftar kedua yang ikut basi persis itu yang

@@ -7,7 +7,7 @@ import SidebarTabs from './SidebarTabs'
 import TranscribeTab from './TranscribeTab'
 import usePanelWidth from '../hooks/usePanelWidth'
 import useLocalState from '../hooks/useLocalState'
-import { inTranscriptPhase, isDownload } from '../utils'
+import { hasTranscript, isRaw } from '../utils'
 
 const WIDTH = { key: 'sidebar-width', min: 280, max: 560, initial: 340, handleSide: 'right' }
 
@@ -16,8 +16,8 @@ export default function Sidebar({ recordings, config, onCreated, ...tabProps }) 
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [tab, setTab] = useLocalState('sidebar-tab', 'transkrip')
   const counts = {
-    transkrip: recordings.filter(inTranscriptPhase).length,
-    unduh: recordings.filter(isDownload).length,
+    transkrip: recordings.filter(hasTranscript).length,
+    unduh: recordings.filter(isRaw).length,
   }
   return (
     <aside

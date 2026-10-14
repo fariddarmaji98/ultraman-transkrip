@@ -47,6 +47,7 @@ from constants import (
     LANGUAGE_AUTO,
     LANGUAGE_BY_ID,
     JOB_DOWNLOADING,
+    JOB_DOWNLOADED,
     JOB_FAILED,
     JOB_KIND_FETCH,
     JOB_KIND_TRANSCRIBE,
@@ -84,9 +85,7 @@ async def upload_recording(
     upload_path = await _stream_to_disk(file)
     duration_ms = await _probe_or_reject(upload_path)
     rec = await _create_recording(db, file, title, language, upload_path, duration_ms)
-    job = await _create_job(db, rec.id, JOB_KIND_TRANSCRIBE)
-    await enqueue(rec.id, JOB_KIND_TRANSCRIBE)
-    return UploadResponse(recording=RecordingOut.model_validate(rec), job_id=job.id)
+    return UploadResponse(recording=RecordingOut.model_validate(rec), job_id=0)
 
 
 @router.post("/recordings/from-url", response_model=UploadResponse, status_code=201)
@@ -588,7 +587,7 @@ async def _create_recording(db, file, title, language, path, duration_ms):
     rec = models.Recording(
         title=title or clean_title(file.filename), source_filename=file.filename,
         upload_path=str(path), language=language, duration_ms=duration_ms,
-        status=JOB_QUEUED,
+        status=JOB_DOWNLOADED,
     )
     db.add(rec)
     await db.commit()

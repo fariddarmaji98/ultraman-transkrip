@@ -1,11 +1,9 @@
-// Isi tab Transkrip: unggah file + engine + statistik + riwayat.
-// Rekaman yang baru diunduh (belum ditranskrip) sengaja tidak muncul di sini —
-// tempatnya di tab Unduh sampai transkrip dijalankan.
-import UploadPanel from './UploadPanel'
+// Isi tab Transkrip: engine + statistik + riwayat semua yang sudah masuk pipeline transkrip.
+// Import file pindah ke tab Unduh — di sini hanya recording yang punya transkrip atau sedang ditranskrip.
 import RecordingList from './RecordingList'
 import ModelPicker from './ModelPicker'
 import SectionLabel from './SectionLabel'
-import { inTranscriptPhase, isActive } from '../utils'
+import { hasTranscript, isActive } from '../utils'
 
 export default function TranscribeTab({
   recordings,
@@ -14,18 +12,16 @@ export default function TranscribeTab({
   onSelect,
   onChanged,
   onDeselect,
-  onUploaded,
   onConfigChange,
 }) {
-  const items = recordings.filter(inTranscriptPhase)
+  const items = recordings.filter(hasTranscript)
   const busy = items.some(isActive)  // unduhan tidak mengunci model — ia tak pakai Whisper
   return (
     <>
-      <UploadPanel languages={config?.languages} onUploaded={onUploaded} />
       <EnginePanel config={config} busy={busy} onConfigChange={onConfigChange} />
       <StatsGrid items={items} />
       <div>
-        <SectionLabel>Riwayat</SectionLabel>
+        <SectionLabel>Riwayat transkrip</SectionLabel>
         <RecordingList
           items={items}
           selectedId={selectedId}

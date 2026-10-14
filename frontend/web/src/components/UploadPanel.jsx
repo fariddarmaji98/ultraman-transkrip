@@ -54,7 +54,7 @@ export default function UploadPanel({ languages, onUploaded }) {
         disabled={!file || progress !== null}
         className="rounded-lg bg-mint px-3 py-2 text-sm font-semibold text-canvas transition hover:bg-mint2 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {progress !== null ? `Mengunggah ${progress}%` : 'Transkrip'}
+        {progress !== null ? `Mengunggah ${progress}%` : 'Unggah'}
       </button>
       {progress !== null && (
         <div className="h-1.5 overflow-hidden rounded-full bg-edge">
