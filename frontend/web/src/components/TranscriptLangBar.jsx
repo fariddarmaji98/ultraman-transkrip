@@ -15,7 +15,7 @@ export default function TranscriptLangBar({
   const pilihan = (languages ?? []).filter((l) => l.id !== source)
   if (!pilihan.length) return null
   return (
-    <div {...rest} data-test="transcript-lang-bar" className="mb-3 flex flex-wrap items-center gap-2 border-b border-edge pb-3">
+    <div {...rest} data-test="transcript-lang-bar" className="mt-3 flex flex-wrap items-center gap-2 border-t border-edge pt-3">
       <select
         data-test="transcript-lang-select"
         value={value}

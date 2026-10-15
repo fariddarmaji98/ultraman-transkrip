@@ -10,7 +10,8 @@ import ResizeHandle from './ResizeHandle'
 import { Card } from './ui'
 import usePanelWidth from '../hooks/usePanelWidth'
 import useLocalState from '../hooks/useLocalState'
-import TranscriptLangBar, { ASLI } from './TranscriptLangBar'
+import { ASLI } from './TranscriptLangBar'
+
 
 // Sama dengan DEFAULT_AI_LANGUAGE di backend/constants: membuka rekaman lama
 // tanpa menyentuh pemilih harus memberi hasil yang sama seperti sebelum fitur
@@ -228,9 +229,16 @@ function Detail({
       <TranscriptHeader
         rec={rec}
         languages={languages}
-        tlang={tlang === ASLI ? undefined : tlang}
+        tlang={tlang}
+        source={sourceLang(rec)}
+        trans={trans}
+        tError={tError}
         onTitleChange={onTitleChange}
         onRetranscribe={onTranscribe}
+        onTlang={onTlang}
+        onTranslate={onTranslate}
+        banding={banding}
+        onBanding={setBanding}
         onClose={onClose}
       />
       <div className="flex min-h-0 flex-1">
@@ -243,14 +251,9 @@ function Detail({
         />
         <SourcePanel
           rec={rec}
-          languages={languages}
           tlang={tlang}
           trans={trans}
-          tError={tError}
-          onTlang={onTlang}
-          onTranslate={onTranslate}
           banding={banding}
-          onBanding={setBanding}
           error={error}
           onTranscribe={onTranscribe}
           onPause={onPause}
@@ -306,8 +309,8 @@ function glideTo(el, jauh) {
 }
 
 function SourcePanel({
-  rec, languages, tlang, trans, tError, onTlang, onTranslate, banding, onBanding,
-  error, onTranscribe, onPause, onResume, mediaRef, scrollRef, activeIdx, onTime, onSeek,
+  rec, tlang, trans, banding, error, onTranscribe, onPause, onResume,
+  mediaRef, scrollRef, activeIdx, onTime, onSeek,
 }) {
   const { width, dragging, handlers } = usePanelWidth(SOURCE_W)
   return (
@@ -355,19 +358,6 @@ function SourcePanel({
         )}
         {rec.status === 'failed' && (
           <p className="text-red-400">Gagal diproses. Cek pesan error, lalu coba lagi.</p>
-        )}
-        {rec.status === 'done' && rec.segments?.length > 0 && (
-          <TranscriptLangBar
-            languages={languages}
-            source={sourceLang(rec)}
-            value={tlang}
-            trans={trans}
-            error={tError}
-            banding={banding}
-            onChange={onTlang}
-            onTranslate={onTranslate}
-            onBanding={onBanding}
-          />
         )}
         <Transcript
           rec={rec}
