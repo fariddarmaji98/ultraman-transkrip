@@ -7,6 +7,7 @@ import SegmentList from './SegmentList'
 import ProgressSteps from './ProgressSteps'
 import AiPanel from './AiPanel'
 import ResizeHandle from './ResizeHandle'
+import { Card } from './ui'
 import usePanelWidth from '../hooks/usePanelWidth'
 import useLocalState from '../hooks/useLocalState'
 import TranscriptLangBar, { ASLI } from './TranscriptLangBar'
@@ -421,7 +422,7 @@ function ProgressBar({ status, progress }) {
 
 function DownloadedCard({ onTranscribe, error }) {
   return (
-    <div className="mb-5 rounded-xl border border-edge bg-panel2 p-4">
+    <Card className="mb-5">
       <p className="text-sm font-medium text-fg">Video tersimpan dan siap ditonton.</p>
       <p className="mt-1 text-xs leading-relaxed text-fg3">
         Transkrip belum dijalankan. Prosesnya memakai CPU dan bisa lama untuk video panjang.
@@ -433,7 +434,7 @@ function DownloadedCard({ onTranscribe, error }) {
         Transkrip sekarang
       </button>
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-    </div>
+    </Card>
   )
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { clearChat, getChat, sendChat } from '../api'
 import CitedText from './CitedText'
 import ConfirmModal from './ConfirmModal'
+import Icon from './Icon'
 
 export default function ChatPanel({ rec, ready, active, lang, onSeek, onCount }) {
   const [messages, setMessages] = useState([])
@@ -164,17 +165,9 @@ function Composer({ value, ready, busy, onChange, onSubmit }) {
           aria-label="Kirim"
           className="rounded-lg border border-edge p-1.5 text-fg3 transition hover:border-mint/50 hover:text-mint disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <SendIcon />
+          <Icon name="send" />
         </button>
       </div>
     </form>
-  )
-}
-
-function SendIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 5l7 7-7 7" />
-    </svg>
   )
 }

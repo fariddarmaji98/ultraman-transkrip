@@ -6,6 +6,7 @@ import ConfirmModal from './ConfirmModal'
 import CookiesPanel from './CookiesPanel'
 import DownloaderInfo from './DownloaderInfo'
 import StorageInfo from './StorageInfo'
+import { Tag } from './ui'
 
 export default function SettingsModal({ config, recordings, onClose }) {
   const [tab, setTab] = useState('ai')
@@ -211,11 +212,6 @@ function ProviderOption({ p, selected, onSelect }) {
       </span>
     </button>
   )
-}
-
-function Tag({ children, mint }) {
-  const tone = mint ? 'border-mint/40 text-mint' : 'border-edge2 text-fg3'
-  return <span className={`rounded-full border px-1.5 py-px text-[10px] ${tone}`}>{children}</span>
 }
 
 // Label opsi dropdown: "glm-5.3 · A · text, vision" — cermin gaya katalog

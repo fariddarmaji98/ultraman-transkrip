@@ -1,4 +1,6 @@
 // Progress flow: stepper tahap transkripsi (centang = selesai, titik = aktif, kosong = belum).
+import Icon from './Icon'
+
 const STEPS = ['Antre', 'Ekstrak', 'Transkrip', 'Selesai']
 const PHASE_IDX = { queued: 0, extracting: 1, transcribing: 2, done: 3 }
 
@@ -47,7 +49,7 @@ function Dot({ state }) {
   if (state === 'done')
     return (
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mint text-canvas">
-        <CheckIcon />
+        <Icon name="check" className="h-3.5 w-3.5" />
       </span>
     )
   if (state === 'active')
@@ -58,17 +60,5 @@ function Dot({ state }) {
     )
   return (
     <span className="h-6 w-6 shrink-0 rounded-full border-2 border-edge2 bg-panel" />
-  )
-}
-
-function CheckIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-      <path
-        fillRule="evenodd"
-        d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 0 1 1.4-1.4L8.5 12l6.8-6.7a1 1 0 0 1 1.4 0Z"
-        clipRule="evenodd"
-      />
-    </svg>
   )
 }

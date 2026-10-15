@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { exportUrl, renameRecording } from '../api'
 import { fmtTime, recLang } from '../utils'
+import Icon from './Icon'
 
 const FORMATS = ['txt', 'srt', 'json']
 
@@ -38,7 +39,7 @@ export default function TranscriptHeader({
             aria-label="Tutup"
             className="rounded-lg border border-edge p-1.5 text-fg3 transition hover:border-edge2 hover:text-fg"
           >
-            <CloseIcon />
+            <Icon name="close" />
           </button>
         )}
       </div>
@@ -112,13 +113,5 @@ function ExportLinks({ rec, tlang }) {
         </a>
       )}
     </div>
-  )
-}
-
-function CloseIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
-    </svg>
   )
 }

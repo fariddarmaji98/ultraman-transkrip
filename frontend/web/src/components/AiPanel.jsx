@@ -10,6 +10,7 @@ import useLocalState from '../hooks/useLocalState'
 import ChatPanel from './ChatPanel'
 import SummaryText from './SummaryText'
 import TabBar from './TabBar'
+import { Card, Tag } from './ui'
 
 // Kategori ekstraksi (ADR 0013) — urutan & label sama dengan backend
 // `EXTRACT_CATEGORIES`/`EXTRACT_LABELS`. Label dikunci di sini untuk UI; ekspor
@@ -115,7 +116,7 @@ function SummaryPane({ rec, ready, active, lang, languages, onSummarized }) {
 
 function SummaryCard({ summary, ready, busy, error, langName, onRun }) {
   return (
-    <div className="rounded-xl border border-edge bg-panel2 p-4">
+    <Card>
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-fg">Ringkasan</h3>
         {summary && (
@@ -136,7 +137,7 @@ function SummaryCard({ summary, ready, busy, error, langName, onRun }) {
       )}
       <RunButton summary={summary} ready={ready} busy={busy} onRun={onRun} />
       {error && <p className="mt-2 text-xs leading-snug text-red-400">{error}</p>}
-    </div>
+    </Card>
   )
 }
 
@@ -224,7 +225,7 @@ function LabelCard({ rec, onChanged }) {
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-edge bg-panel2 p-4">
+    <Card className="mt-3">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-fg">Label</h3>
         <button
@@ -286,25 +287,14 @@ function LabelCard({ rec, onChanged }) {
           )}
         </div>
       )}
-    </div>
-  )
-}
-
-function Tag({ children, mint }) {
-  const tone = mint
-    ? 'border-mint/40 text-mint'
-    : 'border-edge2 text-fg3'
-  return (
-    <span className={`rounded-full border px-2 py-px font-mono text-[10px] ${tone}`}>
-      {children}
-    </span>
+    </Card>
   )
 }
 
 function ExtractCard({ extract, ready, busy, error, onRun, onSeek }) {
   const has = extract && CATEGORIES.some(([key]) => extract[key]?.length > 0)
   return (
-    <div className="rounded-xl border border-edge bg-panel2 p-4">
+    <Card>
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-fg">Context terstruktur</h3>
         {extract && (
@@ -340,7 +330,7 @@ function ExtractCard({ extract, ready, busy, error, onRun, onSeek }) {
         {!ready ? 'Menunggu transkrip selesai' : busy ? 'Mengekstrak…' : extract ? 'Buat ulang' : 'Ekstrak context'}
       </button>
       {error && <p className="mt-2 text-xs leading-snug text-red-400">{error}</p>}
-    </div>
+    </Card>
   )
 }
 

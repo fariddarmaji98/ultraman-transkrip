@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { deleteRecording, retryDownload, sourceUrl } from '../api'
 import { fmtDate, fmtTime, isActive } from '../utils'
+import Icon from './Icon'
 import StatusBadge from './StatusBadge'
 import ConfirmModal from './ConfirmModal'
 
@@ -102,7 +103,7 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onRetry, onDelet
             aria-label="Simpan ke komputer"
             className="rounded p-1.5 text-fg3 transition hover:bg-mint/10 hover:text-mint"
           >
-            <SaveIcon />
+            <Icon name="save" />
           </a>
         )}
         {rec.status === 'failed' && (
@@ -115,7 +116,7 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onRetry, onDelet
             aria-label="Coba ulang"
             className="rounded p-1.5 text-fg3 transition hover:bg-mint/10 hover:text-mint"
           >
-            <RetryIcon />
+            <Icon name="retry" />
           </button>
         )}
         <button
@@ -124,7 +125,7 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onRetry, onDelet
           onClick={onDelete}
           className="rounded p-1.5 text-fg3 transition hover:bg-red-500/10 hover:text-red-400"
         >
-          <TrashIcon />
+          <Icon name="trash" />
         </button>
       </div>
     </li>
@@ -142,59 +143,3 @@ function MiniBar({ progress, paused }) {
   )
 }
 
-function SaveIcon() {
-  return (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 4v11m0 0 4-4m-4 4-4-4M5 17v1.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V17"
-      />
-    </svg>
-  )
-}
-
-function RetryIcon() {
-  return (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0 1 12-3l1 1M19 15a7 7 0 0 1-12 3l-1-1"
-      />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6 7h12M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7m2 0-.6 11.1a2 2 0 0 1-2 1.9H9.6a2 2 0 0 1-2-1.9L7 7m3 3.5v6m4-6v6"
-      />
-    </svg>
-  )
-}
