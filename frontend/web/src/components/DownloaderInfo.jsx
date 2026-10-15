@@ -2,12 +2,12 @@
 // adalah penyebab kegagalan unduh nomor satu — ia harus kelihatan, bukan tersembunyi.
 import SectionLabel from './SectionLabel'
 
-export default function DownloaderInfo({ downloader }) {
+export default function DownloaderInfo({ downloader, ...rest }) {
   if (!downloader) return null
   const { version, age_days: age, stale } = downloader
   return (
-    <div className="rounded-xl border border-edge bg-panel2 p-3">
-      <SectionLabel>Mesin unduh</SectionLabel>
+    <div {...rest} data-test="downloader-info" className="rounded-xl border border-edge bg-panel2 p-3">
+      <SectionLabel data-test="label-downloader">Mesin unduh</SectionLabel>
       <div className="flex items-center justify-between gap-2 py-0.5 text-xs">
         <span className="text-fg3">yt-dlp</span>
         <span className="truncate font-mono text-fg2">{version}</span>

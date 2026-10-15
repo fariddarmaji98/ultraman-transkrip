@@ -3,7 +3,7 @@ import { setModel } from '../api'
 
 const HINT = 'Model diunduh otomatis saat pertama dipakai. Transkrip lama tidak berubah.'
 
-export default function ModelPicker({ config, busy, onConfigChange }) {
+export default function ModelPicker({ config, busy, onConfigChange, ...rest }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const choices = config?.models ?? []
@@ -23,9 +23,10 @@ export default function ModelPicker({ config, busy, onConfigChange }) {
 
   if (!known) return <StaticModel value={config?.model} />
   return (
-    <div className="mt-1.5">
+    <div {...rest} data-test="model-picker" className="mt-1.5">
       <Label saving={saving} />
       <select
+        data-test="model-picker-select"
         value={config.model}
         disabled={saving || busy}
         onChange={(e) => pick(e.target.value)}
@@ -59,7 +60,7 @@ function Note({ busy, error }) {
 
 function StaticModel({ value }) {
   return (
-    <div className="flex items-center justify-between gap-2 py-1 text-xs">
+    <div data-test="static-model" className="flex items-center justify-between gap-2 py-1 text-xs">
       <span className="text-fg3">Model</span>
       <span className="truncate font-mono text-fg2">{value ?? '…'}</span>
     </div>

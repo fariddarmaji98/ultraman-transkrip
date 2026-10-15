@@ -224,7 +224,7 @@ function Detail({
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col">
+    <div data-test="transcript-view" className="flex min-w-0 flex-1 flex-col">
       <TranscriptHeader
         rec={rec}
         languages={languages}
@@ -312,6 +312,7 @@ function SourcePanel({
   const { width, dragging, handlers } = usePanelWidth(SOURCE_W)
   return (
     <section
+      data-test="source-panel"
       style={{ width }}
       className={`relative flex shrink-0 flex-col border-l border-edge ${
         dragging ? 'select-none' : ''
@@ -340,6 +341,7 @@ function SourcePanel({
             <ProgressBar status={rec.status} progress={rec.progress} />
             {onPause && (
               <button
+                data-test="btn-pause-transcribe"
                 onClick={onPause}
                 className="mt-3 rounded-lg border border-amber-400/40 px-3 py-2 text-xs font-medium text-amber-400 transition hover:bg-amber-400/10"
               >
@@ -390,7 +392,7 @@ function MediaPlayer({ rec, mediaRef, onTime }) {
     // `-mx-5 px-5`: latarnya harus menutup sampai tepi kolom, kalau tidak teks
     // yang lewat di belakangnya mengintip di sela padding. `pt-5` menggantikan
     // padding atas induk yang sengaja ditiadakan (lihat SourcePanel).
-    <div data-sticky className="sticky top-0 z-10 -mx-5 mb-5 bg-canvas px-5 pb-3 pt-5">
+    <div data-sticky data-test="media-player" className="sticky top-0 z-10 -mx-5 mb-5 bg-canvas px-5 pb-3 pt-5">
       <Tag
         ref={mediaRef}
         src={sourceUrl(rec.id)}
@@ -404,7 +406,7 @@ function MediaPlayer({ rec, mediaRef, onTime }) {
 
 function ProgressBar({ status, progress }) {
   return (
-    <div className="mb-5 rounded-xl border border-mint/20 bg-mint/5 p-4">
+    <div data-test="progress-bar" className="mb-5 rounded-xl border border-mint/20 bg-mint/5 p-4">
       <div className="mb-2 flex items-center gap-2 text-sm font-medium text-mint">
         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-mint/30 border-t-mint" />
         <span>{PHASE[status]}</span>
@@ -422,12 +424,13 @@ function ProgressBar({ status, progress }) {
 
 function DownloadedCard({ onTranscribe, error }) {
   return (
-    <Card className="mb-5">
+    <Card data-test="downloaded-card" className="mb-5">
       <p className="text-sm font-medium text-fg">Video tersimpan dan siap ditonton.</p>
       <p className="mt-1 text-xs leading-relaxed text-fg3">
         Transkrip belum dijalankan. Prosesnya memakai CPU dan bisa lama untuk video panjang.
       </p>
       <button
+        data-test="btn-start-transcribe"
         onClick={onTranscribe}
         className="mt-3 rounded-lg bg-mint px-3 py-2 text-xs font-semibold text-canvas transition hover:bg-mint2"
       >
@@ -440,7 +443,7 @@ function DownloadedCard({ onTranscribe, error }) {
 
 function PausedCard({ progress, onResume, error }) {
   return (
-    <div className="mb-5 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
+    <div data-test="paused-card" className="mb-5 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
       <p className="text-sm font-medium text-amber-400">Transkrip dijeda</p>
       <p className="mt-1 text-xs leading-relaxed text-fg3">
         Segmen yang sudah ditranskrip tersimpan. Lanjutkan kapan saja.
@@ -448,6 +451,7 @@ function PausedCard({ progress, onResume, error }) {
       <div className="mt-2 text-xs text-fg3 tabular-nums">{progress}% selesai</div>
       {onResume && (
         <button
+          data-test="btn-resume-transcribe"
           onClick={onResume}
           className="mt-3 rounded-lg bg-mint px-3 py-2 text-xs font-semibold text-canvas transition hover:bg-mint2"
         >

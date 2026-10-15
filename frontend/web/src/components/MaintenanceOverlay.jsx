@@ -1,10 +1,12 @@
 // Overlay maintenance: tampil penuh selama backend memperbarui mesin unduh
 // (yt-dlp). Digerakkan state, bukan timeout — hilang sendiri saat poll
 // `/api/maintenance` melaporkan selesai, apa pun lamanya.
-export default function MaintenanceOverlay({ status }) {
+export default function MaintenanceOverlay({ status, ...rest }) {
   if (!status?.updating) return null
   return (
     <div
+      {...rest}
+      data-test="maintenance-overlay"
       role="alert"
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-canvas/95 backdrop-blur-sm"
     >

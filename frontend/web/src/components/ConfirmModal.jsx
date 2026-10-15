@@ -8,10 +8,11 @@ export default function ConfirmModal({
   confirmLabel = 'Hapus',
   onConfirm,
   onCancel,
+  ...rest
 }) {
   return (
-    <div className="relative z-40" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/60" onClick={onCancel} />
+    <div {...rest} className="relative z-40" role="dialog" aria-modal="true">
+      <div data-test="confirm-backdrop" className="fixed inset-0 bg-black/60" onClick={onCancel} />
       <div className="fixed inset-0 z-40 flex min-h-full items-end justify-center p-4 sm:items-center">
         <div className="relative w-full max-w-md rounded-xl border border-edge bg-panel p-6 text-left shadow-2xl">
           <div className="sm:flex sm:items-start">
@@ -25,12 +26,14 @@ export default function ConfirmModal({
           </div>
           <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse sm:gap-3">
             <button
+              data-test="confirm-btn"
               onClick={onConfirm}
               className="inline-flex w-full justify-center rounded-md bg-red-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-400 sm:w-auto"
             >
               {confirmLabel}
             </button>
             <button
+              data-test="confirm-cancel"
               onClick={onCancel}
               className="mt-3 inline-flex w-full justify-center rounded-md border border-edge bg-panel2 px-3 py-2 text-sm font-semibold text-fg transition hover:border-edge2 sm:mt-0 sm:w-auto"
             >

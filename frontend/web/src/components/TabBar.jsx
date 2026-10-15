@@ -10,6 +10,7 @@ export default function TabBar({ tabs, active, onChange, right, ...rest }) {
         {tabs.map((t) => (
           <Tab
             key={t.id}
+            testId={`tab-${t.id}`}
             label={t.label}
             count={t.count ?? 0}
             selected={t.id === active}
@@ -22,12 +23,13 @@ export default function TabBar({ tabs, active, onChange, right, ...rest }) {
   )
 }
 
-function Tab({ label, count, selected, onClick }) {
+function Tab({ label, count, selected, onClick, testId }) {
   const tone = selected
     ? 'border-mint text-fg'
     : 'border-transparent text-fg3 hover:text-fg2'
   return (
     <button
+      data-test={testId}
       role="tab"
       aria-selected={selected}
       onClick={onClick}

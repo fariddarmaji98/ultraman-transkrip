@@ -3,9 +3,9 @@
 // dipakai untuk melompat adalah waktu pertama.
 const CITE = /\[(\d{1,2}):(\d{2})(?:\s*[-–—]\s*\d{1,2}:\d{2})?\]/g
 
-export default function CitedText({ text, maxMs, onSeek }) {
+export default function CitedText({ text, maxMs, onSeek, ...rest }) {
   return (
-    <span className="whitespace-pre-wrap">
+    <span {...rest} className="whitespace-pre-wrap">
       {split(text).map((part, i) => (
         <Piece key={i} part={part} maxMs={maxMs} onSeek={onSeek} />
       ))}
@@ -26,6 +26,7 @@ function Piece({ part, maxMs, onSeek }) {
     )
   return (
     <button
+      data-test={`citation-${part.ms}`}
       onClick={() => onSeek?.(part.ms)}
       title="Putar dari menit ini"
       className="mx-0.5 rounded border border-mint/40 px-1 font-mono text-[10px] text-mint transition hover:bg-mint/10"

@@ -51,12 +51,13 @@ const ICONS = {
   check: { ...FILL, d: 'M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 0 1 1.4-1.4L8.5 12l6.8-6.7a1 1 0 0 1 1.4 0Z' },
 }
 
-export default function Icon({ name, className = 'h-4 w-4' }) {
+export default function Icon({ name, className = 'h-4 w-4', ...rest }) {
   const ic = ICONS[name]
   if (!ic) return null
   const solid = ic.mode === 'fill'
   return (
     <svg
+      {...rest}
       className={ic.anim ? `${className} ${ic.anim}` : className}
       viewBox={ic.vb}
       fill={solid ? 'currentColor' : 'none'}

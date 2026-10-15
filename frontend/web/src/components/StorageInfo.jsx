@@ -3,11 +3,11 @@
 import SectionLabel from './SectionLabel'
 import { fmtBytes } from '../utils'
 
-export default function StorageInfo({ storage }) {
+export default function StorageInfo({ storage, ...rest }) {
   if (!storage) return null
   return (
-    <div className="rounded-xl border border-edge bg-panel2 p-3">
-      <SectionLabel>Penyimpanan</SectionLabel>
+    <div {...rest} data-test="storage-info" className="rounded-xl border border-edge bg-panel2 p-3">
+      <SectionLabel data-test="label-storage">Penyimpanan</SectionLabel>
       <Row label="Berkas tersimpan" value={`${storage.files} file`} />
       <Row label="Terpakai" value={fmtBytes(storage.used_bytes)} />
       <Row label="Sisa disk" value={fmtBytes(storage.free_bytes)} />

@@ -53,7 +53,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-canvas text-fg">
+    <div data-test="app-root" className="flex h-screen overflow-hidden bg-canvas text-fg">
       <MaintenanceOverlay status={maintenance} />
       <Sidebar
         recordings={recordings}
@@ -66,7 +66,7 @@ export default function App() {
         onDeselect={() => setSelectedId(null)}
         onConfigChange={setConfig}
       />
-      <main className="flex min-w-0 flex-1 overflow-hidden">
+      <main data-test="main-content" className="flex min-w-0 flex-1 overflow-hidden">
         {selectedId ? (
           <TranscriptView
             key={selectedId}

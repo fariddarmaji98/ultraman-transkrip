@@ -15,13 +15,13 @@ export default function TranscribeTab({
   onConfigChange,
 }) {
   const items = recordings.filter(hasTranscript)
-  const busy = items.some(isActive)  // unduhan tidak mengunci model — ia tak pakai Whisper
+  const busy = items.some(isActive)
   return (
-    <>
+    <div data-test="transcribe-tab" className="flex flex-col gap-4">
       <EnginePanel config={config} busy={busy} onConfigChange={onConfigChange} />
       <StatsGrid items={items} />
       <div>
-        <SectionLabel>Riwayat transkrip</SectionLabel>
+        <SectionLabel data-test="label-transcript-history">Riwayat transkrip</SectionLabel>
         <RecordingList
           items={items}
           selectedId={selectedId}
@@ -31,15 +31,15 @@ export default function TranscribeTab({
           emptyText="Belum ada transkrip."
         />
       </div>
-    </>
+    </div>
   )
 }
 
 function EnginePanel({ config, busy, onConfigChange }) {
   const provider = config?.asr_provider === 'groq' ? 'Groq · cloud' : 'Lokal · mesin'
   return (
-    <div className="rounded-xl border border-edge bg-panel2 p-3">
-      <SectionLabel>Engine</SectionLabel>
+    <div data-test="engine-panel" className="rounded-xl border border-edge bg-panel2 p-3">
+      <SectionLabel data-test="label-engine">Engine</SectionLabel>
       <Row label="Provider" value={provider} />
       <ModelPicker config={config} busy={busy} onConfigChange={onConfigChange} />
       <EngineStatus busy={busy} />
@@ -69,7 +69,7 @@ function Row({ label, value }) {
 function StatsGrid({ items }) {
   const by = (fn) => items.filter(fn).length
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div data-test="stats-grid" className="grid grid-cols-2 gap-2">
       <Stat label="Selesai" value={by((r) => r.status === 'done')} accent />
       <Stat label="Diproses" value={by(isActive)} />
       <Stat label="Gagal" value={by((r) => r.status === 'failed')} danger />
@@ -81,7 +81,7 @@ function StatsGrid({ items }) {
 function Stat({ label, value, accent, danger }) {
   const color = accent ? 'text-mint' : danger && value > 0 ? 'text-red-400' : 'text-fg'
   return (
-    <div className="rounded-xl border border-edge bg-panel2 px-3 py-2.5">
+    <div data-test={`stat-${label.toLowerCase()}`} className="rounded-xl border border-edge bg-panel2 px-3 py-2.5">
       <div className="text-[10px] font-medium uppercase tracking-widest text-fg3">{label}</div>
       <div className={`mt-0.5 text-2xl font-semibold tabular-nums ${color}`}>{value}</div>
     </div>

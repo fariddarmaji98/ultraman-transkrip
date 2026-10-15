@@ -22,7 +22,7 @@ const CATEGORIES = [
   ['open_questions', 'Pertanyaan terbuka'],
 ]
 
-export default function AiPanel({ rec, languages, lang, onSummarized, onSeek }) {
+export default function AiPanel({ rec, languages, lang, onSummarized, onSeek, ...rest }) {
   const [tab, setTab] = useLocalState('ai-tab', 'ringkasan')
   const [chatCount, setChatCount] = useState(0)
   const ready = rec.status === 'done' && rec.segments?.length > 0
@@ -33,7 +33,7 @@ export default function AiPanel({ rec, languages, lang, onSummarized, onSeek }) 
   ]
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col">
+    <section {...rest} data-test="ai-panel" className="flex min-w-0 flex-1 flex-col">
       <TabBar
         tabs={tabs}
         active={tab}
@@ -116,7 +116,7 @@ function SummaryPane({ rec, ready, active, lang, languages, onSummarized }) {
 
 function SummaryCard({ summary, ready, busy, error, langName, onRun }) {
   return (
-    <Card>
+    <Card data-test="summary-card">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-fg">Ringkasan</h3>
         {summary && (
@@ -148,6 +148,7 @@ function RunButton({ summary, ready, busy, onRun }) {
     : 'bg-mint text-canvas hover:bg-mint2'
   return (
     <button
+      data-test="btn-summarize"
       onClick={onRun}
       disabled={!ready || busy}
       title={ready ? 'Memakai mesin AI dari popup Setelan' : 'Transkrip harus selesai dulu'}
@@ -229,6 +230,7 @@ function LabelCard({ rec, onChanged }) {
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-fg">Label</h3>
         <button
+          data-test="btn-toggle-label-edit"
           onClick={() => (editing ? setEditing(false) : setEditing(true))}
           className="text-[10px] text-fg3 transition hover:text-fg"
         >
@@ -252,6 +254,7 @@ function LabelCard({ rec, onChanged }) {
       {editing ? (
         <div className="mt-2">
           <input
+            data-test="label-input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="label1, label2 — pisahkan dengan koma"
@@ -263,6 +266,7 @@ function LabelCard({ rec, onChanged }) {
             yang lama.
           </p>
           <button
+            data-test="btn-save-label"
             onClick={save}
             disabled={busy}
             className="mt-2 w-full rounded-lg bg-mint px-3 py-2 text-xs font-semibold text-canvas transition hover:bg-mint2 disabled:opacity-50"
@@ -294,7 +298,7 @@ function LabelCard({ rec, onChanged }) {
 function ExtractCard({ extract, ready, busy, error, onRun, onSeek }) {
   const has = extract && CATEGORIES.some(([key]) => extract[key]?.length > 0)
   return (
-    <Card>
+    <Card data-test="extract-card">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-fg">Context terstruktur</h3>
         {extract && (
@@ -318,6 +322,7 @@ function ExtractCard({ extract, ready, busy, error, onRun, onSeek }) {
         </p>
       )}
       <button
+        data-test="btn-extract"
         onClick={onRun}
         disabled={!ready || busy}
         title={ready ? 'Memakai mesin AI dari popup Setelan' : 'Transkrip harus selesai dulu'}
@@ -357,6 +362,7 @@ function TimeStamp({ ms, onSeek }) {
   const label = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   return (
     <button
+      data-test={`timestamp-${ms}`}
       onClick={() => onSeek?.(ms)}
       title="Putar dari menit ini"
       className="mt-px shrink-0 rounded border border-mint/40 px-1 font-mono text-[10px] text-mint transition hover:bg-mint/10"

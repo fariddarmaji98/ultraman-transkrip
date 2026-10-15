@@ -4,10 +4,10 @@ import Icon from './Icon'
 const STEPS = ['Antre', 'Ekstrak', 'Transkrip', 'Selesai']
 const PHASE_IDX = { queued: 0, extracting: 1, transcribing: 2, done: 3 }
 
-export default function ProgressSteps({ status }) {
+export default function ProgressSteps({ status, ...rest }) {
   const idx = PHASE_IDX[status] ?? 0
   return (
-    <ol className="mb-5 flex">
+    <ol {...rest} data-test="progress-steps" className="mb-5 flex">
       {STEPS.map((label, i) => (
         <Step
           key={label}

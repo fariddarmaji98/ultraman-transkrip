@@ -12,10 +12,11 @@ const META = {
   failed: { label: 'Gagal', color: 'text-red-400', icon: 'alert' },
 }
 
-export default function StatusBadge({ status }) {
+export default function StatusBadge({ status, ...rest }) {
   const meta = META[status] ?? { label: status, color: 'text-fg3', icon: 'clock' }
   return (
     <span
+      {...rest}
       className={`inline-flex ${meta.color}`}
       title={meta.label}
       role="img"

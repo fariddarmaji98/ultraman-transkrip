@@ -4,7 +4,7 @@ import { uploadRecording } from '../api'
 // Unggah file audio/video ke server. Tidak auto-transkrip — file tersimpan
 // sebagai data mentah (status=downloaded), muncul di list Video Terunduh.
 // Pilih file → langsung upload. Bahasa dipegang pipeline transkrip ("auto").
-export default function UploadPanel({ onUploaded, onCancel }) {
+export default function UploadPanel({ onUploaded, onCancel, ...rest }) {
   const inputRef = useRef(null)
   const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
@@ -27,6 +27,7 @@ export default function UploadPanel({ onUploaded, onCancel }) {
 
   return (
     <div
+      {...rest}
       className="flex flex-col gap-2"
       onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
@@ -37,6 +38,7 @@ export default function UploadPanel({ onUploaded, onCancel }) {
       }}
     >
       <label
+        data-test="upload-dropzone"
         className={`relative flex min-h-[76px] cursor-pointer items-center justify-center rounded-xl border border-dashed p-3 text-center text-sm transition ${
           dragOver
             ? 'border-mint bg-mint/5 text-mint'
@@ -44,6 +46,7 @@ export default function UploadPanel({ onUploaded, onCancel }) {
         }`}
       >
         <input
+          data-test="upload-file-input"
           ref={inputRef}
           type="file"
           accept="audio/*,video/*"
@@ -60,7 +63,7 @@ export default function UploadPanel({ onUploaded, onCancel }) {
         </span>
       </label>
       {progress !== null && (
-        <div className="h-1.5 overflow-hidden rounded-full bg-edge">
+        <div data-test="upload-progress" className="h-1.5 overflow-hidden rounded-full bg-edge">
           <div
             className="h-full rounded-full bg-mint transition-all"
             style={{ width: `${progress}%` }}
@@ -69,6 +72,7 @@ export default function UploadPanel({ onUploaded, onCancel }) {
       )}
       {progress === null && (
         <button
+          data-test="upload-cancel"
           onClick={onCancel}
           className="self-end rounded-lg border border-edge px-3 py-1.5 text-xs text-fg3 transition hover:text-fg"
         >

@@ -5,7 +5,7 @@ import { forgetCookies, getCookies, uploadCookies } from '../api'
 import ConfirmModal from './ConfirmModal'
 import SectionLabel from './SectionLabel'
 
-export default function CookiesPanel() {
+export default function CookiesPanel({ ...rest }) {
   const [data, setData] = useState(null)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState(null)
@@ -30,8 +30,8 @@ export default function CookiesPanel() {
 
   if (!data) return null
   return (
-    <div className="rounded-xl border border-edge bg-panel2 p-3">
-      <SectionLabel>Cookies platform</SectionLabel>
+    <div {...rest} data-test="cookies-panel" className="rounded-xl border border-edge bg-panel2 p-3">
+      <SectionLabel data-test="label-cookies">Cookies platform</SectionLabel>
       <div className="space-y-2.5">
         {data.platforms.map((p) => (
           <Row
@@ -67,7 +67,7 @@ export default function CookiesPanel() {
 
 function Row({ p, busy, onUpload, onForget }) {
   return (
-    <div>
+    <div data-test={`cookie-row-${p.id}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs text-fg2">
           {p.label}
@@ -79,13 +79,14 @@ function Row({ p, busy, onUpload, onForget }) {
         </span>
         {p.stored ? (
           <button
+            data-test={`cookie-forget-${p.id}`}
             onClick={onForget}
             className="shrink-0 text-[10px] text-red-400 transition hover:underline"
           >
             Hapus
           </button>
         ) : (
-          <UploadButton busy={busy} onPick={onUpload} />
+          <UploadButton busy={busy} onPick={onUpload} testId={`cookie-upload-${p.id}`} />
         )}
       </div>
       <p className="mt-0.5 text-[10px] leading-snug text-fg3">{p.note}</p>
@@ -93,10 +94,14 @@ function Row({ p, busy, onUpload, onForget }) {
   )
 }
 
-function UploadButton({ busy, onPick }) {
+function UploadButton({ busy, onPick, testId }) {
   return (
-    <label className="shrink-0 cursor-pointer rounded border border-edge px-2 py-0.5 text-[10px] text-fg3 transition hover:border-edge2 hover:text-fg">
+    <label
+      data-test={testId}
+      className="shrink-0 cursor-pointer rounded border border-edge px-2 py-0.5 text-[10px] text-fg3 transition hover:border-edge2 hover:text-fg"
+    >
       <input
+        data-test={`${testId}-input`}
         type="file"
         accept=".txt,text/plain"
         className="hidden"

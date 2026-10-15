@@ -1,8 +1,8 @@
 // Render subset Markdown yang memang kita minta di prompt: "## judul", "- butir",
 // paragraf. Sengaja bukan library — formatnya kita sendiri yang tentukan.
-export default function SummaryText({ text }) {
+export default function SummaryText({ text, ...rest }) {
   return (
-    <div className="space-y-1.5">
+    <div {...rest} data-test="summary-text" className="space-y-1.5">
       {parse(text).map((block, i) => (
         <Block key={i} block={block} />
       ))}

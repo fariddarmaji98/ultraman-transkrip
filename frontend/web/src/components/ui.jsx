@@ -3,17 +3,19 @@
 // kelas Tailwind yang sama, dan satu perbaikan harus diulang di semua tempat.
 
 // Kartu isi panel: kotak bersudut membulat di atas latar panel2.
-export function Card({ className = '', children }) {
+export function Card({ className = '', children, ...rest }) {
   return (
-    <div className={`rounded-xl border border-edge bg-panel2 p-4 ${className}`}>{children}</div>
+    <div {...rest} className={`rounded-xl border border-edge bg-panel2 p-4 ${className}`}>
+      {children}
+    </div>
   )
 }
 
 // Label pil (topik otomatis, label manual, status provider).
-export function Tag({ children, mint, className = '' }) {
+export function Tag({ children, mint, className = '', ...rest }) {
   const tone = mint ? 'border-mint/40 text-mint' : 'border-edge2 text-fg3'
   return (
-    <span className={`rounded-full border px-2 py-px font-mono text-[10px] ${tone} ${className}`}>
+    <span {...rest} className={`rounded-full border px-2 py-px font-mono text-[10px] ${tone} ${className}`}>
       {children}
     </span>
   )

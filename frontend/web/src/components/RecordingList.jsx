@@ -15,6 +15,7 @@ export default function RecordingList({
   confirmTitle = 'Hapus transkrip?',
   confirmMessage = 'Transkrip dan media rekaman ini akan dihapus permanen dan tidak bisa dikembalikan.',
   showDownload = false,
+  ...rest
 }) {
   const [pendingId, setPendingId] = useState(null)
 
@@ -39,7 +40,7 @@ export default function RecordingList({
 
   return (
     <>
-      <ul className="flex list-none flex-col gap-1.5 p-0">
+      <ul {...rest} data-test="recording-list" className="flex list-none flex-col gap-1.5 p-0">
         {items.map((r) => (
           <RecordingItem
             key={r.id}
@@ -74,6 +75,7 @@ const HAS_FILE = (rec) => !['downloading', 'failed', 'paused'].includes(rec.stat
 function RecordingItem({ rec, selected, showDownload, onSelect, onRetry, onDelete }) {
   return (
     <li
+      data-test={`recording-item-${rec.id}`}
       onClick={onSelect}
       className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition ${
         selected
@@ -96,6 +98,7 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onRetry, onDelet
       <div className="flex shrink-0 items-center">
         {showDownload && HAS_FILE(rec) && (
           <a
+            data-test={`recording-download-${rec.id}`}
             href={sourceUrl(rec.id)}
             download
             onClick={(e) => e.stopPropagation()}
@@ -108,6 +111,7 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onRetry, onDelet
         )}
         {rec.status === 'failed' && (
           <button
+            data-test={`recording-retry-${rec.id}`}
             onClick={(e) => {
               e.stopPropagation()
               onRetry()
@@ -120,6 +124,7 @@ function RecordingItem({ rec, selected, showDownload, onSelect, onRetry, onDelet
           </button>
         )}
         <button
+          data-test={`recording-delete-${rec.id}`}
           title="Hapus"
           aria-label="Hapus"
           onClick={onDelete}

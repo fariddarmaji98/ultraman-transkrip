@@ -16,10 +16,10 @@ export default function DownloadTab({
 }) {
   const items = recordings.filter(isRaw)
   return (
-    <>
+    <div data-test="download-tab" className="flex flex-col gap-4">
       <MediaInput onCreated={onCreated} onUploaded={onUploaded} />
       <div>
-        <SectionLabel>Video terunduh</SectionLabel>
+        <SectionLabel data-test="label-downloaded">Video terunduh</SectionLabel>
         <RecordingList
           items={items}
           selectedId={selectedId}
@@ -32,6 +32,6 @@ export default function DownloadTab({
           confirmMessage="File video dan transkripnya (bila ada) akan dihapus permanen dan tidak bisa dikembalikan."
         />
       </div>
-    </>
+    </div>
   )
 }

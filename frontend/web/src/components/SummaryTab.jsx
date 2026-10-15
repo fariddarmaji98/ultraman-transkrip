@@ -12,8 +12,8 @@ export default function SummaryTab({
 }) {
   const items = recordings.filter(isReady)
   return (
-    <>
-      <SectionLabel>Selesai</SectionLabel>
+    <div data-test="summary-tab">
+      <SectionLabel data-test="label-summary">Selesai</SectionLabel>
       <RecordingList
         items={items}
         selectedId={selectedId}
@@ -23,6 +23,6 @@ export default function SummaryTab({
         emptyText="Belum ada ringkasan selesai."
         showDownload
       />
-    </>
+    </div>
   )
 }

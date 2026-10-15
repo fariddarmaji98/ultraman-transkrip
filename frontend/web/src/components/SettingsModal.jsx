@@ -8,13 +8,13 @@ import DownloaderInfo from './DownloaderInfo'
 import StorageInfo from './StorageInfo'
 import { Tag } from './ui'
 
-export default function SettingsModal({ config, recordings, onClose }) {
+export default function SettingsModal({ config, recordings, onClose, ...rest }) {
   const [tab, setTab] = useState('ai')
   return (
-    <Shell onClose={onClose}>
+    <Shell onClose={onClose} {...rest}>
       <div className="mb-4 flex gap-1 border-b border-edge">
-        <TabButton active={tab === 'ai'} onClick={() => setTab('ai')}>Mesin AI</TabButton>
-        <TabButton active={tab === 'unduh'} onClick={() => setTab('unduh')}>Unduhan</TabButton>
+        <TabButton active={tab === 'ai'} onClick={() => setTab('ai')} testId="settings-tab-ai">Mesin AI</TabButton>
+        <TabButton active={tab === 'unduh'} onClick={() => setTab('unduh')} testId="settings-tab-unduh">Unduhan</TabButton>
       </div>
       {tab === 'ai' ? (
         <AiTab onClose={onClose} />
@@ -25,9 +25,10 @@ export default function SettingsModal({ config, recordings, onClose }) {
   )
 }
 
-function TabButton({ active, onClick, children }) {
+function TabButton({ active, onClick, children, testId }) {
   return (
     <button
+      data-test={testId}
       onClick={onClick}
       className={`-mb-px border-b-2 px-3 py-2 text-xs font-medium transition ${
         active ? 'border-mint text-mint' : 'border-transparent text-fg3 hover:text-fg'
@@ -176,10 +177,10 @@ function AiTab({ onClose }) {
   )
 }
 
-function Shell({ children, onClose }) {
+function Shell({ children, onClose, ...rest }) {
   return (
-    <div className="relative z-30" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/60" onClick={onClose} />
+    <div {...rest} data-test="settings-modal" className="relative z-30" role="dialog" aria-modal="true">
+      <div data-test="settings-backdrop" className="fixed inset-0 bg-black/60" onClick={onClose} />
       <div className="fixed inset-0 z-30 flex min-h-full items-center justify-center p-4">
         <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border border-edge bg-panel p-6 shadow-2xl">
           <h3 className="text-base font-semibold text-fg">Setelan general</h3>
@@ -196,6 +197,7 @@ function ProviderOption({ p, selected, onSelect }) {
   const ring = selected ? 'border-mint/60 bg-mint/5' : 'border-edge bg-panel2 hover:border-edge2'
   return (
     <button
+      data-test={`provider-${p.id}`}
       onClick={onSelect}
       className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition ${ring}`}
     >
@@ -239,6 +241,7 @@ function ModelField({ value, onChange, models, busy, onLoad, requireLoad }) {
       <div className="flex items-center justify-between">
         <span className="text-xs text-fg3">Model</span>
         <button
+          data-test="btn-load-models"
           type="button"
           onClick={onLoad}
           disabled={!!busy}
@@ -250,6 +253,7 @@ function ModelField({ value, onChange, models, busy, onLoad, requireLoad }) {
       {loaded ? (
         <>
           <select
+            data-test="model-select"
             value={loaded.some((m) => m.id === value) ? value : ''}
             onChange={(e) => onChange(e.target.value)}
             className="mt-1 w-full rounded-lg border border-edge bg-panel2 px-3 py-2 font-mono text-xs text-fg outline-none focus:border-mint/60"
@@ -270,6 +274,7 @@ function ModelField({ value, onChange, models, busy, onLoad, requireLoad }) {
       ) : (
         <>
           <input
+            data-test="model-input"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             disabled={requireLoad}
@@ -295,6 +300,7 @@ function UrlField({ value, onChange }) {
     <label className="mt-3 block">
       <span className="text-xs text-fg3">Base URL</span>
       <input
+        data-test="base-url-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="https://contoh-proxy.xyz/v1"
@@ -314,6 +320,7 @@ function KeyField({ value, stored, onChange, onForget }) {
         <label htmlFor="llm-key">API key</label>
         {stored && (
           <button
+            data-test="btn-forget-key"
             type="button"
             onClick={onForget}
             className="text-[10px] text-red-400 transition hover:underline"
@@ -323,6 +330,7 @@ function KeyField({ value, stored, onChange, onForget }) {
         )}
       </div>
       <input
+        data-test="api-key-input"
         id="llm-key"
         type="password"
         autoComplete="off"
@@ -357,7 +365,7 @@ function TestBanner({ result }) {
     ? 'border-mint/30 bg-mint/5 text-mint'
     : 'border-red-500/30 bg-red-500/5 text-red-400'
   return (
-    <p className={`mt-3 rounded-lg border px-3 py-2 text-xs leading-snug ${tone}`}>
+    <p data-test="test-banner" className={`mt-3 rounded-lg border px-3 py-2 text-xs leading-snug ${tone}`}>
       {result.detail}
       {/* Tes tidak menyimpan apa pun — tanpa pengingat ini, sukses hijau terasa "selesai". */}
       {result.ok && ' — klik Simpan agar kuncinya tersimpan.'}
@@ -367,8 +375,9 @@ function TestBanner({ result }) {
 
 function Actions({ busy, onTest, onSave, onClose }) {
   return (
-    <div className="mt-5 flex items-center gap-2">
+    <div data-test="settings-actions" className="mt-5 flex items-center gap-2">
       <button
+        data-test="btn-test-llm"
         onClick={onTest}
         disabled={!!busy}
         className="rounded-md border border-edge bg-panel2 px-3 py-2 text-xs font-semibold text-fg transition hover:border-edge2 disabled:opacity-50"
@@ -377,12 +386,14 @@ function Actions({ busy, onTest, onSave, onClose }) {
       </button>
       <span className="flex-1" />
       <button
+        data-test="btn-settings-cancel"
         onClick={onClose}
         className="rounded-md border border-edge px-3 py-2 text-xs font-semibold text-fg2 transition hover:border-edge2"
       >
         Batal
       </button>
       <button
+        data-test="btn-save-llm"
         onClick={onSave}
         disabled={!!busy}
         className="rounded-md bg-mint px-3 py-2 text-xs font-semibold text-canvas transition hover:bg-mint2 disabled:opacity-50"

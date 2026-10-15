@@ -10,13 +10,14 @@ import { langLabel } from '../utils'
 export const ASLI = 'asli'
 
 export default function TranscriptLangBar({
-  languages, source, value, trans, busy, error, banding, onChange, onTranslate, onBanding,
+  languages, source, value, trans, busy, error, banding, onChange, onTranslate, onBanding, ...rest
 }) {
   const pilihan = (languages ?? []).filter((l) => l.id !== source)
   if (!pilihan.length) return null
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-edge pb-3">
+    <div {...rest} data-test="transcript-lang-bar" className="mb-3 flex flex-wrap items-center gap-2 border-b border-edge pb-3">
       <select
+        data-test="transcript-lang-select"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         title="Bahasa transkrip yang ditampilkan — bukan bahasa ringkasan/chat"
@@ -33,6 +34,7 @@ export default function TranscriptLangBar({
           tidak mungkin berguna lebih baik tidak ada daripada dimatikan. */}
       {value !== ASLI && trans?.segments?.length > 0 && (
         <button
+          data-test="btn-compare"
           onClick={() => onBanding(!banding)}
           title="Tampilkan transkrip asli berdampingan dengan terjemahannya"
           className={`ml-auto rounded-md border px-2 py-1 text-[11px] transition ${
@@ -59,17 +61,18 @@ function Status({ value, trans, busy, onTranslate }) {
     return (
       <>
         <span className="text-[11px] text-red-400">Gagal: {trans.error ?? 'tidak diketahui'}</span>
-        <Button onClick={onTranslate}>Coba lagi</Button>
+        <Button onClick={onTranslate} testId="btn-translate-retry">Coba lagi</Button>
       </>
     )
   if (trans?.segments?.length)
     return <span className="text-[11px] text-fg3">{trans.segments.length} segmen diterjemahkan</span>
-  return <Button onClick={onTranslate}>Terjemahkan</Button>
+  return <Button onClick={onTranslate} testId="btn-translate">Terjemahkan</Button>
 }
 
-function Button({ children, onClick }) {
+function Button({ children, onClick, testId }) {
   return (
     <button
+      data-test={testId}
       onClick={onClick}
       className="rounded-md border border-mint/40 px-2 py-1 text-[11px] font-semibold text-mint transition hover:bg-mint/10"
     >

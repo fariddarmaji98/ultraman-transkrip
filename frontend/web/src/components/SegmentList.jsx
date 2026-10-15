@@ -1,14 +1,15 @@
 import { fmtTime } from '../utils'
 
-export default function SegmentList({ segments, activeIdx, onSeek }) {
+export default function SegmentList({ segments, activeIdx, onSeek, ...rest }) {
   if (!segments.length)
     return <p className="text-fg3">Transkrip kosong.</p>
 
   return (
-    <ol className="flex list-none flex-col gap-0.5 p-0">
+    <ol {...rest} data-test="segment-list" className="flex list-none flex-col gap-0.5 p-0">
       {segments.map((s, pos) => (
         <li
           key={s.idx}
+          data-test={`segment-${pos}`}
           data-pos={pos}
           onClick={() => onSeek(s.start_ms)}
           className={`flex cursor-pointer gap-4 rounded-lg px-3 py-2.5 transition ${

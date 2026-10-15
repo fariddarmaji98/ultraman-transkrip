@@ -15,7 +15,7 @@ const PLACEHOLDER = [
   '- TikTok dan X paling mulus, YouTube kadang minta login',
 ].join('\n')
 
-export default function UrlForm({ onCreated, onCancel }) {
+export default function UrlForm({ onCreated, onCancel, ...rest }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState(null)
@@ -49,8 +49,9 @@ export default function UrlForm({ onCreated, onCancel }) {
   const urlCount = text.split('\n').map((u) => u.trim()).filter(Boolean).length
 
   return (
-    <form className="flex flex-col gap-2.5" onSubmit={submit}>
+    <form {...rest} className="flex flex-col gap-2.5" onSubmit={submit}>
       <textarea
+        data-test="url-input"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={PLACEHOLDER}
@@ -61,6 +62,7 @@ export default function UrlForm({ onCreated, onCancel }) {
       />
       <div className="flex items-center justify-between gap-2">
         <button
+          data-test="url-cancel"
           type="button"
           onClick={onCancel}
           disabled={busy}
@@ -73,6 +75,7 @@ export default function UrlForm({ onCreated, onCancel }) {
             {urlCount > 0 ? `${urlCount} URL siap diunduh` : ''}
           </span>
           <button
+            data-test="url-submit"
             type="submit"
             disabled={!urlCount || busy}
             className="rounded-lg bg-mint px-3 py-2 text-sm font-semibold text-canvas transition hover:bg-mint2 disabled:cursor-not-allowed disabled:opacity-40"
@@ -82,7 +85,7 @@ export default function UrlForm({ onCreated, onCancel }) {
         </div>
       </div>
       {results && (
-        <div className="space-y-1">
+        <div data-test="url-results" className="space-y-1">
           {results.map((r, i) => (
             <p key={i} className={`text-[10px] leading-snug ${r.ok ? 'text-mint' : 'text-red-400'}`}>
               {r.ok ? '✓' : '✗'} {r.url.length > 50 ? r.url.slice(0, 50) + '…' : r.url}

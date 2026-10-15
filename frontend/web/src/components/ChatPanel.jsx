@@ -6,7 +6,7 @@ import CitedText from './CitedText'
 import ConfirmModal from './ConfirmModal'
 import Icon from './Icon'
 
-export default function ChatPanel({ rec, ready, active, lang, onSeek, onCount }) {
+export default function ChatPanel({ rec, ready, active, lang, onSeek, onCount, ...rest }) {
   const [messages, setMessages] = useState([])
   const [question, setQuestion] = useState('')
   const [busy, setBusy] = useState(false)
@@ -59,7 +59,7 @@ export default function ChatPanel({ rec, ready, active, lang, onSeek, onCount })
 
   return (
     <>
-      <section className={`min-h-0 flex-1 flex-col ${active ? 'flex' : 'hidden'}`}>
+      <section {...rest} data-test="chat-panel" className={`min-h-0 flex-1 flex-col ${active ? 'flex' : 'hidden'}`}>
         <Header messages={messages} onClear={() => setConfirming(true)} />
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {messages.length === 0 && !busy && <Empty ready={ready} />}
@@ -98,9 +98,10 @@ function Header({ messages, onClear }) {
   if (messages.length === 0) return null
   const model = [...messages].reverse().find((m) => m.model)?.model
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-edge px-5 py-2">
+    <div data-test="chat-header" className="flex shrink-0 items-center justify-between border-b border-edge px-5 py-2">
       <span className="font-mono text-[10px] text-fg3">{model ?? ''}</span>
       <button
+        data-test="btn-clear-chat"
         onClick={onClear}
         className="text-[10px] text-fg3 transition hover:text-red-400"
       >
@@ -149,9 +150,10 @@ function Bubble({ message, maxMs, onSeek }) {
 
 function Composer({ value, ready, busy, onChange, onSubmit }) {
   return (
-    <form onSubmit={onSubmit} className="border-t border-edge p-3">
+    <form data-test="chat-composer" onSubmit={onSubmit} className="border-t border-edge p-3">
       <div className="flex items-center gap-2 rounded-xl border border-edge2 bg-canvas px-3 py-2 transition focus-within:border-mint">
         <input
+          data-test="chat-input"
           value={value}
           disabled={!ready || busy}
           onChange={(e) => onChange(e.target.value)}
@@ -160,6 +162,7 @@ function Composer({ value, ready, busy, onChange, onSubmit }) {
           className="min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-fg3 disabled:cursor-not-allowed"
         />
         <button
+          data-test="btn-send-chat"
           type="submit"
           disabled={!ready || busy || !value.trim()}
           aria-label="Kirim"
