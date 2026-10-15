@@ -18,5 +18,7 @@
 - Status, progress, segmen — sama dengan flow unduh manual
 
 ## TODO berikutnya (setelah stabil)
-- Auto-delete file hasil request API setelah response dikirim
-- Data transkrip tetap tersimpan di DB, hanya file media yang dihapus
+- ~~Auto-delete file hasil request API setelah response dikirim~~ ✅ Selesai
+- ~~Data transkrip tetap tersimpan di DB, hanya file media yang dihapus~~ ✅ Selesai
+- Pertimbangan: retention policy untuk recording source_kind="api" yang file-nya
+  sudah dihapus (mis. hapus baris DB setelah N hari bila tidak pernah dibuka lagi)

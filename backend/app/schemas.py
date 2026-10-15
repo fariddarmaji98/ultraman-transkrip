@@ -150,6 +150,7 @@ class ApiTranscribeIn(BaseModel):
     content_type: str = CONTENT_VIDEO
     summary: bool = False
     language: str = DEFAULT_LANGUAGE
+    auto_delete: bool = True  # hapus file media setelah response; transkrip tetap di DB
 
 
 class ApiTranscribeOut(BaseModel):
@@ -171,6 +172,7 @@ class ApiTranscribeOut(BaseModel):
     segments: list[SegmentOut] = []
     summary: str | None = None
     error: str | None = None
+    files_deleted: bool = False    # bila auto_delete: file media dihapus, transkrip tetap
 
 
 class MeetingStartIn(BaseModel):

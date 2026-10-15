@@ -7,9 +7,10 @@ pemakainya mesin, bukan orang yang bisa melihat bilah progres.
 Alur: url → unduh (atau file → simpan) → transkrip → (opsional) ringkasan → balas.
 
 Rekamannya tetap tercatat penuh di DB dengan `source_kind="api"`, jadi muncul di
-aplikasi seperti unduhan biasa. Membersihkan berkasnya setelah balasan terkirim
-menyusul; untuk sekarang berkas dibiarkan agar alurnya sama persis dengan
-unduhan manual dan mudah diperiksa.
+aplikasi seperti unduhan biasa. Berkas medianya dihapus setelah balasan tersusun
+(`auto_delete`, default aktif) — transkrip dan ringkasan sudah ada di memori saat
+itu, jadi tidak ada lagi yang membacanya. Kirim `auto_delete=false` bila berkasnya
+mau diperiksa dari aplikasi.
 """
 import asyncio
 import time
@@ -78,7 +79,27 @@ async def api_transcribe(request: Request) -> ApiTranscribeOut:
     status = await _wait(rec.id, _TRANSCRIBE_DONE)
     if status is None:
         raise HTTPException(504, f"transkrip melebihi batas waktu (recording {rec.id})")
-    return await _result(rec.id, body, status)
+    out = await _result(rec.id, body, status)
+    # Hapus berkas media SETELAH hasilnya tersusun di memori — transkrip dan
+    # ringkasan sudah dipegang `out`, jadi tidak ada lagi yang membacanya.
+    # Rekaman tetap tercatat di DB (muncul di aplikasi, berkasnya saja hilang).
+    if body.auto_delete:
+        out.files_deleted = await _drop_media(rec.id)
+    return out
+
+
+async def _drop_media(rid: int) -> bool:
+    """Hapus berkas media rekaman. Balikkan True bila ada yang benar-benar hilang."""
+    async with SessionLocal() as db:
+        rec = await db.get(models.Recording, rid)
+        if rec is None:
+            return False
+        had = bool(rec.upload_path or rec.media_path)
+        recs._remove_files(rec)
+        rec.upload_path = ""
+        rec.media_path = ""
+        await db.commit()
+    return had
 
 
 async def _parse(request: Request) -> tuple[ApiTranscribeIn, StarletteUploadFile | None]:
@@ -101,10 +122,13 @@ async def _parse(request: Request) -> tuple[ApiTranscribeIn, StarletteUploadFile
         content_type=form.get("content_type") or CONTENT_VIDEO,
         summary=_as_bool(form.get("summary")),
         language=form.get("language") or LANGUAGE_AUTO,
+        auto_delete=_as_bool(form.get("auto_delete"), default=True),
     ), upload
 
 
-def _as_bool(value) -> bool:
+def _as_bool(value, default: bool = False) -> bool:
+    if value is None:
+        return default
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
